@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PortalPilot - Sistema de Pagos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0A0E17 0%, #1A1F2E 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .payment-container {
+            max-width: 500px;
+            width: 100%;
+            background: #111827;
+            border-radius: 24px;
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .payment-header {
+            background: linear-gradient(135deg, #0EA5E9, #3B82F6);
+            padding: 24px;
+            text-align: center;
+        }
+
+        .payment-header h1 {
+            color: white;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .payment-header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+
+        .payment-body {
+            padding: 32px;
+        }
+
+        .plan-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .plan-card {
+            flex: 1;
+            background: #0A0E17;
+            border: 1px solid #2D3748;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .plan-card.selected {
+            border-color: #0EA5E9;
+            background: rgba(14, 165, 233, 0.1);
+        }
+
+        .plan-card:hover {
+            border-color: #0EA5E9;
+        }
+
+        .plan-name {
+            font-weight: bold;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .plan-price {
+            font-size: 20px;
+            font-weight: bold;
+            color: #0EA5E9;
+        }
+
+        .plan-price small {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #A0AEC0;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0A0E17;
+            border: 1px solid #2D3748;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #0EA5E9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+        }
+
+        .form-row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .btn-pay {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #0EA5E9, #3B82F6);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 24px;
+        }
+
+        .btn-pay:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(14, 165, 233, 0.3);
+        }
+
+        .btn-pay:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .security-badge {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #2D3748;
+            color: #718096;
+            font-size: 12px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10B981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .company-code-input {
+            background: #0A0E17;
+            border: 1px solid #2D3748;
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: white;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <div class="payment-header">
+            <h1>💳 PortalPilot Payments</h1>
+            <p>Sistema de pagos seguro - Suscripción SaaS</p>
+        </div>
+        
+        <div class="payment-body">
+            <!-- Código de empresa -->
+            <div class="form-group">
+                <label>CÓDIGO DE EMPRESA</label>
+                <input type="text" id="companyCode" class="company-code-input" placeholder="Ej: TECH01, LOG02, GLB03" value="TECH01">
+            </div>
+
+            <!-- Selector de planes -->
+            <div class="form-group">
+                <label>SELECCIONA TU PLAN</label>
+                <div class="plan-selector" id="planSelector">
+                    <div class="plan-card" data-plan="Free" data-price="0">
+                        <div class="plan-name">Free</div>
+                        <div class="plan-price">L.0 <small>/mes</small></div>
+                    </div>
+                    <div class="plan-card" data-plan="Pro" data-price="1500">
+                        <div class="plan-name">Pro</div>
+                        <div class="plan-price">L.1,500 <small>/mes</small></div>
+                    </div>
+                    <div class="plan-card" data-plan="Enterprise" data-price="5000">
+                        <div class="plan-name">Enterprise</div>
+                        <div class="plan-price">L.5,000 <small>/mes</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información de pago -->
+            <div class="form-group">
+                <label>NOMBRE DEL TITULAR</label>
+                <input type="text" id="cardName" placeholder="Como aparece en la tarjeta">
+            </div>
+
+            <div class="form-group">
+                <label>NÚMERO DE TARJETA</label>
+                <input type="text" id="cardNumber" placeholder="4242 4242 4242 4242" maxlength="19">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>FECHA EXPIRACIÓN</label>
+                    <input type="text" id="cardExpiry" placeholder="MM/AA">
+                </div>
+                <div class="form-group">
+                    <label>CVV</label>
+                    <input type="password" id="cardCvv" placeholder="***" maxlength="4">
+                </div>
+            </div>
+
+            <!-- Hash de transacción (simulado) -->
+            <div class="form-group">
+                <label>HASH DE TRANSACCIÓN (AUDITORÍA)</label>
+                <input type="text" id="transactionHash" readonly style="background: #0A0E17; font-family: monospace; font-size: 11px;" value="0x0000000000000000">
+            </div>
+
+            <button class="btn-pay" id="payButton">💳 PROCESAR PAGO</button>
+
+            <div class="security-badge">
+                <span>🔒</span>
+                <span>Pagos seguros encriptados</span>
+                <span>🔐</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables
+        let selectedPlan = 'Pro';
+        let selectedPrice = 1500;
+        
+        // Generar hash aleatorio
+        function generateHash() {
+            const chars = '0123456789abcdef';
+            let hash = '0x';
+            for (let i = 0; i < 16; i++) {
+                hash += chars[Math.floor(Math.random() * 16)];
+            }
+            return hash;
+        }
+
+        // Actualizar hash
+        function updateHash() {
+            document.getElementById('transactionHash').value = generateHash();
+        }
+
+        // Formatear número de tarjeta
+        function formatCardNumber(value) {
+            const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            const matches = v.match(/\d{4,16}/g);
+            const match = matches && matches[0] || '';
+            const parts = [];
+            for (let i = 0; i < match.length; i += 4) {
+                parts.push(match.substring(i, i + 4));
+            }
+            if (parts.length) {
+                return parts.join(' ');
+            } else {
+                return value;
+            }
+        }
+
+        // Formatear fecha expiración
+        function formatExpiry(value) {
+            const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            if (v.length >= 2) {
+                return v.substring(0, 2) + (v.length > 2 ? '/' + v.substring(2, 4) : '');
+            }
+            return v;
+        }
+
+        // Evento de selección de plan
+        document.querySelectorAll('.plan-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedPlan = card.dataset.plan;
+                selectedPrice = parseInt(card.dataset.price);
+                updateHash();
+            });
+        });
+
+        // Formatear inputs
+        document.getElementById('cardNumber').addEventListener('input', function(e) {
+            e.target.value = formatCardNumber(e.target.value);
+        });
+
+        document.getElementById('cardExpiry').addEventListener('input', function(e) {
+            e.target.value = formatExpiry(e.target.value);
+        });
+
+        // Generar hash inicial
+        updateHash();
+
+        // Procesar pago
+        document.getElementById('payButton').addEventListener('click', async function() {
+            const companyCode = document.getElementById('companyCode').value;
+            const cardName = document.getElementById('cardName').value;
+            const cardNumber = document.getElementById('cardNumber').value;
+            const cardExpiry = document.getElementById('cardExpiry').value;
+            const cardCvv = document.getElementById('cardCvv').value;
+            const transactionHash = document.getElementById('transactionHash').value;
+
+            if (!companyCode || !cardName || !cardNumber || !cardExpiry || !cardCvv) {
+                showToast('❌ Por favor completa todos los campos', 'error');
+                return;
+            }
+
+            const button = document.getElementById('payButton');
+            button.disabled = true;
+            button.innerHTML = '<span class="loading"></span> PROCESANDO...';
+
+            // Simular procesamiento
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Crear objeto de transacción
+            const transaction = {
+                empresa_codigo: companyCode,
+                monto: selectedPrice,
+                plan: selectedPlan,
+                tarjeta_numero: '****' + cardNumber.slice(-4),
+                tarjeta_nombre: cardName,
+                tarjeta_expiracion: cardExpiry,
+                fecha_pago: new Date().toISOString(),
+                estado: 'completado',
+                hash_transaccion: transactionHash
+            };
+
+            console.log('Transacción completada:', transaction);
+            
+            // Guardar en localStorage para que Flutter lo pueda leer
+            localStorage.setItem('last_transaction', JSON.stringify(transaction));
+            
+            // También guardar en el historial
+            let history = JSON.parse(localStorage.getItem('transaction_history') || '[]');
+            history.unshift(transaction);
+            localStorage.setItem('transaction_history', JSON.stringify(history));
+
+            showToast('✅ ¡Pago completado! Hash: ' + transactionHash.slice(0, 10) + '...', 'success');
+            
+            button.innerHTML = '💳 PAGO COMPLETADO';
+            setTimeout(() => {
+                button.innerHTML = '💳 PROCESAR PAGO';
+                button.disabled = false;
+            }, 3000);
+
+            // Limpiar campos sensibles
+            document.getElementById('cardNumber').value = '';
+            document.getElementById('cardCvv').value = '';
+            updateHash();
+        });
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.background = type === 'error' ? '#EF4444' : '#10B981';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
+</body>
+</html>
