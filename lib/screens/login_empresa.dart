@@ -18,7 +18,7 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
   final _passwordController = TextEditingController();
   final _companyCodeController = TextEditingController();
   final NocoDBService _nocodb = NocoDBService();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _errorMessage = '';
@@ -26,16 +26,15 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
   @override
   void initState() {
     super.initState();
-    // Datos demo para pruebas (reemplazar con datos reales de NocoDB)
     _companyCodeController.text = 'TECH01';
     _emailController.text = 'admin@techsolutions.com';
     _passwordController.text = 'Tech123!';
   }
 
   Future<void> _login() async {
-    if (_emailController.text.isEmpty ||
-        _passwordController.text.isEmpty ||
-        _companyCodeController.text.isEmpty) {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty ||
+        _companyCodeController.text.trim().isEmpty) {
       setState(() => _errorMessage = 'Completa todos los campos');
       return;
     }
@@ -46,7 +45,6 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
     });
 
     try {
-      // 🔐 Autenticación real contra NocoDB
       final result = await _nocodb.login(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -56,11 +54,12 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
       setState(() => _isLoading = false);
 
       if (result != null && result['success'] == true) {
-        // Guardar sesión en SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('usuario', jsonEncode(result['usuario']));
         await prefs.setString('empresa', jsonEncode(result['empresa']));
         await prefs.setBool('isLoggedIn', true);
+        await prefs.setString(
+            'empresaCodigo', _companyCodeController.text.trim().toUpperCase());
 
         if (mounted) {
           Navigator.pushReplacement(
@@ -74,7 +73,8 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
           );
         }
       } else {
-        setState(() => _errorMessage = result?['error'] ?? 'Credenciales inválidas');
+        setState(
+            () => _errorMessage = result?['error'] ?? 'Credenciales inválidas');
       }
     } catch (e) {
       setState(() {
@@ -87,8 +87,7 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
+    final isMobile = MediaQuery.of(context).size.width < 600;
     final containerWidth = isMobile ? double.infinity : 420.0;
 
     return Scaffold(
@@ -97,7 +96,7 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
           gradient: RadialGradient(
             center: Alignment.center,
             radius: 1.5,
-            colors: [Color(0xFF0A0E17), Color(0xFF0F1118), Color(0xFF05080F)],
+            colors: [Color(0xFF0A0B0F), Color(0xFF0F1118), Color(0xFF05080F)],
           ),
         ),
         child: SafeArea(
@@ -118,8 +117,8 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
                     child: Container(
                       width: isMobile ? 60 : 80,
                       height: isMobile ? 60 : 80,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
                           colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
                         ),
                         shape: BoxShape.circle,
@@ -135,7 +134,7 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
                     delay: const Duration(milliseconds: 100),
                     child: Text(
                       isMobile ? 'Acceso Empresa' : 'Acceso Corporativo',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.spaceGrotesk(
                         fontSize: isMobile ? 24 : 28,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -193,6 +192,7 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
                               label: 'CORREO ELECTRÓNICO',
                               hint: 'tu@empresa.com',
                               icon: Icons.email_outlined,
+                              keyboardType: TextInputType.emailAddress,
                             ),
                             const SizedBox(height: 20),
                             _buildTextField(
@@ -227,11 +227,10 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
                                         size: 16, color: Color(0xFFEF4444)),
                                     const SizedBox(width: 8),
                                     Expanded(
-                                      child: Text(_errorMessage,
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFFEF4444))),
-                                    ),
+                                        child: Text(_errorMessage,
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFFEF4444)))),
                                   ],
                                 ),
                               ),
@@ -284,6 +283,7 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
     required String hint,
     required IconData icon,
     bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
     Widget? suffixIcon,
   }) {
     return Column(
@@ -304,6 +304,7 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
           child: TextField(
             controller: controller,
             obscureText: obscureText,
+            keyboardType: keyboardType,
             style: GoogleFonts.inter(fontSize: 14),
             decoration: InputDecoration(
               hintText: hint,

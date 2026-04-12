@@ -9,11 +9,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  http: ^1.2.0
+  shared_preferences: ^2.2.2
   google_fonts: ^6.2.1
   animate_do: ^3.3.4
-  shared_preferences: ^2.2.2
+  
   path_provider: ^2.1.1
-  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

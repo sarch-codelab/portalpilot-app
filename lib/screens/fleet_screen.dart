@@ -7,8 +7,13 @@ class FleetScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text(
-        'Fleet Management',
-        style: TextStyle(fontSize: 24, color: Colors.white),
+        'Fleet Management\n\nPróximamente',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 24,
+          color: Colors.white54,
+          fontFamily: 'sans-serif',
+        ),
       ),
     );
   }

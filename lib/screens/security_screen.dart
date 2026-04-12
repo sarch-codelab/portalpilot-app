@@ -7,8 +7,13 @@ class SecurityScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text(
-        'Security & Forensics',
-        style: TextStyle(fontSize: 24, color: Colors.white),
+        'Security & Forensics\n\nPróximamente',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 24,
+          color: Colors.white54,
+          fontFamily: 'sans-serif',
+        ),
       ),
     );
   }

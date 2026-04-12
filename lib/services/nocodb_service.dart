@@ -3,20 +3,22 @@ import 'package:http/http.dart' as http;
 
 class NocoDBService {
   // ============================================================
-  // 🔧 CONFIGURACIÓN - REEMPLAZA CON TUS DATOS REALES
+  // 🔧 CONFIGURACIÓN - CORREGIDA
   // ============================================================
-  static const String baseUrl = 'https://app.nocodb.com/w0ftcyae/px82297mndrc9ur';
-  static const String apiToken = 'nc_pat_zawRZGjBBt71tyamIeQP9G1lEnS3ZzO5Ggxtk_3T';        // 👈 Tu token de NocoDB
-  static const String baseId = 'px82297mndrc9ur';            // 👈 ID de tu base
-  static const String tableEmpresas = 'mk9n7ppeyujbn5y'; // 👈 ID de tabla empresas
-  static const String tableUsuarios = 'vwbr30i4npnnxh24'; // 👈 ID de tabla usuarios
-  static const String tableTransacciones = 'mxa0iif8367hu3x'; // 👈 ID de tabla transacciones
+  static const String baseUrl =
+      'https://app.nocodb.com'; // ← Solo el dominio, sin extras
+  static const String apiToken =
+      'nc_pat_zawRZGjBBt71tyamIeQP9G1lEnS3ZzO5Ggxtk_3T';
+  static const String baseId = 'px82297mndrc9ur';
+  static const String tableEmpresas = 'mk9n7ppeyujbn5y';
+  static const String tableUsuarios = 'mbetwog5kom45mg';
+  static const String tableTransacciones = 'mxa0iif8367hu3x';
 
   // Headers para autenticación
   Map<String, String> get _headers => {
-    'xc-token': apiToken,
-    'Content-Type': 'application/json',
-  };
+        'xc-token': apiToken,
+        'Content-Type': 'application/json',
+      };
 
   // ============================================================
   // 📦 EMPRESAS (CRUD)
@@ -26,12 +28,15 @@ class NocoDBService {
   Future<List<Map<String, dynamic>>> getEmpresas() async {
     try {
       final url = Uri.parse('$baseUrl/api/v2/tables/$tableEmpresas/records');
+      print('📡 GET: $url'); // Para depuración
       final response = await http.get(url, headers: _headers);
-      
+
+      print('📥 Status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['list']);
       } else {
+        print('❌ Error body: ${response.body}');
         throw Exception('Error al obtener empresas: ${response.statusCode}');
       }
     } catch (e) {
@@ -56,12 +61,18 @@ class NocoDBService {
       };
 
       final url = Uri.parse('$baseUrl/api/v2/tables/$tableEmpresas/records');
-      final response = await http.post(url, headers: _headers, body: jsonEncode(body));
-      
+      print('📡 POST: $url');
+      print('📦 Body: $body');
+
+      final response =
+          await http.post(url, headers: _headers, body: jsonEncode(body));
+
+      print('📥 Status: ${response.statusCode}');
       if (response.statusCode == 201 || response.statusCode == 200) {
         print('✅ Empresa creada: $nombre');
         return jsonDecode(response.body);
       } else {
+        print('❌ Error body: ${response.body}');
         throw Exception('Error al crear empresa: ${response.statusCode}');
       }
     } catch (e) {
@@ -89,7 +100,7 @@ class NocoDBService {
     try {
       final url = Uri.parse('$baseUrl/api/v2/tables/$tableUsuarios/records');
       final response = await http.get(url, headers: _headers);
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['list']);
@@ -126,7 +137,7 @@ class NocoDBService {
         return {'error': 'Usuario no encontrado', 'success': false};
       }
 
-      // 3. Verificar contraseña (en producción, usa hash)
+      // 3. Verificar contraseña
       if (usuario['password'] != password) {
         return {'error': 'Contraseña incorrecta', 'success': false};
       }
@@ -154,15 +165,16 @@ class NocoDBService {
       final body = {
         'nombre': nombre,
         'email': email,
-        'password': password, // En producción: hashear antes
+        'password': password,
         'rol': rol,
         'empresa_id': empresaId,
         'activo': true,
       };
 
       final url = Uri.parse('$baseUrl/api/v2/tables/$tableUsuarios/records');
-      final response = await http.post(url, headers: _headers, body: jsonEncode(body));
-      
+      final response =
+          await http.post(url, headers: _headers, body: jsonEncode(body));
+
       if (response.statusCode == 201 || response.statusCode == 200) {
         print('✅ Usuario creado: $email');
         return jsonDecode(response.body);
@@ -196,11 +208,14 @@ class NocoDBService {
         'estado': 'completado',
       };
 
-      final url = Uri.parse('$baseUrl/api/v2/tables/$tableTransacciones/records');
-      final response = await http.post(url, headers: _headers, body: jsonEncode(body));
-      
+      final url =
+          Uri.parse('$baseUrl/api/v2/tables/$tableTransacciones/records');
+      final response =
+          await http.post(url, headers: _headers, body: jsonEncode(body));
+
       if (response.statusCode == 201 || response.statusCode == 200) {
-        print('✅ Transacción registrada: ${hashTransaccion.substring(0, 10)}...');
+        print(
+            '✅ Transacción registrada: ${hashTransaccion.substring(0, 10)}...');
         return jsonDecode(response.body);
       } else {
         throw Exception('Error al crear transacción: ${response.statusCode}');
@@ -212,7 +227,8 @@ class NocoDBService {
   }
 
   /// Obtener transacciones de una empresa
-  Future<List<Map<String, dynamic>>> getTransaccionesByEmpresa(int empresaId) async {
+  Future<List<Map<String, dynamic>>> getTransaccionesByEmpresa(
+      int empresaId) async {
     try {
       final todas = await getTransacciones();
       return todas.where((t) => t['empresa_id'] == empresaId).toList();
@@ -225,14 +241,16 @@ class NocoDBService {
   /// Obtener todas las transacciones
   Future<List<Map<String, dynamic>>> getTransacciones() async {
     try {
-      final url = Uri.parse('$baseUrl/api/v2/tables/$tableTransacciones/records');
+      final url =
+          Uri.parse('$baseUrl/api/v2/tables/$tableTransacciones/records');
       final response = await http.get(url, headers: _headers);
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['list']);
       } else {
-        throw Exception('Error al obtener transacciones: ${response.statusCode}');
+        throw Exception(
+            'Error al obtener transacciones: ${response.statusCode}');
       }
     } catch (e) {
       print('❌ Error getTransacciones: $e');
@@ -241,16 +259,13 @@ class NocoDBService {
   }
 
   // ============================================================
-  // 🔐 AUDITORÍA CYBERYX (Cadena de hashes)
+  // 🔐 AUDITORÍA CYBERYX
   // ============================================================
 
-  /// Generar un hash SHA-256 simple (simulado)
   static String generateHash(String data) {
-    // En producción, usa crypto: sha256.convert(utf8.encode(data))
-    return '0x' + DateTime.now().millisecondsSinceEpoch.toRadixString(16);
+    return '0x${DateTime.now().millisecondsSinceEpoch.toRadixString(16)}';
   }
 
-  /// Verificar integridad de la cadena de transacciones
   Future<bool> verifyChainIntegrity() async {
     final transacciones = await getTransacciones();
     if (transacciones.isEmpty) return true;

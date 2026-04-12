@@ -17,7 +17,7 @@ class AIService {
   AIService._internal();
 
   bool _isModelLoaded = false;
-  double _downloadProgress = 0.0;
+  final double _downloadProgress = 0.0;
   String _status = 'Inicializando...';
 
   bool get isModelLoaded => _isModelLoaded;
@@ -118,9 +118,9 @@ class AIService {
   String _getGreeting() {
     final hour = DateTime.now().hour;
     String saludo;
-    if (hour < 12)
+    if (hour < 12) {
       saludo = 'Buenos días';
-    else if (hour < 18)
+    } else if (hour < 18)
       saludo = 'Buenas tardes';
     else
       saludo = 'Buenas noches';

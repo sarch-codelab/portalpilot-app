@@ -33,9 +33,9 @@ class HashChainVisualization extends StatelessWidget {
                   color: const Color(0xFF10B981).withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
+                  children: [
                     Icon(Icons.circle, size: 6, color: Color(0xFF10B981)),
                     SizedBox(width: 6),
                     Text('CHAIN SYNCHRONIZED',

@@ -94,8 +94,8 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
                     child: Container(
                       width: 70,
                       height: 70,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
                           colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)],
                         ),
                         shape: BoxShape.circle,

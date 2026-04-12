@@ -12,20 +12,19 @@ class PortalPilotApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'PortalPilot + Cyberyx',
+      title: 'PortalPilot',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        primaryColor: const Color(0xFF0EA5E9),
-        scaffoldBackgroundColor: const Color(0xFF0A0E17),
+        primaryColor: const Color(0xFF6366F1),
+        scaffoldBackgroundColor: const Color(0xFF0A0B0F),
         useMaterial3: true,
         fontFamily: GoogleFonts.inter().fontFamily,
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF0EA5E9),
-          secondary: Color(0xFFF59E0B),
+          primary: Color(0xFF6366F1),
+          secondary: Color(0xFF3B82F6),
           tertiary: Color(0xFF10B981),
-          surface: Color(0xFF111827),
-          background: Color(0xFF0A0E17),
+          surface: Color(0xFF1A1C1E),
         ),
       ),
       home: const SplashScreen(),

@@ -5,7 +5,7 @@ void main() async {
 
   final service = NocoDBService();
 
-  // Probar crear empresa
+  // 1. Crear empresa de prueba
   final empresa = await service.createEmpresa(
     nombre: 'Tech Solutions',
     codigo: 'TECH01',
@@ -13,15 +13,34 @@ void main() async {
   );
 
   if (empresa != null) {
-    print('✅ Empresa creada: ${empresa['Id']}');
+    print('✅ Empresa creada con ID: ${empresa['Id']}');
+
+    // 2. Crear usuario para esa empresa
+    final usuario = await service.createUsuario(
+      nombre: 'Admin Tech',
+      email: 'admin@techsolutions.com',
+      password: 'Tech123!',
+      rol: 'admin',
+      empresaId: empresa['Id'],
+    );
+
+    if (usuario != null) {
+      print('✅ Usuario creado: ${usuario['email']}');
+    }
   }
 
-  // Probar login
+  // 3. Probar login
   final login = await service.login(
     email: 'admin@techsolutions.com',
-    password: 'admin123',
+    password: 'Tech123!',
     empresaCodigo: 'TECH01',
   );
 
-  print('Login: ${login?['success']}');
+  print('Login exitoso: ${login?['success']}');
+  if (login?['success'] == true) {
+    print('👤 Usuario: ${login?['usuario']['nombre']}');
+    print('🏢 Empresa: ${login?['empresa']['nombre']}');
+  } else {
+    print('❌ Error: ${login?['error']}');
+  }
 }

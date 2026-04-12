@@ -63,9 +63,9 @@ class AuditTable extends StatelessWidget {
                     color: const Color(0xFF10B981).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
+                    children: [
                       Icon(Icons.download, size: 14, color: Color(0xFF10B981)),
                       SizedBox(width: 6),
                       Text('Export Report',

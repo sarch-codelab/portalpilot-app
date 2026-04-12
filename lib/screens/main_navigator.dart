@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/oculis_sidebar.dart';
 import 'dashboard_screen.dart';
 import 'automation_screen.dart';
 import 'security_screen.dart';
@@ -24,13 +24,6 @@ class _MainNavigatorState extends State<MainNavigator> {
     const FleetScreen(),
   ];
 
-  final List<String> _titles = [
-    'Dashboard',
-    'Automation Studio',
-    'Security & Forensics',
-    'Fleet Management',
-  ];
-
   Future<void> _logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -52,117 +45,58 @@ class _MainNavigatorState extends State<MainNavigator> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      backgroundColor: const Color(0xFF0A0B0F),
+      body: Stack(
         children: [
-          // Sidebar
+          // Fondo con estrellas y cometas (lo puedes añadir aquí o en cada pantalla)
           Container(
-            width: 260,
-            color: const Color(0xFF0F1118),
-            child: Column(
-              children: [
-                const SizedBox(height: 30),
-                const Text(
-                  'PORTALPILOT',
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0EA5E9)),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Tech Solutions',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF0EA5E9)),
-                ),
-                const SizedBox(height: 30),
-                _buildNavItem(0, 'Dashboard', Icons.dashboard),
-                _buildNavItem(1, 'Automation', Icons.account_tree),
-                _buildNavItem(2, 'Security', Icons.shield),
-                _buildNavItem(3, 'Fleet', Icons.business),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border(
-                        top: BorderSide(color: Colors.white.withOpacity(0.1))),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.person, color: Color(0xFF0EA5E9)),
-                          const SizedBox(width: 8),
-                          const Text('Empleado'),
-                          const Spacer(),
-                          IconButton(
-                            icon: const Icon(Icons.logout,
-                                size: 18, color: Colors.white54),
-                            onPressed: () => _logout(context),
-                            tooltip: 'Cerrar Sesión',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Plan: Enterprise',
-                        style: GoogleFonts.inter(
-                            fontSize: 10, color: Colors.white38),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.bottomCenter,
+                radius: 1.2,
+                colors: [
+                  const Color(0xFF6366F1).withOpacity(0.12),
+                  const Color(0xFF3B82F6).withOpacity(0.05),
+                  const Color(0xFF0A0B0F),
+                  const Color(0xFF0A0B0F),
+                ],
+                stops: const [0.0, 0.3, 0.6, 1.0],
+              ),
             ),
           ),
-          // Main content
-          Expanded(
-            child: Column(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  color: const Color(0xFF111827),
-                  child: Row(
-                    children: [
-                      Text(
-                        _titles[_selectedIndex],
-                        style: const TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w600),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'SISTEMA OPERATIVO',
-                          style:
-                              TextStyle(fontSize: 10, color: Color(0xFF10B981)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(child: _screens[_selectedIndex]),
-              ],
+
+          // Sidebar Oculis + Contenido
+          Row(
+            children: [
+              // Sidebar reutilizable
+              OculisSidebar(
+                selectedIndex: _selectedIndex,
+                onItemSelected: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+              ),
+
+              // Contenido principal
+              Expanded(
+                child: _screens[_selectedIndex],
+              ),
+            ],
+          ),
+
+          // Botón de logout flotante (opcional)
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton.small(
+              onPressed: () => _logout(context),
+              backgroundColor: const Color(0xFFEF4444),
+              child: const Icon(Icons.logout, size: 20, color: Colors.white),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildNavItem(int index, String title, IconData icon) {
-    final isSelected = _selectedIndex == index;
-    return ListTile(
-      leading: Icon(icon,
-          color: isSelected ? const Color(0xFF0EA5E9) : Colors.white54),
-      title: Text(title,
-          style: TextStyle(color: isSelected ? Colors.white : Colors.white70)),
-      tileColor: isSelected ? const Color(0xFF0EA5E9).withOpacity(0.1) : null,
-      onTap: () => setState(() => _selectedIndex = index),
     );
   }
 }

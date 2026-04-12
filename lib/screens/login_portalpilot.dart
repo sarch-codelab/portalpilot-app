@@ -81,8 +81,8 @@ class _LoginPortalPilotState extends State<LoginPortalPilot> {
                     child: Container(
                       width: 80,
                       height: 80,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
                           colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)],
                         ),
                         shape: BoxShape.circle,

@@ -7,8 +7,13 @@ class AutomationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text(
-        'Automation Studio',
-        style: TextStyle(fontSize: 24, color: Colors.white),
+        'Automation Studio\n\nPróximamente',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 24,
+          color: Colors.white54,
+          fontFamily: 'sans-serif',
+        ),
       ),
     );
   }

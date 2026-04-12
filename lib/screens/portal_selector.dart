@@ -9,8 +9,7 @@ class PortalSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isWide = screenSize.width > 900;
+    final isWide = MediaQuery.of(context).size.width > 900;
 
     return Scaffold(
       body: Container(
@@ -19,7 +18,7 @@ class PortalSelector extends StatelessWidget {
             center: Alignment.center,
             radius: 1.5,
             colors: [
-              Color(0xFF0A0E17),
+              Color(0xFF0A0B0F),
               Color(0xFF0F1118),
               Color(0xFF05080F),
             ],
@@ -32,7 +31,6 @@ class PortalSelector extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo
                   FadeInDown(
                     duration: const Duration(milliseconds: 600),
                     child: Container(
@@ -40,12 +38,12 @@ class PortalSelector extends StatelessWidget {
                       height: 80,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)],
+                          colors: [Color(0xFF6366F1), Color(0xFF3B82F6)],
                         ),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF0EA5E9).withOpacity(0.3),
+                            color: const Color(0xFF6366F1).withOpacity(0.3),
                             blurRadius: 30,
                           ),
                         ],
@@ -57,16 +55,15 @@ class PortalSelector extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 30),
-
                   FadeInDown(
                     delay: const Duration(milliseconds: 100),
                     child: ShaderMask(
                       shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFF0EA5E9), Color(0xFF3B82F6)],
+                        colors: [Color(0xFF6366F1), Color(0xFF3B82F6)],
                       ).createShader(bounds),
                       child: Text(
                         'PORTALPILOT',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.spaceGrotesk(
                           fontSize: 36,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 3,
@@ -76,7 +73,6 @@ class PortalSelector extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-
                   FadeInDown(
                     delay: const Duration(milliseconds: 200),
                     child: Text(
@@ -89,8 +85,6 @@ class PortalSelector extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 60),
-
-                  // Dos tarjetas lado a lado
                   if (isWide)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,7 +99,7 @@ class PortalSelector extends StatelessWidget {
                                   'Panel de Control Global para administradores del sistema.',
                               icon: Icons.admin_panel_settings,
                               gradientColors: const [
-                                Color(0xFF0EA5E9),
+                                Color(0xFF6366F1),
                                 Color(0xFF3B82F6)
                               ],
                               buttonText: 'ACCEDER AL PANEL GLOBAL',
@@ -160,7 +154,7 @@ class PortalSelector extends StatelessWidget {
                                 'Panel de Control Global para administradores del sistema.',
                             icon: Icons.admin_panel_settings,
                             gradientColors: const [
-                              Color(0xFF0EA5E9),
+                              Color(0xFF6366F1),
                               Color(0xFF3B82F6)
                             ],
                             buttonText: 'ACCEDER AL PANEL GLOBAL',
@@ -200,9 +194,7 @@ class PortalSelector extends StatelessWidget {
                         ),
                       ],
                     ),
-
                   const SizedBox(height: 60),
-
                   FadeInUp(
                     delay: const Duration(milliseconds: 600),
                     child: Text(
@@ -274,7 +266,7 @@ class PortalSelector extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.spaceGrotesk(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
