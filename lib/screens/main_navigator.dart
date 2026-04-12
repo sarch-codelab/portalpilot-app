@@ -5,7 +5,6 @@ import 'dashboard_screen.dart';
 import 'automation_screen.dart';
 import 'security_screen.dart';
 import 'fleet_screen.dart';
-import 'splash_screen.dart';
 
 class MainNavigator extends StatefulWidget {
   const MainNavigator({super.key});
@@ -16,6 +15,11 @@ class MainNavigator extends StatefulWidget {
 
 class _MainNavigatorState extends State<MainNavigator> {
   int _selectedIndex = 0;
+  
+  String _userName = "Usuario";
+  String _userEmail = "";
+  String _empresaNombre = "Mi Empresa";
+  String _empresaPlan = "Pro";
 
   final List<Widget> _screens = [
     const DashboardScreen(),
@@ -24,21 +28,25 @@ class _MainNavigatorState extends State<MainNavigator> {
     const FleetScreen(),
   ];
 
-  Future<void> _logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
 
-    if (context.mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const SplashScreen(),
-          transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-        (route) => false,
-      );
+  Future<void> _loadUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _userName = prefs.getString('userName') ?? 'Usuario';
+          _userEmail = prefs.getString('userEmail') ?? '';
+          _empresaNombre = prefs.getString('empresaNombre') ?? 'Mi Empresa';
+          _empresaPlan = prefs.getString('empresaPlan') ?? 'Pro';
+        });
+      }
+    } catch (e) {
+      print('Error: $e');
     }
   }
 
@@ -46,54 +54,22 @@ class _MainNavigatorState extends State<MainNavigator> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0B0F),
-      body: Stack(
+      body: Row(
         children: [
-          // Fondo con estrellas y cometas (lo puedes añadir aquí o en cada pantalla)
-          Container(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment.bottomCenter,
-                radius: 1.2,
-                colors: [
-                  const Color(0xFF6366F1).withOpacity(0.12),
-                  const Color(0xFF3B82F6).withOpacity(0.05),
-                  const Color(0xFF0A0B0F),
-                  const Color(0xFF0A0B0F),
-                ],
-                stops: const [0.0, 0.3, 0.6, 1.0],
-              ),
-            ),
+          OculisSidebar(
+            selectedIndex: _selectedIndex,
+            onItemSelected: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            },
+            userName: _userName,
+            userEmail: _userEmail,
+            empresaNombre: _empresaNombre,
+            empresaPlan: _empresaPlan,
           ),
-
-          // Sidebar Oculis + Contenido
-          Row(
-            children: [
-              // Sidebar reutilizable
-              OculisSidebar(
-                selectedIndex: _selectedIndex,
-                onItemSelected: (index) {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
-                },
-              ),
-
-              // Contenido principal
-              Expanded(
-                child: _screens[_selectedIndex],
-              ),
-            ],
-          ),
-
-          // Botón de logout flotante (opcional)
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: FloatingActionButton.small(
-              onPressed: () => _logout(context),
-              backgroundColor: const Color(0xFFEF4444),
-              child: const Icon(Icons.logout, size: 20, color: Colors.white),
-            ),
+          Expanded(
+            child: _screens[_selectedIndex],
           ),
         ],
       ),

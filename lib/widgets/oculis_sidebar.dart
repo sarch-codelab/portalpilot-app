@@ -4,11 +4,19 @@ import 'package:flutter/material.dart';
 class OculisSidebar extends StatefulWidget {
   final int selectedIndex;
   final Function(int) onItemSelected;
+  final String userName;
+  final String userEmail;
+  final String empresaNombre;
+  final String empresaPlan;
 
   const OculisSidebar({
     super.key,
     required this.selectedIndex,
     required this.onItemSelected,
+    required this.userName,
+    required this.userEmail,
+    required this.empresaNombre,
+    required this.empresaPlan,
   });
 
   @override
@@ -17,11 +25,6 @@ class OculisSidebar extends StatefulWidget {
 
 class _OculisSidebarState extends State<OculisSidebar> {
   bool _isExpanded = true;
-
-  // Paleta de colores
-  static const Color oculisBg = Color(0xFF0A0B0F);
-  static const Color oculisAccentPurple = Color(0xFF6366F1);
-  static const Color oculisAccentBlue = Color(0xFF3B82F6);
 
   final List<Map<String, dynamic>> _menuItems = [
     {'icon': Icons.dashboard_outlined, 'label': 'Dashboard', 'index': 0},
@@ -33,12 +36,12 @@ class _OculisSidebarState extends State<OculisSidebar> {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOutCubic,
-      width: _isExpanded ? 240 : 72,
-      decoration: BoxDecoration(
-        color: oculisBg.withOpacity(0.9),
-        border: const Border(
+      width: _isExpanded ? 260 : 80,
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F1118),
+        border: Border(
           right: BorderSide(color: Colors.white10, width: 0.5),
         ),
       ),
@@ -62,6 +65,7 @@ class _OculisSidebarState extends State<OculisSidebar> {
                 ),
               ),
               _buildFooter(),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -81,8 +85,8 @@ class _OculisSidebarState extends State<OculisSidebar> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [oculisAccentPurple, oculisAccentBlue],
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6366F1), Color(0xFF3B82F6)],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -91,14 +95,22 @@ class _OculisSidebarState extends State<OculisSidebar> {
             ),
             if (_isExpanded) ...[
               const SizedBox(width: 12),
-              Text(
-                "PortalPilot",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'sans-serif',
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "PortalPilot",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    widget.empresaNombre,
+                    style:
+                        const TextStyle(color: Color(0xFF6366F1), fontSize: 10),
+                  ),
+                ],
               ),
             ]
           ],
@@ -111,7 +123,7 @@ class _OculisSidebarState extends State<OculisSidebar> {
     final bool isSelected = widget.selectedIndex == index;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: StatefulBuilder(
@@ -122,95 +134,54 @@ class _OculisSidebarState extends State<OculisSidebar> {
               onExit: (_) => setStateItem(() => isHovered = false),
               child: GestureDetector(
                 onTap: () => widget.onItemSelected(index),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? oculisAccentPurple.withOpacity(0.2)
-                            : (isHovered
-                                ? Colors.white.withOpacity(0.05)
-                                : Colors.transparent),
-                        borderRadius: BorderRadius.circular(12),
-                        border: isSelected
-                            ? Border.all(
-                                color: oculisAccentPurple.withOpacity(0.3))
-                            : null,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF6366F1).withOpacity(0.15)
+                        : (isHovered
+                            ? Colors.white.withOpacity(0.05)
+                            : Colors.transparent),
+                    borderRadius: BorderRadius.circular(10),
+                    border: isSelected
+                        ? Border.all(
+                            color: const Color(0xFF6366F1).withOpacity(0.3))
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: _isExpanded
+                        ? MainAxisAlignment.start
+                        : MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        icon,
+                        size: 22,
+                        color: (isSelected || isHovered)
+                            ? const Color(0xFF6366F1)
+                            : Colors.white54,
                       ),
-                      child: Row(
-                        mainAxisAlignment: _isExpanded
-                            ? MainAxisAlignment.start
-                            : MainAxisAlignment.center,
-                        children: [
-                          Padding(
-                            padding:
-                                EdgeInsets.only(left: _isExpanded ? 12 : 0),
-                            child: Icon(
-                              icon,
+                      if (_isExpanded) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isSelected
+                                  ? FontWeight.w500
+                                  : FontWeight.normal,
                               color: (isSelected || isHovered)
-                                  ? oculisAccentPurple
-                                  : Colors.white38,
-                              size: 22,
-                            ),
-                          ),
-                          if (_isExpanded) ...[
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                label,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.normal,
-                                  fontFamily: 'sans-serif',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    // Tooltip emergente (cuando sidebar contraída)
-                    if (!_isExpanded && isHovered && !isSelected)
-                      Positioned(
-                        left: 60,
-                        top: 4,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: oculisAccentPurple.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: oculisAccentPurple.withOpacity(0.3),
-                                    blurRadius: 10,
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                label,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  fontFamily: 'sans-serif',
-                                ),
-                              ),
+                                  ? Colors.white
+                                  : Colors.white70,
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                      ],
+                    ],
+                  ),
                 ),
               ),
             );
@@ -221,94 +192,77 @@ class _OculisSidebarState extends State<OculisSidebar> {
   }
 
   Widget _buildFooter() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          top: BorderSide(color: Colors.white.withOpacity(0.05)),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            height: 48,
-            width: double.infinity,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  oculisAccentPurple.withOpacity(0.2),
-                  oculisAccentBlue.withOpacity(0.1),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6366F1), Color(0xFF3B82F6)],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                widget.userName.isNotEmpty
+                    ? widget.userName[0].toUpperCase()
+                    : "U",
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          if (_isExpanded) ...[
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.userName,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    widget.userEmail,
+                    style: const TextStyle(color: Colors.white38, fontSize: 10),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: oculisAccentPurple.withOpacity(0.3)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.add, color: Colors.white, size: 18),
-                if (_isExpanded) ...[
-                  const SizedBox(width: 8),
-                  const Text(
-                    "New Post",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'sans-serif',
-                    ),
-                  ),
-                ]
-              ],
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                widget.empresaPlan,
+                style: const TextStyle(
+                    color: Colors.green,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w500),
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [oculisAccentPurple, oculisAccentBlue],
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.transparent,
-                    child: Icon(Icons.person, color: Colors.white, size: 18),
-                  ),
-                ),
-                if (_isExpanded) ...[
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Joseph",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'sans-serif',
-                          ),
-                        ),
-                        Text(
-                          "Developer",
-                          style: TextStyle(
-                            color: Colors.white38,
-                            fontSize: 11,
-                            fontFamily: 'sans-serif',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ]
-              ],
-            ),
-          ),
+          ],
         ],
       ),
     );

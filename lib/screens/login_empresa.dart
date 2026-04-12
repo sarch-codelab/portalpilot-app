@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:animate_do/animate_do.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:google_fonts/google_fonts.dart';
 import 'main_navigator.dart';
 import '../services/nocodb_service.dart';
 
@@ -14,27 +12,51 @@ class LoginEmpresaScreen extends StatefulWidget {
 }
 
 class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _companyCodeController = TextEditingController();
+  final TextEditingController _companyCodeController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
   final NocoDBService _nocodb = NocoDBService();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _errorMessage = '';
 
+  bool _rememberCompany = false;
+
   @override
   void initState() {
     super.initState();
-    _companyCodeController.text = 'TECH01';
-    _emailController.text = 'admin@techsolutions.com';
-    _passwordController.text = 'Tech123!';
+    _loadSavedData();
+  }
+
+  Future<void> _loadSavedData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedCompany = prefs.getString('saved_company_code');
+    if (savedCompany != null && savedCompany.isNotEmpty) {
+      setState(() {
+        _companyCodeController.text = savedCompany;
+        _rememberCompany = true;
+      });
+    }
+  }
+
+  Future<void> _saveCompanyCode(String code) async {
+    if (_rememberCompany && code.isNotEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('saved_company_code', code);
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('saved_company_code');
+    }
   }
 
   Future<void> _login() async {
-    if (_emailController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty ||
-        _companyCodeController.text.trim().isEmpty) {
+    final companyCode = _companyCodeController.text.trim().toUpperCase();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (companyCode.isEmpty || email.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'Completa todos los campos');
       return;
     }
@@ -46,226 +68,294 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
 
     try {
       final result = await _nocodb.login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-        empresaCodigo: _companyCodeController.text.trim().toUpperCase(),
+        email: email,
+        password: password,
+        empresaCodigo: companyCode,
       );
 
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
 
-      if (result != null && result['success'] == true) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('usuario', jsonEncode(result['usuario']));
-        await prefs.setString('empresa', jsonEncode(result['empresa']));
-        await prefs.setBool('isLoggedIn', true);
-        await prefs.setString(
-            'empresaCodigo', _companyCodeController.text.trim().toUpperCase());
+        if (result != null && result['success'] == true) {
+          // Guardar sesión
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(
+              'userName', result['usuario']['nombre'] ?? 'Usuario');
+          await prefs.setString('userEmail', result['usuario']['email'] ?? '');
+          await prefs.setString(
+              'userRole', result['usuario']['rol'] ?? 'operator');
+          await prefs.setString(
+              'empresaNombre', result['empresa']['nombre'] ?? 'Mi Empresa');
+          await prefs.setString(
+              'empresaPlan', result['empresa']['plan'] ?? 'Pro');
+          await prefs.setString('empresaCodigo', companyCode);
+          await prefs.setBool('isLoggedIn', true);
 
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const MainNavigator(),
-              transitionsBuilder: (_, animation, __, child) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-            ),
-          );
+          // Guardar código de empresa si está marcado
+          await _saveCompanyCode(companyCode);
+
+          // Navegar al MainNavigator
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const MainNavigator()),
+            );
+          }
+        } else {
+          setState(() =>
+              _errorMessage = result?['error'] ?? 'Credenciales inválidas');
         }
-      } else {
-        setState(
-            () => _errorMessage = result?['error'] ?? 'Credenciales inválidas');
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Error de conexión: Verifica tu internet';
-      });
-      print('❌ Error login: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error de conexión. Verifica tu internet.';
+        });
+      }
+      print('Error de login: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
-    final containerWidth = isMobile ? double.infinity : 420.0;
+    final size = MediaQuery.of(context).size;
+    final isMobile = size.width < 600;
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: RadialGradient(
             center: Alignment.center,
-            radius: 1.5,
-            colors: [Color(0xFF0A0B0F), Color(0xFF0F1118), Color(0xFF05080F)],
+            radius: 1.2,
+            colors: const [
+              Color(0xFF0A0B0F),
+              Color(0xFF030408),
+              Colors.black,
+            ],
           ),
         ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(isMobile ? 16 : 24),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 20 : 40),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back, color: Colors.white54),
-                    ),
-                  ),
-                  FadeInDown(
-                    child: Container(
-                      width: isMobile ? 60 : 80,
-                      height: isMobile ? 60 : 80,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                  // Logo
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                          blurRadius: 20,
                         ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.business_center,
-                            size: 35, color: Colors.white),
-                      ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.business_center,
+                          size: 40, color: Colors.white),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  FadeInDown(
-                    delay: const Duration(milliseconds: 100),
-                    child: Text(
-                      isMobile ? 'Acceso Empresa' : 'Acceso Corporativo',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: isMobile ? 24 : 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                  const SizedBox(height: 30),
+
+                  // Título
+                  const Text(
+                    "Acceso Corporativo",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  FadeInDown(
-                    delay: const Duration(milliseconds: 200),
-                    child: Text(
-                      'Ingresa con el código de tu empresa',
-                      style: GoogleFonts.inter(
-                        fontSize: isMobile ? 11 : 13,
-                        color: const Color(0xFF8B5CF6),
-                      ),
+                  Text(
+                    "Ingresa con el código de tu empresa",
+                    style: TextStyle(
+                      color: const Color(0xFF8B5CF6),
+                      fontSize: 14,
                     ),
                   ),
                   const SizedBox(height: 40),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 300),
-                    child: Container(
-                      width: containerWidth,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF111827),
-                        borderRadius: BorderRadius.circular(20),
-                        border:
-                            Border.all(color: Colors.white.withOpacity(0.05)),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(isMobile ? 20 : 32),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+
+                  // Formulario
+                  Container(
+                    width: isMobile ? double.infinity : 400,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Column(
+                      children: [
+                        // Código de empresa
+                        _buildTextField(
+                          controller: _companyCodeController,
+                          label: "CÓDIGO DE EMPRESA",
+                          hint: "Ej: TECH01",
+                          icon: Icons.qr_code,
+                          color: const Color(0xFF8B5CF6),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Email
+                        _buildTextField(
+                          controller: _emailController,
+                          label: "CORREO ELECTRÓNICO",
+                          hint: "admin@empresa.com",
+                          icon: Icons.email_outlined,
+                          color: const Color(0xFF8B5CF6),
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Contraseña
+                        _buildTextField(
+                          controller: _passwordController,
+                          label: "CONTRASEÑA",
+                          hint: "••••••••",
+                          icon: Icons.lock_outline,
+                          color: const Color(0xFF8B5CF6),
+                          obscureText: _obscurePassword,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              size: 20,
+                              color: Colors.white54,
+                            ),
+                            onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
+                          ),
+                        ),
+
+                        // Recordar empresa
+                        Row(
                           children: [
+                            Checkbox(
+                              value: _rememberCompany,
+                              onChanged: (value) {
+                                setState(
+                                    () => _rememberCompany = value ?? false);
+                              },
+                              activeColor: const Color(0xFF8B5CF6),
+                              side: const BorderSide(color: Colors.white38),
+                            ),
                             const Text(
-                              'ACCESO A TU EMPRESA',
+                              "Recordar código de empresa",
                               style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Cada empresa tiene un código único',
-                              style: GoogleFonts.inter(
-                                  fontSize: 12, color: Colors.white54),
-                            ),
-                            const SizedBox(height: 32),
-                            _buildTextField(
-                              controller: _companyCodeController,
-                              label: 'CÓDIGO DE EMPRESA',
-                              hint: 'Ej: TECH01',
-                              icon: Icons.qr_code,
-                            ),
-                            const SizedBox(height: 20),
-                            _buildTextField(
-                              controller: _emailController,
-                              label: 'CORREO ELECTRÓNICO',
-                              hint: 'tu@empresa.com',
-                              icon: Icons.email_outlined,
-                              keyboardType: TextInputType.emailAddress,
-                            ),
-                            const SizedBox(height: 20),
-                            _buildTextField(
-                              controller: _passwordController,
-                              label: 'CONTRASEÑA',
-                              hint: '••••••••',
-                              icon: Icons.lock_outline,
-                              obscureText: _obscurePassword,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                    size: 20),
-                                onPressed: () => setState(
-                                    () => _obscurePassword = !_obscurePassword),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            if (_errorMessage.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                margin: const EdgeInsets.only(bottom: 16),
-                                decoration: BoxDecoration(
-                                  color:
-                                      const Color(0xFFEF4444).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.error_outline,
-                                        size: 16, color: Color(0xFFEF4444)),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                        child: Text(_errorMessage,
-                                            style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Color(0xFFEF4444)))),
-                                  ],
-                                ),
-                              ),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 48,
-                              child: ElevatedButton(
-                                onPressed: _isLoading ? null : _login,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF8B5CF6),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10)),
-                                ),
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2))
-                                    : const Text('INGRESAR',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Center(
-                              child: Text(
-                                '¿No tienes código? Contrata un plan en PortalPilot',
-                                style: GoogleFonts.inter(
-                                    fontSize: 10, color: Colors.white38),
-                              ),
+                                  color: Colors.white54, fontSize: 12),
                             ),
                           ],
                         ),
-                      ),
+
+                        const SizedBox(height: 24),
+
+                        // Error message
+                        if (_errorMessage.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: Colors.red.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline,
+                                    size: 16, color: Colors.red),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage,
+                                    style: const TextStyle(
+                                        color: Colors.red, fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // Botón de login
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF8B5CF6),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    "INGRESAR",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Demo credentials
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            children: [
+                              const Text(
+                                "📋 Credenciales de prueba",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF8B5CF6),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Código: TECH01",
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.white54),
+                              ),
+                              Text(
+                                "Email: admin@techsolutions.com",
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.white54),
+                              ),
+                              Text(
+                                "Contraseña: Tech123!",
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.white54),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -282,6 +372,7 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
     required String label,
     required String hint,
     required IconData icon,
+    required Color color,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
     Widget? suffixIcon,
@@ -289,26 +380,31 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.white54)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withOpacity(0.5),
+            letterSpacing: 0.5,
+          ),
+        ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF0A0E17),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: TextField(
             controller: controller,
             obscureText: obscureText,
             keyboardType: keyboardType,
-            style: GoogleFonts.inter(fontSize: 14),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.inter(fontSize: 13, color: Colors.white38),
+              hintStyle:
+                  TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
               prefixIcon: Icon(icon, size: 20, color: Colors.white54),
               suffixIcon: suffixIcon,
               border: InputBorder.none,
