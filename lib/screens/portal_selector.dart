@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:animate_do/animate_do.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'login_portalpilot.dart';
 import 'login_empresa.dart';
 
@@ -10,18 +8,14 @@ class PortalSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 900;
-
+    
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: RadialGradient(
             center: Alignment.center,
-            radius: 1.5,
-            colors: [
-              Color(0xFF0A0B0F),
-              Color(0xFF0F1118),
-              Color(0xFF05080F),
-            ],
+            radius: 1.2,
+            colors: [Color(0xFF0A0B0F), Color(0xFF030408), Colors.black],
           ),
         ),
         child: SafeArea(
@@ -31,181 +25,56 @@ class PortalSelector extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  FadeInDown(
-                    duration: const Duration(milliseconds: 600),
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6366F1), Color(0xFF3B82F6)],
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6366F1).withOpacity(0.3),
-                            blurRadius: 30,
-                          ),
-                        ],
+                  // Logo
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF3B82F6)],
                       ),
-                      child: const Center(
-                        child: Icon(Icons.auto_awesome,
-                            size: 40, color: Colors.white),
-                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.auto_awesome, size: 40, color: Colors.white),
                     ),
                   ),
                   const SizedBox(height: 30),
-                  FadeInDown(
-                    delay: const Duration(milliseconds: 100),
-                    child: ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFF3B82F6)],
-                      ).createShader(bounds),
-                      child: Text(
-                        'PORTALPILOT',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 3,
-                          color: Colors.white,
-                        ),
-                      ),
+                  
+                  // Título
+                  const Text(
+                    "PORTALPILOT",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 3,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  FadeInDown(
-                    delay: const Duration(milliseconds: 200),
-                    child: Text(
-                      'Selecciona tu tipo de acceso',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.white54,
-                        letterSpacing: 1,
-                      ),
-                    ),
+                  const Text(
+                    "Selecciona tu tipo de acceso",
+                    style: TextStyle(color: Colors.white54, fontSize: 14),
                   ),
                   const SizedBox(height: 60),
+                  
+                  // Dos botones
                   if (isWide)
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: FadeInLeft(
-                            delay: const Duration(milliseconds: 300),
-                            child: _buildPortalCard(
-                              title: 'LOGIN',
-                              subtitle: 'PortalPilot',
-                              description:
-                                  'Panel de Control Global para administradores del sistema.',
-                              icon: Icons.admin_panel_settings,
-                              gradientColors: const [
-                                Color(0xFF6366F1),
-                                Color(0xFF3B82F6)
-                              ],
-                              buttonText: 'ACCEDER AL PANEL GLOBAL',
-                              onTap: () => _navigateTo(
-                                  context, const LoginPortalPilot()),
-                              features: const [
-                                '🌍 Ver todas las empresas',
-                                '📊 Dashboard global SaaS',
-                                '💰 Gestión de planes',
-                                '⚙️ Configuración del sistema',
-                              ],
-                            ),
-                          ),
-                        ),
+                        Expanded(child: _buildLoginCard(context)),
                         const SizedBox(width: 30),
-                        Expanded(
-                          child: FadeInRight(
-                            delay: const Duration(milliseconds: 400),
-                            child: _buildPortalCard(
-                              title: 'ACCESO CORPORATIVO',
-                              subtitle: 'Portal de tu Empresa',
-                              description:
-                                  'Acceso para empresas que contratan nuestro servicio.',
-                              icon: Icons.business_center,
-                              gradientColors: const [
-                                Color(0xFF8B5CF6),
-                                Color(0xFF6D28D9)
-                              ],
-                              buttonText: 'ACCEDER A MI EMPRESA',
-                              onTap: () => _navigateTo(
-                                  context, const LoginEmpresaScreen()),
-                              features: const [
-                                '🏢 Tu empresa, tus datos',
-                                '📈 Automatización y auditoría',
-                                '👥 Gestión de empleados',
-                                '📊 Reportes exclusivos',
-                              ],
-                            ),
-                          ),
-                        ),
+                        Expanded(child: _buildEmpresaCard(context)),
                       ],
                     )
                   else
                     Column(
                       children: [
-                        FadeInUp(
-                          delay: const Duration(milliseconds: 300),
-                          child: _buildPortalCard(
-                            title: 'LOGIN',
-                            subtitle: 'PortalPilot',
-                            description:
-                                'Panel de Control Global para administradores del sistema.',
-                            icon: Icons.admin_panel_settings,
-                            gradientColors: const [
-                              Color(0xFF6366F1),
-                              Color(0xFF3B82F6)
-                            ],
-                            buttonText: 'ACCEDER AL PANEL GLOBAL',
-                            onTap: () =>
-                                _navigateTo(context, const LoginPortalPilot()),
-                            features: const [
-                              '🌍 Ver todas las empresas',
-                              '📊 Dashboard global SaaS',
-                              '💰 Gestión de planes',
-                              '⚙️ Configuración del sistema',
-                            ],
-                          ),
-                        ),
+                        _buildLoginCard(context),
                         const SizedBox(height: 30),
-                        FadeInUp(
-                          delay: const Duration(milliseconds: 450),
-                          child: _buildPortalCard(
-                            title: 'ACCESO CORPORATIVO',
-                            subtitle: 'Portal de tu Empresa',
-                            description:
-                                'Acceso para empresas que contratan nuestro servicio.',
-                            icon: Icons.business_center,
-                            gradientColors: const [
-                              Color(0xFF8B5CF6),
-                              Color(0xFF6D28D9)
-                            ],
-                            buttonText: 'ACCEDER A MI EMPRESA',
-                            onTap: () => _navigateTo(
-                                context, const LoginEmpresaScreen()),
-                            features: const [
-                              '🏢 Tu empresa, tus datos',
-                              '📈 Automatización y auditoría',
-                              '👥 Gestión de empleados',
-                              '📊 Reportes exclusivos',
-                            ],
-                          ),
-                        ),
+                        _buildEmpresaCard(context),
                       ],
                     ),
-                  const SizedBox(height: 60),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 600),
-                    child: Text(
-                      'SaaS Enterprise - Software como Servicio',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: Colors.white24,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -215,7 +84,49 @@ class PortalSelector extends StatelessWidget {
     );
   }
 
-  Widget _buildPortalCard({
+  Widget _buildLoginCard(BuildContext context) {
+    return _buildCard(
+      title: "LOGIN",
+      subtitle: "PortalPilot",
+      description: "Panel de Control Global para administradores del sistema.",
+      icon: Icons.admin_panel_settings,
+      gradientColors: const [Color(0xFF6366F1), Color(0xFF3B82F6)],
+      buttonText: "ACCEDER AL PANEL GLOBAL",
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPortalPilot()),
+      ),
+      features: const [
+        "🌍 Ver todas las empresas",
+        "📊 Dashboard global SaaS",
+        "💰 Gestión de planes",
+        "⚙️ Configuración del sistema",
+      ],
+    );
+  }
+
+  Widget _buildEmpresaCard(BuildContext context) {
+    return _buildCard(
+      title: "ACCESO CORPORATIVO",
+      subtitle: "Portal de tu Empresa",
+      description: "Acceso para empresas que contratan nuestro servicio.",
+      icon: Icons.business_center,
+      gradientColors: const [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+      buttonText: "ACCEDER A MI EMPRESA",
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginEmpresaScreen()),
+      ),
+      features: const [
+        "🏢 Tu empresa, tus datos",
+        "📈 Automatización y auditoría",
+        "👥 Gestión de empleados",
+        "📊 Reportes exclusivos",
+      ],
+    );
+  }
+
+  Widget _buildCard({
     required String title,
     required String subtitle,
     required String description,
@@ -230,13 +141,6 @@ class PortalSelector extends StatelessWidget {
         color: const Color(0xFF111827),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: gradientColors.first.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: gradientColors.first.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 5,
-          ),
-        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -266,7 +170,7 @@ class PortalSelector extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: GoogleFonts.spaceGrotesk(
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -275,7 +179,7 @@ class PortalSelector extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             subtitle,
-                            style: GoogleFonts.inter(
+                            style: TextStyle(
                               fontSize: 12,
                               color: gradientColors.first,
                             ),
@@ -286,39 +190,28 @@ class PortalSelector extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                Divider(color: Colors.white.withOpacity(0.1)),
+                const Divider(color: Colors.white24),
                 const SizedBox(height: 16),
                 Text(
                   description,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: Colors.white70,
-                    height: 1.4,
-                  ),
+                  style: const TextStyle(fontSize: 13, color: Colors.white70),
                 ),
                 const SizedBox(height: 20),
                 Wrap(
                   spacing: 10,
                   runSpacing: 8,
-                  children: features
-                      .map((feature) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: gradientColors.first.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                  color: gradientColors.first.withOpacity(0.3)),
-                            ),
-                            child: Text(
-                              feature,
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                color: gradientColors.first,
-                              ),
-                            ),
-                          ))
-                      .toList(),
+                  children: features.map((feature) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: gradientColors.first.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: gradientColors.first.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      feature,
+                      style: TextStyle(fontSize: 10, color: gradientColors.first),
+                    ),
+                  )).toList(),
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
@@ -346,19 +239,6 @@ class PortalSelector extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  void _navigateTo(BuildContext context, Widget screen) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => screen,
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 400),
       ),
     );
   }

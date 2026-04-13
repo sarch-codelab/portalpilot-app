@@ -124,11 +124,11 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: RadialGradient(
             center: Alignment.center,
             radius: 1.2,
-            colors: const [
+            colors: [
               Color(0xFF0A0B0F),
               Color(0xFF030408),
               Colors.black,
@@ -175,10 +175,10 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
+                  const Text(
                     "Ingresa con el código de tu empresa",
                     style: TextStyle(
-                      color: const Color(0xFF8B5CF6),
+                      color: Color(0xFF8B5CF6),
                       fontSize: 14,
                     ),
                   ),
@@ -326,9 +326,9 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
                             color: const Color(0xFF8B5CF6).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Column(
+                          child: const Column(
                             children: [
-                              const Text(
+                              Text(
                                 "📋 Credenciales de prueba",
                                 style: TextStyle(
                                   fontSize: 12,
@@ -336,20 +336,20 @@ class _LoginEmpresaScreenState extends State<LoginEmpresaScreen> {
                                   color: Color(0xFF8B5CF6),
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               Text(
                                 "Código: TECH01",
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 11, color: Colors.white54),
                               ),
                               Text(
                                 "Email: admin@techsolutions.com",
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 11, color: Colors.white54),
                               ),
                               Text(
                                 "Contraseña: Tech123!",
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 11, color: Colors.white54),
                               ),
                             ],
