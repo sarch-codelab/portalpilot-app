@@ -12,18 +12,23 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - uses: subosito/flutter-action@v2
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.22.0'
         channel: 'stable'
     
-    - run: flutter config --enable-windows-desktop
+    - name: Enable Windows Desktop
+      run: flutter config --enable-windows-desktop
     
-    - run: flutter pub get
+    - name: Get dependencies
+      run: flutter pub get
     
-    - run: flutter build windows --release
+    - name: Build Windows EXE
+      run: flutter build windows --release
     
-    - uses: actions/upload-artifact@v4
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
       with:
         name: PortalPilot-Windows
         path: build/windows/x64/runner/Release/
