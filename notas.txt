@@ -1,0 +1,2 @@
+cd "c:\Users\Sami\Downloads\PP APP\portal_pilot_app" ; flutter pub get
+cd "c:\Users\Sami\Downloads\PP APP\portal_pilot_app" ; flutter run -d chrome

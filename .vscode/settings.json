@@ -1,0 +1,20 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/.thumbs.db": true,
+    "**/.dart_tool": true,
+    "**/.idea": true,
+    "**/android": true,
+    "**/ios": true,
+    "**/linux": true,
+    "**/macos": true,
+    "**/windows": true,
+    "**/web": true,
+    "**/build": true,
+    "**/*.iml": true
+  }
+}
