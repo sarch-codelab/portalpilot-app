@@ -8,6 +8,12 @@ class PortalPilotDB {
   static const Duration _timeout = Duration(seconds: 15);
   static SupabaseClient? _supabaseClient;
 
+
+  // ═══════════════════════════════════════════════════════════
+  // 🖥️ BASE DE DATOS GLOBALES DE TODAS LAS AREAS
+  // ═══════════════════════════════════════════════════════════
+
+
   // ═══════════════════════════════════════════════════════════
   // 🔑 CREDENCIALES DE SUPABASE - REEMPLAZA CON LAS TUYAS
   // ═══════════════════════════════════════════════════════════
@@ -57,118 +63,178 @@ class PortalPilotDB {
   }
 
   /// Inserta una matrícula completa con todos los campos del formulario
-  static Future<void> insertMatriculaCompleta({
-    required String alumnoNombre,
-    required String alumnoApellidoPaterno,
-    required String alumnoApellidoMaterno,
-    required String alumnoCurp,
-    required String alumnoFechaNacimiento,
-    required String alumnoLugarNacimiento,
-    required String alumnoGenero,
-    required String alumnoNacionalidad,
-    required String alumnoTipoSangre,
-    required String alumnoNss,
-    required String alumnoAlergias,
-    required String alumnoCondiciones,
-    required String alumnoMedicamentos,
-    required String alumnoPeso,
-    required String alumnoEstatura,
-    required String alumnoDiscapacidad,
-    required String alumnoObsMedicas,
-    required String tutorNombre,
-    required String tutorParentesco,
-    required String tutorTelefono,
-    required String tutorEmail,
-    required String tutorOcupacion,
-    required String tutorCurp,
-    required String direccionCalle,
-    required String direccionColonia,
-    required String direccionCP,
-    required String direccionAlcaldia,
-    required String direccionEstado,
-    required String emergNombre,
-    required String emergParentesco,
-    required String emergTel1,
-    required String emergTel2,
-    required String emergDireccion,
-    required String emergHorario,
-    required String empresaCodigo,
-    String estado = 'pendiente',
-  }) async {
+  /// Inserta una matrícula completa con todos los campos del formulario actual
+static Future<void> insertMatriculaCompleta({
+  // IDENTIFICADOR INSTITUCIONAL
+  required String folioMatricula,
+  
+  // DETALLES DE INSCRIPCIÓN
+  required String cicloEscolar,
+  required String nivelEducativo,
+  required String grado,
+  required String seccion,
+  required String turno,
+  required String tipoIngreso,
+  
+  // DATOS DEL ALUMNO
+  required String alumnoNombre,
+  required String alumnoApellido,
+  required String alumnoDni,
+  required String alumnoFechaNacimiento,
+  required String alumnoLugarNacimiento,
+  required String alumnoNacionalidad,
+  
+  // SALUD (SIMPLIFICADA)
+  required String observacionesSalud,
+  
+  // TUTOR RESPONSABLE
+  required String tutorParentesco,
+  required String tutorNombre,
+  required String tutorTelefono,
+  required String tutorEmail,
+  
+  // DIRECCIÓN
+  required String direccionCalle,
+  required String direccionMunicipio,
+  required String direccionDepartamento,
+  required String direccionReferencia,
+  required String direccionCP,
+  
+  // CONTROL FINANCIERO
+  required bool pagoInscripcionRealizado,
+  required String metodoPago,
+  required String planPagos,
+  
+  // EMPRESA
+  required String empresaCodigo,
+  String estado = 'pendiente',
+}) async {
+  try {
+    final client = await supabaseAsync;
+    
+    final data = {
+      // IDENTIFICADORES
+      'folio_matricula': folioMatricula,
+      'empresa_codigo': empresaCodigo,
+      
+      // DETALLES DE INSCRIPCIÓN
+      'ciclo_escolar': cicloEscolar,
+      'nivel_educativo': nivelEducativo,
+      'grado': grado,
+      'seccion': seccion,
+      'turno': turno,
+      'tipo_ingreso': tipoIngreso,
+      'estado': estado,
+      
+      // DATOS DEL ALUMNO
+      'alumno_nombre': alumnoNombre,
+      'alumno_apellido': alumnoApellido,
+      'alumno_dni': alumnoDni,
+      'alumno_fecha_nacimiento': alumnoFechaNacimiento,
+      'alumno_lugar_nacimiento': alumnoLugarNacimiento,
+      'alumno_nacionalidad': alumnoNacionalidad,
+      
+      // SALUD
+      'observaciones_salud': observacionesSalud,
+      
+      // TUTOR
+      'tutor_parentesco': tutorParentesco,
+      'tutor_nombre': tutorNombre,
+      'tutor_telefono': tutorTelefono,
+      'tutor_email': tutorEmail,
+      
+      // DIRECCIÓN
+      'direccion_calle': direccionCalle,
+      'direccion_municipio': direccionMunicipio,
+      'direccion_departamento': direccionDepartamento,
+      'direccion_referencia': direccionReferencia,
+      'direccion_cp': direccionCP,
+      
+      // CONTROL FINANCIERO
+      'pago_inscripcion_realizado': pagoInscripcionRealizado,
+      'metodo_pago': metodoPago,
+      'plan_pagos': planPagos,
+    };
+
+    debugPrint('📤 Insertando matrícula con folio: $folioMatricula');
+    await client.from('matriculas').insert(data);
+    debugPrint('✅ Matrícula insertada correctamente en Supabase');
+  } on PostgrestException catch (e) {
+    debugPrint('❌ Error de Supabase: ${e.message}');
+    throw Exception('Error de Supabase: ${e.message}');
+  } catch (e) {
+    debugPrint('❌ Error inesperado: $e');
+    throw Exception('Error al guardar matrícula: $e');
+  }
+}
+
+
+  /// Obtiene todas las matrículas de una empresa específica
+  /// Obtiene todas las matrículas de una empresa específica
+static Future<List<Map<String, dynamic>>> getMatriculasByEmpresa(String empresaCodigo) async {
+  try {
+    final client = await supabaseAsync;
+    
+    final response = await client
+        .from('matriculas')
+        .select()
+        .eq('empresa_codigo', empresaCodigo)
+        .order('created_at', ascending: false)
+        .limit(50); // Limitar a 50 registros más recientes
+    
+    return List<Map<String, dynamic>>.from(response);
+  } catch (e) {
+    debugPrint('❌ Error al obtener matrículas: $e');
+    return [];
+  }
+}
+
+  /// Obtiene estadísticas resumidas de matrículas por empresa
+  static Future<Map<String, dynamic>> getEstadisticasMatriculas(String empresaCodigo) async {
     try {
       final client = await supabaseAsync;
       
-      String alumnoApellidoCompleto = '$alumnoApellidoPaterno $alumnoApellidoMaterno'.trim();
-      if (alumnoApellidoCompleto.isEmpty) {
-        alumnoApellidoCompleto = alumnoApellidoPaterno.isNotEmpty 
-            ? alumnoApellidoPaterno 
-            : 'Sin apellido';
+      final response = await client
+          .from('matriculas')
+          .select()
+          .eq('empresa_codigo', empresaCodigo);
+      
+      final matriculas = List<Map<String, dynamic>>.from(response);
+      
+      // Contar por estado
+      final estados = <String, int>{};
+      for (final m in matriculas) {
+        final estado = m['estado'] ?? 'desconocido';
+        estados[estado] = (estados[estado] ?? 0) + 1;
       }
       
-      String encargadoContacto = '';
-      if (tutorEmail.isNotEmpty) {
-        encargadoContacto = tutorEmail;
-      } else if (tutorTelefono.isNotEmpty) {
-        encargadoContacto = tutorTelefono;
-      } else {
-        encargadoContacto = 'No proporcionado';
+      // Contar por nivel
+      final niveles = <String, int>{};
+      for (final m in matriculas) {
+        final nivel = m['nivel_educativo'] ?? 'desconocido';
+        niveles[nivel] = (niveles[nivel] ?? 0) + 1;
       }
       
-      final data = {
-        'alumno_nombre': alumnoNombre.isNotEmpty ? alumnoNombre : 'Sin nombre',
-        'alumno_apellido': alumnoApellidoCompleto,
-        'nivel_educativo': 'Primaria',
-        'encargado_contacto': encargadoContacto,
-        'empresa_codigo': empresaCodigo.isNotEmpty ? empresaCodigo : 'ROOT',
-        'alumno_apellido_paterno': alumnoApellidoPaterno,
-        'alumno_apellido_materno': alumnoApellidoMaterno,
-        'alumno_curp': alumnoCurp,
-        'alumno_fecha_nacimiento': alumnoFechaNacimiento,
-        'alumno_lugar_nacimiento': alumnoLugarNacimiento,
-        'alumno_genero': alumnoGenero,
-        'alumno_nacionalidad': alumnoNacionalidad,
-        'alumno_tipo_sangre': alumnoTipoSangre,
-        'alumno_nss': alumnoNss,
-        'alumno_alergias': alumnoAlergias,
-        'alumno_condiciones': alumnoCondiciones,
-        'alumno_medicamentos': alumnoMedicamentos,
-        'alumno_peso': alumnoPeso,
-        'alumno_estatura': alumnoEstatura,
-        'alumno_discapacidad': alumnoDiscapacidad,
-        'alumno_obs_medicas': alumnoObsMedicas,
-        'tutor_nombre': tutorNombre,
-        'tutor_parentesco': tutorParentesco,
-        'tutor_telefono': tutorTelefono,
-        'tutor_email': tutorEmail,
-        'tutor_ocupacion': tutorOcupacion,
-        'tutor_curp': tutorCurp,
-        'direccion_calle': direccionCalle,
-        'direccion_colonia': direccionColonia,
-        'direccion_cp': direccionCP,
-        'direccion_alcaldia': direccionAlcaldia,
-        'direccion_estado': direccionEstado,
-        'emerg_nombre': emergNombre,
-        'emerg_parentesco': emergParentesco,
-        'emerg_tel1': emergTel1,
-        'emerg_tel2': emergTel2,
-        'emerg_direccion': emergDireccion,
-        'emerg_horario': emergHorario,
-        'estado': estado,
+      // Contar por grado
+      final grados = <String, int>{};
+      for (final m in matriculas) {
+        final grado = m['grado'] ?? 'desconocido';
+        grados[grado] = (grados[grado] ?? 0) + 1;
+      }
+      
+      return {
+        'total': matriculas.length,
+        'por_estado': estados,
+        'por_nivel': niveles,
+        'por_grado': grados,
+        'ultima_actualizacion': matriculas.isNotEmpty ? matriculas.first['created_at'] : null,
       };
-
-      debugPrint('📤 Insertando matrícula en Supabase...');
-      await client.from('matriculas').insert(data);
-      debugPrint('✅ Matrícula insertada correctamente en Supabase');
-    } on PostgrestException catch (e) {
-      debugPrint('❌ Error de Supabase: ${e.message}');
-      debugPrint('❌ Código: ${e.code}');
-      debugPrint('❌ Detalles: ${e.details}');
-      throw Exception('Error de Supabase: ${e.message}');
     } catch (e) {
-      debugPrint('❌ Error inesperado: $e');
-      throw Exception('Error al guardar matrícula: $e');
+      debugPrint('❌ Error al obtener estadísticas: $e');
+      throw Exception('Error al obtener estadísticas: $e');
     }
   }
+
 
   /// Login contra el backend Express (NocoDB). No usa Supabase.
   static Future<Map<String, dynamic>> login({

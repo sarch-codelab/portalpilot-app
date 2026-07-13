@@ -16,6 +16,11 @@ dependencies:
   http: ^1.2.0
   posthog_flutter: ^5.30.0
   supabase_flutter: ^2.16.0
+  file_picker: ^6.1.1
+  flutter_markdown: ^0.6.18  # Para renderizar markdown
+  speech_to_text: ^6.6.0     # Para voz a texto
+  share_plus: ^7.2.1         # Para compartir chat
+  path_provider: ^2.1.1      # Para guardar archivos
 
 dev_dependencies:
   flutter_test:

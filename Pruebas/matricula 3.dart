@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/theme/app_theme.dart';
 import 'package:portal_pilot_app/DB/db.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:math';
 
 // ═══════════════════════════════════════════════════════════
 // MAIN APP
@@ -59,91 +58,110 @@ class RegistroEstudiantilScreen extends StatefulWidget {
 }
 
 class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen> {
-  // ── FOLIO GENERADO AUTOMÁTICAMENTE ──
-  late final String _folioMatricula;
-
-  // ── DATOS DE INSCRIPCIÓN ──
-  String? _cicloSeleccionado;
-  String? _nivelSeleccionado;
-  String? _gradoSeleccionado;
-  String? _seccionSeleccionada;
-  String? _turnoSeleccionado;
-  String? _tipoIngresoSeleccionado;
-
-  // ── CONTROL FINANCIERO ──
-  bool _pagoInscripcionRealizado = false;
-  String? _metodoPagoSeleccionado;
-  String? _planPagosSeleccionado;
-
-  // ── CONTROLLERS ALUMNO ──
+  // ── CONTROLLERS NUEVO REGISTRO ──
   final _nombreController = TextEditingController();
-  final _apellidoController = TextEditingController();
-  final _dniController = TextEditingController();
+  final _apellidoPController = TextEditingController();
+  final _apellidoMController = TextEditingController();
+  final _curpController = TextEditingController();
   final _fechaNacController = TextEditingController();
   final _lugarNacController = TextEditingController();
-  final _nacionalidadController = TextEditingController(text: 'Hondureña');
+  String? _generoSeleccionado;
+  final _nacionalidadController = TextEditingController(text: 'Mexicana');
+  String? _tipoSangreSeleccionado;
+  final _nssController = TextEditingController();
 
-  // ── INFORMACIÓN MÉDICA (SIMPLIFICADA) ──
-  final _observacionesSaludController = TextEditingController();
+  // Médicos
+  final _alergiasController = TextEditingController();
+  final _condicionesController = TextEditingController();
+  final _medicamentosController = TextEditingController();
+  final _pesoController = TextEditingController();
+  final _estaturaController = TextEditingController();
+  final _discapacidadController = TextEditingController(text: 'Ninguna');
+  final _obsMedicasController = TextEditingController();
 
-  // ── TUTOR RESPONSABLE (UNIFICADO) ──
-  final _tutorNombreController = TextEditingController();
-  final _tutorTelefonoController = TextEditingController();
-  final _tutorEmailController = TextEditingController();
+  // Tutores
+  final _nombrePadreController = TextEditingController();
+  final _nombreMadreController = TextEditingController();
+  final _nombreTutorController = TextEditingController();
+  final _parentescoTutorController = TextEditingController();
+  final _ocupacionPadreController = TextEditingController();
+  final _ocupacionMadreController = TextEditingController();
+  final _ocupacionTutorController = TextEditingController();
+  final _curpTutorController = TextEditingController();
+  final _telPadreController = TextEditingController();
+  final _telMadreController = TextEditingController();
+  final _telTutorController = TextEditingController();
+  final _telCasaController = TextEditingController();
+  final _emailPadreController = TextEditingController();
+  final _emailMadreController = TextEditingController();
+  final _emailTutorController = TextEditingController();
+  final _telTrabajoController = TextEditingController();
 
-  // ── DIRECCIÓN ──
+  // Emergencia
+  final _emergNombreController = TextEditingController();
+  final _emergParentescoController = TextEditingController();
+  final _emergTel1Controller = TextEditingController();
+  final _emergTel2Controller = TextEditingController();
+  final _emergDireccionController = TextEditingController();
+  final _emergHorarioController = TextEditingController();
+
+  // Dirección
   final _direccionController = TextEditingController();
   final _coloniaController = TextEditingController();
   final _cpController = TextEditingController();
-  final _municipioController = TextEditingController();
-  final _departamentoController = TextEditingController();
+  final _alcaldiaController = TextEditingController();
+  final _estadoController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
 
-  // ── OPCIONES DE DROPDOWN ──
-  final List<String> _ciclos = ['2025', '2025-2026', '2026', '2026-2027', '2027', '2027-2028'];
-  final List<String> _niveles = ['Pre-Básica', 'Básica', 'Media', 'Diversificado'];
-  final Map<String, List<String>> _gradosPorNivel = {
-    'Pre-Básica': ['Prekínder', 'Kínder'],
-    'Básica': ['1° Grado', '2° Grado', '3° Grado', '4° Grado', '5° Grado', '6° Grado', '7° Grado', '8° Grado', '9° Grado'],
-    'Media': ['1° Año', '2° Año', '3° Año'],
-    'Diversificado': ['1° Bachillerato', '2° Bachillerato', '3° Bachillerato'],
-  };
-  final List<String> _secciones = ['Sección A', 'Sección B', 'Sección C', 'Sección Única'];
-  final List<String> _turnos = ['Matutino', 'Vespertino', 'Nocturno'];
-  final List<String> _tiposIngreso = ['Nuevo Ingreso', 'Reingreso', 'Traslado / Convalidación'];
-  final List<String> _metodosPago = ['Efectivo', 'Transferencia Bancaria', 'Tarjeta de Crédito/Débito', 'Cheque', 'Pago en Línea'];
-  final List<String> _planesPagos = ['Regular (Sin Beca)', 'Beca 20%', 'Beca 50%', 'Beca 100%', 'Hijo de Trabajador', 'Convenio Empresarial'];
-  final List<String> _parentescos = ['Padre', 'Madre', 'Abuelo(a)', 'Tío(a)', 'Hermano(a)', 'Tutor Legal'];
-
-  String? _tutorParentescoSeleccionado;
-
-  _RegistroEstudiantilScreenState()
-      : _folioMatricula = _generarFolio();
-
-  static String _generarFolio() {
-    final now = DateTime.now();
-    final random = Random().nextInt(9000) + 1000;
-    return 'MAT-${now.year}-${now.month.toString().padLeft(2, '0')}-$random';
-  }
+  // ── OPCIONES ──
+  final List<String> _generos = ['Masculino', 'Femenino'];
+  final List<String> _tiposSangre = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 
   @override
   void dispose() {
     _nombreController.dispose();
-    _apellidoController.dispose();
-    _dniController.dispose();
+    _apellidoPController.dispose();
+    _apellidoMController.dispose();
+    _curpController.dispose();
     _fechaNacController.dispose();
     _lugarNacController.dispose();
     _nacionalidadController.dispose();
-    _observacionesSaludController.dispose();
-    _tutorNombreController.dispose();
-    _tutorTelefonoController.dispose();
-    _tutorEmailController.dispose();
+    _nssController.dispose();
+    _alergiasController.dispose();
+    _condicionesController.dispose();
+    _medicamentosController.dispose();
+    _pesoController.dispose();
+    _estaturaController.dispose();
+    _discapacidadController.dispose();
+    _obsMedicasController.dispose();
+    _nombrePadreController.dispose();
+    _nombreMadreController.dispose();
+    _nombreTutorController.dispose();
+    _parentescoTutorController.dispose();
+    _ocupacionPadreController.dispose();
+    _ocupacionMadreController.dispose();
+    _ocupacionTutorController.dispose();
+    _curpTutorController.dispose();
+    _telPadreController.dispose();
+    _telMadreController.dispose();
+    _telTutorController.dispose();
+    _telCasaController.dispose();
+    _emailPadreController.dispose();
+    _emailMadreController.dispose();
+    _emailTutorController.dispose();
+    _telTrabajoController.dispose();
+    _emergNombreController.dispose();
+    _emergParentescoController.dispose();
+    _emergTel1Controller.dispose();
+    _emergTel2Controller.dispose();
+    _emergDireccionController.dispose();
+    _emergHorarioController.dispose();
     _direccionController.dispose();
     _coloniaController.dispose();
     _cpController.dispose();
-    _municipioController.dispose();
-    _departamentoController.dispose();
+    _alcaldiaController.dispose();
+    _estadoController.dispose();
     super.dispose();
   }
 
@@ -250,127 +268,64 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeaderSection('Nuevo Registro Estudiantil', 'Formulario optimizado de inscripción con validación automática.',
+            _buildHeaderSection('Nuevo Registro Estudiantil', 'Formulario completo de inscripción con validación automática.',
                 icon: Icons.person_add_alt_1_rounded, p: p),
-            const SizedBox(height: 24),
-
-            // ── FOLIO DE MATRÍCULA ──
-            _buildFolioBanner(p),
-            const SizedBox(height: 32),
-
+            const SizedBox(height: 36),
             _buildRegistrationSteps(p),
             const SizedBox(height: 32),
 
-            // ══════════════════════════════════════════════════
-            // 1. DETALLES DE LA INSCRIPCIÓN (NUEVO)
-            // ══════════════════════════════════════════════════
-            _buildFormSection(
-              'Detalles de la Inscripción',
-              Icons.assignment_ind_rounded,
-              p.accentPurple,
-              p,
-              [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: p.accentPurple.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: p.accentPurple.withOpacity(0.25)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline_rounded, color: p.accentPurple, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Seleccione el ciclo, nivel, grado y sección a la que ingresará el alumno. Todos los campos son obligatorios.',
-                          style: GoogleFonts.dmSans(fontSize: 12, color: p.accentPurple, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _buildFormRow(p, [
-                  _buildDropdownField('Ciclo Escolar', 'Seleccionar ciclo...', Icons.calendar_month_outlined, p,
-                      items: _ciclos,
-                      value: _cicloSeleccionado,
-                      onChanged: (v) => setState(() => _cicloSeleccionado = v),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                  _buildDropdownField('Tipo de Ingreso', 'Seleccionar...', Icons.login_rounded, p,
-                      items: _tiposIngreso,
-                      value: _tipoIngresoSeleccionado,
-                      onChanged: (v) => setState(() => _tipoIngresoSeleccionado = v),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                ]),
-                _buildFormRow(p, [
-                  _buildDropdownField('Nivel Educativo', 'Seleccionar nivel...', Icons.school_outlined, p,
-                      items: _niveles,
-                      value: _nivelSeleccionado,
-                      onChanged: (v) {
-                        setState(() {
-                          _nivelSeleccionado = v;
-                          _gradoSeleccionado = null;
-                        });
-                      },
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                  _buildDropdownField('Grado', 'Seleccionar grado...', Icons.grade_rounded, p,
-                      items: _nivelSeleccionado != null ? _gradosPorNivel[_nivelSeleccionado]! : [],
-                      value: _gradoSeleccionado,
-                      onChanged: (v) => setState(() => _gradoSeleccionado = v),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                ]),
-                _buildFormRow(p, [
-                  _buildDropdownField('Sección / Grupo', 'Seleccionar sección...', Icons.view_column_rounded, p,
-                      items: _secciones,
-                      value: _seccionSeleccionada,
-                      onChanged: (v) => setState(() => _seccionSeleccionada = v),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                  _buildDropdownField('Turno', 'Seleccionar turno...', Icons.schedule_rounded, p,
-                      items: _turnos,
-                      value: _turnoSeleccionado,
-                      onChanged: (v) => setState(() => _turnoSeleccionado = v),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                ]),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // ══════════════════════════════════════════════════
-            // 2. DATOS DEL ALUMNO (SIMPLIFICADO)
-            // ══════════════════════════════════════════════════
+            // ── DATOS DEL ALUMNO ──
             _buildFormSection(
               'Datos del Alumno',
               Icons.child_care_rounded,
-              p.infoBlue,
+              p.accentPurple,
               p,
               [
                 _buildFormRow(p, [
                   _buildFormField('Nombre(s)', 'Ej. Gissel Sofia', Icons.person_outline_rounded, p, controller: _nombreController,
                       validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                  _buildFormField('Apellido(s)', 'Ej. Guzman Castro', Icons.person_outline_rounded, p, controller: _apellidoController,
+                  _buildFormField('Apellido(s)', 'Ej. Guzman Castro', Icons.person_outline_rounded, p, controller: _apellidoPController,
                       validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
                 ]),
                 _buildFormRow(p, [
-                  _buildFormField('DNI / Identificación', 'Ej. 0501-2010-03127', Icons.badge_outlined, p, controller: _dniController, isMono: true,
+                  _buildFormField('Tabla Innecesaria', 'Quitar Cuadro', Icons.person_outline_rounded, p, controller: _apellidoMController),
+                  _buildFormField('DNI', '0501 2010 03127', Icons.badge_outlined, p, controller: _curpController, isMono: true,
                       validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
+                ]),
+                _buildFormRow(p, [
                   _buildFechaNacimientoField(p),
+                  _buildFormField('Lugar de Nacimiento', 'Ej. Ciudad de México', Icons.location_city_outlined, p, controller: _lugarNacController,
+                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
                 ]),
                 _buildFormRow(p, [
-                  _buildFormField('Lugar de Nacimiento', 'Ej. Tegucigalpa, M.D.C.', Icons.location_city_outlined, p, controller: _lugarNacController,
+                  _buildDropdownField('Género', 'Seleccionar...', Icons.wc_outlined, p,
+                      items: _generos,
+                      value: _generoSeleccionado,
+                      onChanged: (v) => setState(() => _generoSeleccionado = v),
                       validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
                   _buildFormField('Nacionalidad', 'Hondureña', Icons.flag_outlined, p, controller: _nacionalidadController,
                       validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
+                ]),
+                _buildFormRow(p, [
+                  _buildDropdownField(
+                    'Tipo de Sangre (Opcional)',
+                    'Seleccionar...',
+                    Icons.bloodtype_outlined,
+                    p,
+                    items: _tiposSangre,
+                    value: _tipoSangreSeleccionado,
+                    onChanged: (v) => setState(() => _tipoSangreSeleccionado = v),
+                    isOptional: true,
+                  ),
+                  _buildFormField('NSS (Opcional)', 'Número de Seguridad Social', Icons.health_and_safety_outlined, p, controller: _nssController),
                 ]),
               ],
             ),
             const SizedBox(height: 24),
 
-            // ══════════════════════════════════════════════════
-            // 3. INFORMACIÓN DE SALUD (SIMPLIFICADA)
-            // ══════════════════════════════════════════════════
+            // ── INFORMACIÓN MÉDICA ──
             _buildFormSection(
-              'Observaciones de Salud Importantes',
+              'Información Médica',
               Icons.medical_services_outlined,
               p.errorRed,
               p,
@@ -389,31 +344,115 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Indique únicamente condiciones críticas: alergias severas, enfermedades crónicas o medicamentos de uso diario. Dejar en blanco si no aplica.',
+                          'Todos los campos médicos son opcionales. Dejar en blanco si no padece problemas médicos.',
                           style: GoogleFonts.dmSans(fontSize: 12, color: p.errorRed, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
                   ),
                 ),
-                _buildFormField(
-                  'Observaciones de Salud',
-                  'Ej. Alergia severa a la penicilina, asmático...',
-                  Icons.notes_rounded,
-                  p,
-                  controller: _observacionesSaludController,
-                  isMultiline: true,
-                ),
+                _buildFormField('Alergias', 'Ej. Penicilina, mariscos, polen...', Icons.warning_amber_rounded, p,
+                    controller: _alergiasController, isMultiline: true),
+                _buildHintText('Dejar en blanco si no padece de problemas médicos.', p),
+                const SizedBox(height: 12),
+                _buildFormField('Condiciones Médicas', 'Ej. Asma, diabetes, epilepsia...', Icons.medication_outlined, p,
+                    controller: _condicionesController, isMultiline: true),
+                _buildHintText('Dejar en blanco si no padece de problemas médicos.', p),
+                const SizedBox(height: 12),
+                _buildFormField('Medicamentos Actuales', 'Ej. Salbutamol inhalador cada 8 horas...', Icons.local_pharmacy_outlined, p,
+                    controller: _medicamentosController, isMultiline: true),
+                _buildHintText('Dejar en blanco si no padece de problemas médicos.', p),
+                const SizedBox(height: 12),
+                _buildFormRow(p, [
+                  _buildFormField('Peso (kg)', 'Ej. 35', Icons.monitor_weight_outlined, p, controller: _pesoController),
+                  _buildFormField('Estatura (cm)', 'Ej. 142', Icons.height_rounded, p, controller: _estaturaController),
+                  _buildFormField('Discapacidad', 'Ninguna', Icons.accessible_forward_outlined, p, controller: _discapacidadController),
+                ]),
+                const SizedBox(height: 12),
+                _buildFormField('Observaciones Médicas Adicionales', 'Cualquier información relevante...', Icons.notes_rounded, p,
+                    controller: _obsMedicasController, isMultiline: true),
+                _buildHintText('Dejar en blanco si no padece de problemas médicos.', p),
               ],
             ),
             const SizedBox(height: 24),
 
-            // ══════════════════════════════════════════════════
-            // 4. TUTOR RESPONSABLE (UNIFICADO)
-            // ══════════════════════════════════════════════════
+            // ── PADRE / MADRE / TUTOR ──
             _buildFormSection(
-              'Datos del Tutor Responsable',
+              'Datos del Padre / Madre / Tutor',
               Icons.family_restroom_rounded,
+              p.infoBlue,
+              p,
+              [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: p.infoBlue.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: p.infoBlue.withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, color: p.infoBlue, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Debe llenar al menos uno: Padre, Madre o Tutor. Si solo llena Tutor, ese será obligatorio.',
+                          style: GoogleFonts.dmSans(fontSize: 12, color: p.infoBlue, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Nombres
+                _buildFormRow(p, [
+                  _buildFormField('Nombre Completo del Padre', 'Ej. Juan Mendoza Pérez', Icons.man_outlined, p,
+                      controller: _nombrePadreController),
+                  _buildFormField('Nombre Completo de la Madre', 'Ej. María López García', Icons.woman_outlined, p,
+                      controller: _nombreMadreController),
+                ]),
+                _buildFormRow(p, [
+                  _buildFormField('Nombre del Tutor', 'Ej. Roberto Mendoza López', Icons.person_outline_rounded, p,
+                      controller: _nombreTutorController),
+                  _buildFormField('Parentesco del Tutor', 'Ej. Tío, Abuelo...', Icons.badge_outlined, p,
+                      controller: _parentescoTutorController),
+                ]),
+                // Ocupaciones
+                _buildFormRow(p, [
+                  _buildFormField('Ocupación del Padre', 'Ej. Ingeniero', Icons.work_outline_rounded, p,
+                      controller: _ocupacionPadreController),
+                  _buildFormField('Ocupación de la Madre', 'Ej. Doctora', Icons.work_outline_rounded, p,
+                      controller: _ocupacionMadreController),
+                  _buildFormField('Ocupación del Tutor', 'Ej. Arquitecto', Icons.work_outline_rounded, p,
+                      controller: _ocupacionTutorController),
+                ]),
+                // Teléfonos
+                _buildFormRow(p, [
+                  _buildFormField('Teléfono del Padre', '55 1111 1111', Icons.phone_outlined, p, controller: _telPadreController),
+                  _buildFormField('Teléfono de la Madre', '55 2222 2222', Icons.phone_outlined, p, controller: _telMadreController),
+                  _buildFormField('Teléfono del Tutor', '55 3333 3333', Icons.phone_outlined, p, controller: _telTutorController),
+                ]),
+                // Emails
+                _buildFormRow(p, [
+                  _buildFormField('Email del Padre', 'padre@email.com', Icons.email_outlined, p, controller: _emailPadreController),
+                  _buildFormField('Email de la Madre', 'madre@email.com', Icons.email_outlined, p, controller: _emailMadreController),
+                  _buildFormField('Email del Tutor', 'tutor@email.com', Icons.email_outlined, p, controller: _emailTutorController),
+                ]),
+                // DNI Tutor y teléfono trabajo
+                _buildFormRow(p, [
+                  _buildFormField('DNI del Tutor', '0501 1990 07584', Icons.badge_outlined, p,
+                      controller: _curpTutorController, isMono: true),
+                  _buildFormField('Teléfono de Casa / Trabajo', '55 8765 4321', Icons.business_outlined, p,
+                      controller: _telTrabajoController),
+                ]),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // ── CONTACTO DE EMERGENCIA (NO OBLIGATORIO) ──
+            _buildFormSection(
+              'Contacto de Emergencia (Opcional)',
+              Icons.emergency_outlined,
               p.warningAmber,
               p,
               [
@@ -431,7 +470,7 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Registre los datos de la persona responsable legal del alumno. Todos los campos son obligatorios.',
+                          'Este apartado es opcional. Puede dejarlo en blanco.',
                           style: GoogleFonts.dmSans(fontSize: 12, color: p.warningAmber, fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -439,171 +478,92 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen> {
                   ),
                 ),
                 _buildFormRow(p, [
-                  _buildDropdownField('Parentesco', 'Seleccionar...', Icons.badge_outlined, p,
-                      items: _parentescos,
-                      value: _tutorParentescoSeleccionado,
-                      onChanged: (v) => setState(() => _tutorParentescoSeleccionado = v),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                  _buildFormField('Nombre Completo', 'Ej. Juan Pérez Rodríguez', Icons.person_outline_rounded, p,
-                      controller: _tutorNombreController,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
+                  _buildFormField('Nombre del Contacto', 'Ej. Roberto Mendoza López', Icons.person_outline_rounded, p,
+                      controller: _emergNombreController),
+                  _buildFormField('Parentesco', 'Tío, Abuelo, Vecino...', Icons.badge_outlined, p, controller: _emergParentescoController),
                 ]),
                 _buildFormRow(p, [
-                  _buildFormField('Teléfono de Contacto', 'Ej. +504 9999-9999', Icons.phone_outlined, p,
-                      controller: _tutorTelefonoController,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                  _buildFormField('Correo Electrónico', 'Ej. tutor@email.com', Icons.email_outlined, p,
-                      controller: _tutorEmailController,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
+                  _buildFormField('Teléfono Principal', '55 5555 5555', Icons.phone_outlined, p, controller: _emergTel1Controller),
+                  _buildFormField('Teléfono Alternativo', '55 4444 4444', Icons.phone_android_outlined, p, controller: _emergTel2Controller),
+                ]),
+                _buildFormRow(p, [
+                  _buildFormField('Dirección', 'Calle, Número, Colonia, CP', Icons.home_outlined, p, controller: _emergDireccionController),
+                  _buildFormField('Horario Disponible', 'Lun-Vie 8:00-18:00', Icons.schedule_outlined, p, controller: _emergHorarioController),
                 ]),
               ],
             ),
             const SizedBox(height: 24),
 
-            // ══════════════════════════════════════════════════
-            // 5. DIRECCIÓN DEL ALUMNO
-            // ══════════════════════════════════════════════════
+            // ── DIRECCIÓN DEL ALUMNO (OBLIGATORIO) ──
             _buildFormSection(
-              'Dirección de Residencia',
+              'Dirección del Alumno',
               Icons.home_work_outlined,
               p.accentPurpleLight,
               p,
               [
-                _buildFormField('Calle y Número / Colonia', 'Ej. Barrio El Centro, Casa #123', Icons.location_on_outlined, p,
-                    controller: _direccionController,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                const SizedBox(height: 16),
-                _buildFormRow(p, [
-                  _buildFormField('Municipio', 'Ej. Tegucigalpa', Icons.location_city_outlined, p,
-                      controller: _municipioController,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                  _buildFormField('Departamento', 'Ej. Francisco Morazán', Icons.map_outlined, p,
-                      controller: _departamentoController,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                ]),
-                _buildFormRow(p, [
-                  _buildFormField('Referencia / Punto de referencia', 'Ej. Frente al parque central', Icons.near_me_outlined, p,
-                      controller: _coloniaController),
-                  _buildFormField('Código Postal (Opcional)', 'Ej. 11101', Icons.markunread_mailbox_outlined, p,
-                      controller: _cpController),
-                ]),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // ══════════════════════════════════════════════════
-            // 6. CONTROL FINANCIERO (NUEVO)
-            // ══════════════════════════════════════════════════
-            _buildFormSection(
-              'Control Financiero',
-              Icons.account_balance_wallet_rounded,
-              p.successGreen,
-              p,
-              [
-                // Toggle de pago de inscripción
                 Container(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: _pagoInscripcionRealizado
-                          ? [p.successGreen.withOpacity(0.15), p.successGreen.withOpacity(0.05)]
-                          : [p.bgTertiary, p.bgTertiary],
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: _pagoInscripcionRealizado
-                          ? p.successGreen.withOpacity(0.5)
-                          : p.borderLight,
-                    ),
+                    color: p.successGreen.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: p.successGreen.withOpacity(0.25)),
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: _pagoInscripcionRealizado
-                              ? p.successGreen.withOpacity(0.2)
-                              : p.bgSecondary,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          _pagoInscripcionRealizado ? Icons.check_circle_rounded : Icons.cancel_outlined,
-                          color: _pagoInscripcionRealizado ? p.successGreen : p.textMuted,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
+                      Icon(Icons.check_circle_outline_rounded, color: p.successGreen, size: 16),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Cuota de Inscripción',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: p.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _pagoInscripcionRealizado ? 'PAGO VERIFICADO' : 'Pendiente de pago',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: _pagoInscripcionRealizado ? p.successGreen : p.warningAmber,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          'Campo obligatorio. Toda la información de dirección es requerida.',
+                          style: GoogleFonts.dmSans(fontSize: 12, color: p.successGreen, fontWeight: FontWeight.w600),
                         ),
-                      ),
-                      Switch(
-                        value: _pagoInscripcionRealizado,
-                        onChanged: (v) => setState(() => _pagoInscripcionRealizado = v),
-                        activeColor: p.successGreen,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                if (_pagoInscripcionRealizado) ...[
-                  _buildDropdownField('Método de Pago', 'Seleccionar método...', Icons.payment_rounded, p,
-                      items: _metodosPago,
-                      value: _metodoPagoSeleccionado,
-                      onChanged: (v) => setState(() => _metodoPagoSeleccionado = v),
-                      validator: (v) => _pagoInscripcionRealizado && (v == null || v.isEmpty) ? 'Seleccione un método' : null),
-                  const SizedBox(height: 16),
-                ],
-                _buildDropdownField('Plan de Pagos / Colegiatura', 'Seleccionar plan...', Icons.payments_rounded, p,
-                    items: _planesPagos,
-                    value: _planPagosSeleccionado,
-                    onChanged: (v) => setState(() => _planPagosSeleccionado = v),
+                _buildFormField('Calle y Número', 'Ej. Av. Insurgentes Sur 1234', Icons.location_on_outlined, p,
+                    controller: _direccionController,
                     validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
+                const SizedBox(height: 16),
+                _buildFormRow(p, [
+                  _buildFormField('Colonia', 'Ej. Del Valle Centro', Icons.location_city_outlined, p,
+                      controller: _coloniaController,
+                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
+                  _buildFormField('Código Postal', 'Ej. 03100', Icons.markunread_mailbox_outlined, p,
+                      controller: _cpController,
+                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
+                ]),
+                _buildFormRow(p, [
+                  _buildFormField('Alcaldía / Municipio', 'Ej. Benito Juárez', Icons.location_city_outlined, p,
+                      controller: _alcaldiaController,
+                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
+                  _buildFormField('Estado', 'Ciudad de México', Icons.map_outlined, p,
+                      controller: _estadoController,
+                      validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
+                ]),
               ],
             ),
             const SizedBox(height: 24),
 
-            // ══════════════════════════════════════════════════
-            // 7. DOCUMENTOS REQUERIDOS
-            // ══════════════════════════════════════════════════
+            // ── DOCUMENTOS ──
             _buildFormSection(
               'Documentos Requeridos',
               Icons.folder_open_rounded,
-              p.accentPurpleDeep,
+              p.successGreen,
               p,
               [
                 _buildDocumentUploadRow(p, [
-                  _buildDocumentCard('Partida de Nacimiento', 'PDF, JPG', Icons.description_outlined, true, p),
+                  _buildDocumentCard('Acta de Nacimiento', 'PDF, JPG', Icons.description_outlined, true, p),
                   _buildDocumentCard('DNI del Alumno', 'PDF', Icons.badge_outlined, true, p),
                   _buildDocumentCard('Cartilla de Vacunación', 'PDF, JPG', Icons.vaccines_outlined, false, p),
                   _buildDocumentCard('Comprobante de Domicilio', 'PDF, JPG', Icons.receipt_long_outlined, false, p),
                 ]),
                 _buildDocumentUploadRow(p, [
                   _buildDocumentCard('DNI del Tutor', 'PDF', Icons.badge_outlined, false, p),
-                  _buildDocumentCard('Boletín / Certificado Anterior', 'PDF', Icons.school_outlined, false, p),
-                  _buildDocumentCard('Fotografía Tamaño Carnet', 'JPG, PNG', Icons.photo_camera_outlined, false, p),
-                  _buildDocumentCard('Constancia de Buena Salud', 'PDF', Icons.local_hospital_outlined, false, p),
+                  _buildDocumentCard('Certificado Anterior', 'PDF', Icons.school_outlined, false, p),
+                  _buildDocumentCard('Fotografía', 'JPG, PNG', Icons.photo_camera_outlined, false, p),
+                  _buildDocumentCard('Constancia Médica', 'PDF', Icons.local_hospital_outlined, false, p),
                 ]),
               ],
             ),
@@ -642,7 +602,7 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _validarYRegistrar,
                       icon: const Icon(Icons.check_circle_outline_rounded, size: 18, color: Colors.white),
-                      label: Text('Registrar Matrícula',
+                      label: Text('Registrar Alumno',
                           style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
                       style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
@@ -662,128 +622,39 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════
-  // FOLIO BANNER
-  // ═══════════════════════════════════════════════════════════
-
-  Widget _buildFolioBanner(ThemePalette p) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [p.accentPurple.withOpacity(0.15), p.accentPurpleDark.withOpacity(0.08)],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: p.accentPurple.withOpacity(0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: p.accentPurple.withOpacity(0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [p.accentPurple, p.accentPurpleDark],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: p.accentPurple.withOpacity(0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Icon(Icons.tag_rounded, color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'NÚMERO DE MATRÍCULA / FOLIO',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: p.textMuted,
-                    letterSpacing: 1.8,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _folioMatricula,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: p.textPrimary,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: p.successGreen.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: p.successGreen.withOpacity(0.3)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: p.successGreen,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: p.successGreen.withOpacity(0.6), blurRadius: 6)],
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'AUTO',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: p.successGreen,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════
   // MÉTODO: GUARDAR EN SUPABASE
   // ═══════════════════════════════════════════════════════════
 
   Future<void> _validarYRegistrar() async {
-    if (!_formKey.currentState!.validate()) {
+    final padreLleno = _nombrePadreController.text.trim().isNotEmpty;
+    final madreLlena = _nombreMadreController.text.trim().isNotEmpty;
+    final tutorLleno = _nombreTutorController.text.trim().isNotEmpty;
+
+    if (!padreLleno && !madreLlena && !tutorLleno) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Complete todos los campos obligatorios'),
+          content: const Text('Debe llenar al menos uno: Padre, Madre o Tutor'),
           backgroundColor: Colors.red[700],
           behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
+
+    if (!padreLleno && !madreLlena && tutorLleno) {
+      if (_ocupacionTutorController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Ocupación del Tutor es obligatoria'),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+
+    if (!_formKey.currentState!.validate()) return;
 
     showDialog(
       context: context,
@@ -797,63 +668,85 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen> {
       final prefs = await SharedPreferences.getInstance();
       final empresaCodigo = prefs.getString('company_code') ?? 'ROOT';
 
+      String tutorNombre;
+      String tutorParentesco;
+      String tutorTelefono;
+      String tutorEmail;
+      String tutorOcupacion;
+      String tutorCurp;
+
+      if (padreLleno) {
+        tutorNombre = _nombrePadreController.text.trim();
+        tutorParentesco = 'Padre';
+        tutorTelefono = _telPadreController.text.trim();
+        tutorEmail = _emailPadreController.text.trim();
+        tutorOcupacion = _ocupacionPadreController.text.trim();
+        tutorCurp = ''; 
+      } else if (madreLlena) {
+        tutorNombre = _nombreMadreController.text.trim();
+        tutorParentesco = 'Madre';
+        tutorTelefono = _telMadreController.text.trim();
+        tutorEmail = _emailMadreController.text.trim();
+        tutorOcupacion = _ocupacionMadreController.text.trim();
+        tutorCurp = '';
+      } else {
+        tutorNombre = _nombreTutorController.text.trim();
+        tutorParentesco = _parentescoTutorController.text.trim();
+        tutorTelefono = _telTutorController.text.trim();
+        tutorEmail = _emailTutorController.text.trim();
+        tutorOcupacion = _ocupacionTutorController.text.trim();
+        tutorCurp = _curpTutorController.text.trim();
+      }
+
       await PortalPilotDB.insertMatriculaCompleta(
-        // IDENTIFICADOR INSTITUCIONAL
-        folioMatricula: _folioMatricula,
-
-        // DETALLES DE INSCRIPCIÓN
-        cicloEscolar: _cicloSeleccionado ?? '',
-        nivelEducativo: _nivelSeleccionado ?? '',
-        grado: _gradoSeleccionado ?? '',
-        seccion: _seccionSeleccionada ?? '',
-        turno: _turnoSeleccionado ?? '',
-        tipoIngreso: _tipoIngresoSeleccionado ?? '',
-
-        // DATOS DEL ALUMNO
         alumnoNombre: _nombreController.text.trim(),
-        alumnoApellido: _apellidoController.text.trim(),
-        alumnoDni: _dniController.text.trim(),
+        alumnoApellidoPaterno: _apellidoPController.text.trim(),
+        alumnoApellidoMaterno: _apellidoMController.text.trim(),
+        alumnoCurp: _curpController.text.trim(),
         alumnoFechaNacimiento: _fechaNacController.text.trim(),
         alumnoLugarNacimiento: _lugarNacController.text.trim(),
+        alumnoGenero: _generoSeleccionado ?? '',
         alumnoNacionalidad: _nacionalidadController.text.trim(),
-
-        // SALUD (SIMPLIFICADA)
-        observacionesSalud: _observacionesSaludController.text.trim(),
-
-        // TUTOR RESPONSABLE
-        tutorParentesco: _tutorParentescoSeleccionado ?? '',
-        tutorNombre: _tutorNombreController.text.trim(),
-        tutorTelefono: _tutorTelefonoController.text.trim(),
-        tutorEmail: _tutorEmailController.text.trim(),
-
-        // DIRECCIÓN
+        alumnoTipoSangre: _tipoSangreSeleccionado ?? '',
+        alumnoNss: _nssController.text.trim(),
+        alumnoAlergias: _alergiasController.text.trim(),
+        alumnoCondiciones: _condicionesController.text.trim(),
+        alumnoMedicamentos: _medicamentosController.text.trim(),
+        alumnoPeso: _pesoController.text.trim(),
+        alumnoEstatura: _estaturaController.text.trim(),
+        alumnoDiscapacidad: _discapacidadController.text.trim(),
+        alumnoObsMedicas: _obsMedicasController.text.trim(),
+        tutorNombre: tutorNombre,
+        tutorParentesco: tutorParentesco,
+        tutorTelefono: tutorTelefono,
+        tutorEmail: tutorEmail,
+        tutorOcupacion: tutorOcupacion,
+        tutorCurp: tutorCurp,
         direccionCalle: _direccionController.text.trim(),
-        direccionMunicipio: _municipioController.text.trim(),
-        direccionDepartamento: _departamentoController.text.trim(),
-        direccionReferencia: _coloniaController.text.trim(),
+        direccionColonia: _coloniaController.text.trim(),
         direccionCP: _cpController.text.trim(),
-
-        // CONTROL FINANCIERO
-        pagoInscripcionRealizado: _pagoInscripcionRealizado,
-        metodoPago: _metodoPagoSeleccionado ?? (_pagoInscripcionRealizado ? '' : 'No aplica'),
-        planPagos: _planPagosSeleccionado ?? '',
-
-        // EMPRESA
+        direccionAlcaldia: _alcaldiaController.text.trim(),
+        direccionEstado: _estadoController.text.trim(),
+        emergNombre: _emergNombreController.text.trim(),
+        emergParentesco: _emergParentescoController.text.trim(),
+        emergTel1: _emergTel1Controller.text.trim(),
+        emergTel2: _emergTel2Controller.text.trim(),
+        emergDireccion: _emergDireccionController.text.trim(),
+        emergHorario: _emergHorarioController.text.trim(),
         empresaCodigo: empresaCodigo,
       );
 
       if (mounted) Navigator.pop(context);
+      _limpiarFormulario();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✓ Matrícula $_folioMatricula registrada correctamente'),
+            content: const Text('✓ Alumno registrado correctamente en Supabase'),
             backgroundColor: Colors.green[700],
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
           ),
         );
-        _limpiarFormulario();
       }
     } catch (e) {
       if (mounted) Navigator.pop(context);
@@ -870,33 +763,64 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen> {
   }
 
   void _limpiarFormulario() {
-    setState(() {
-      _cicloSeleccionado = null;
-      _nivelSeleccionado = null;
-      _gradoSeleccionado = null;
-      _seccionSeleccionada = null;
-      _turnoSeleccionado = null;
-      _tipoIngresoSeleccionado = null;
-      _pagoInscripcionRealizado = false;
-      _metodoPagoSeleccionado = null;
-      _planPagosSeleccionado = null;
-      _tutorParentescoSeleccionado = null;
-    });
     _nombreController.clear();
-    _apellidoController.clear();
-    _dniController.clear();
+    _apellidoPController.clear();
+    _apellidoMController.clear();
+    _curpController.clear();
     _fechaNacController.clear();
     _lugarNacController.clear();
+    setState(() => _generoSeleccionado = null);
     _nacionalidadController.text = 'Hondureña';
-    _observacionesSaludController.clear();
-    _tutorNombreController.clear();
-    _tutorTelefonoController.clear();
-    _tutorEmailController.clear();
+    setState(() => _tipoSangreSeleccionado = null);
+    _nssController.clear();
+    _alergiasController.clear();
+    _condicionesController.clear();
+    _medicamentosController.clear();
+    _pesoController.clear();
+    _estaturaController.clear();
+    _discapacidadController.text = 'Ninguna';
+    _obsMedicasController.clear();
+    _nombrePadreController.clear();
+    _nombreMadreController.clear();
+    _nombreTutorController.clear();
+    _parentescoTutorController.clear();
+    _ocupacionPadreController.clear();
+    _ocupacionMadreController.clear();
+    _ocupacionTutorController.clear();
+    _curpTutorController.clear();
+    _telPadreController.clear();
+    _telMadreController.clear();
+    _telTutorController.clear();
+    _telCasaController.clear();
+    _emailPadreController.clear();
+    _emailMadreController.clear();
+    _emailTutorController.clear();
+    _telTrabajoController.clear();
+    _emergNombreController.clear();
+    _emergParentescoController.clear();
+    _emergTel1Controller.clear();
+    _emergTel2Controller.clear();
+    _emergDireccionController.clear();
+    _emergHorarioController.clear();
     _direccionController.clear();
     _coloniaController.clear();
     _cpController.clear();
-    _municipioController.clear();
-    _departamentoController.clear();
+    _alcaldiaController.clear();
+    _estadoController.clear();
+  }
+
+  Widget _buildHintText(String text, ThemePalette p) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8, left: 4),
+      child: Text(
+        text,
+        style: GoogleFonts.dmSans(
+          fontSize: 11,
+          color: p.textMuted,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -937,13 +861,13 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen> {
       decoration: BoxDecoration(color: p.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: p.borderLight)),
       child: Row(
         children: [
-          _buildStepIndicator(1, 'Inscripción', true, Icons.assignment_ind_rounded, p),
+          _buildStepIndicator(1, 'Alumno', true, Icons.child_care_rounded, p),
           _buildStepConnector(true, p),
-          _buildStepIndicator(2, 'Alumno', false, Icons.child_care_rounded, p),
+          _buildStepIndicator(2, 'Médica', false, Icons.medical_services_outlined, p),
           _buildStepConnector(false, p),
-          _buildStepIndicator(3, 'Tutor', false, Icons.family_restroom_rounded, p),
+          _buildStepIndicator(3, 'Tutores', false, Icons.family_restroom_rounded, p),
           _buildStepConnector(false, p),
-          _buildStepIndicator(4, 'Financiero', false, Icons.account_balance_wallet_rounded, p),
+          _buildStepIndicator(4, 'Dirección', false, Icons.home_work_outlined, p),
           _buildStepConnector(false, p),
           _buildStepIndicator(5, 'Documentos', false, Icons.folder_outlined, p),
         ],

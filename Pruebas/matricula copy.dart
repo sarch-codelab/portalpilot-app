@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/theme/app_theme.dart';
+import 'package:portal_pilot_app/DB/db.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// ═══════════════════════════════════════════════════════════
+// Areas/Educacion/Matricula/matricula.dart
+// ═══════════════════════════════════════════════════════════
+
 
 // ═══════════════════════════════════════════════════════════
 // THEME PROVIDER
@@ -733,7 +740,11 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen>
     );
   }
 
-  void _validarYRegistrar() {
+  // ═══════════════════════════════════════════════════════════
+  // MÉTODO CORREGIDO: GUARDAR EN SUPABASE
+  // ═══════════════════════════════════════════════════════════
+
+  Future<void> _validarYRegistrar() async {
     // Validar que al menos uno de padre/madre/tutor esté lleno
     final padreLleno = _nombrePadreController.text.trim().isNotEmpty;
     final madreLlena = _nombreMadreController.text.trim().isNotEmpty;
@@ -764,15 +775,181 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen>
       }
     }
 
-    if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('✓ Alumno registrado correctamente'),
-          backgroundColor: Colors.green[700],
-          behavior: SnackBarBehavior.floating,
-        ),
+    if (!_formKey.currentState!.validate()) return;
+
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF8B5CF6)),
+      ),
+    );
+
+    try {
+      // Obtener código de empresa
+      final prefs = await SharedPreferences.getInstance();
+      final empresaCodigo = prefs.getString('company_code') ?? 'ROOT';
+
+      // Determinar el tutor principal
+      String tutorNombre;
+      String tutorParentesco;
+      String tutorTelefono;
+      String tutorEmail;
+      String tutorOcupacion;
+      String tutorCurp;
+
+      if (padreLleno) {
+        tutorNombre = _nombrePadreController.text.trim();
+        tutorParentesco = 'Padre';
+        tutorTelefono = _telPadreController.text.trim();
+        tutorEmail = _emailPadreController.text.trim();
+        tutorOcupacion = _ocupacionPadreController.text.trim();
+        tutorCurp = ''; // El padre no tiene CURP separado
+      } else if (madreLlena) {
+        tutorNombre = _nombreMadreController.text.trim();
+        tutorParentesco = 'Madre';
+        tutorTelefono = _telMadreController.text.trim();
+        tutorEmail = _emailMadreController.text.trim();
+        tutorOcupacion = _ocupacionMadreController.text.trim();
+        tutorCurp = '';
+      } else {
+        tutorNombre = _nombreTutorController.text.trim();
+        tutorParentesco = _parentescoTutorController.text.trim();
+        tutorTelefono = _telTutorController.text.trim();
+        tutorEmail = _emailTutorController.text.trim();
+        tutorOcupacion = _ocupacionTutorController.text.trim();
+        tutorCurp = _curpTutorController.text.trim();
+      }
+
+      // Guardar matrícula en Supabase
+      await PortalPilotDB.insertMatriculaCompleta(
+        // Datos del alumno
+        alumnoNombre: _nombreController.text.trim(),
+        alumnoApellidoPaterno: _apellidoPController.text.trim(),
+        alumnoApellidoMaterno: _apellidoMController.text.trim(),
+        alumnoCurp: _curpController.text.trim(),
+        alumnoFechaNacimiento: _fechaNacController.text.trim(),
+        alumnoLugarNacimiento: _lugarNacController.text.trim(),
+        alumnoGenero: _generoSeleccionado ?? '',
+        alumnoNacionalidad: _nacionalidadController.text.trim(),
+        alumnoTipoSangre: _tipoSangreSeleccionado ?? '',
+        alumnoNss: _nssController.text.trim(),
+        
+        // Información médica
+        alumnoAlergias: _alergiasController.text.trim(),
+        alumnoCondiciones: _condicionesController.text.trim(),
+        alumnoMedicamentos: _medicamentosController.text.trim(),
+        alumnoPeso: _pesoController.text.trim(),
+        alumnoEstatura: _estaturaController.text.trim(),
+        alumnoDiscapacidad: _discapacidadController.text.trim(),
+        alumnoObsMedicas: _obsMedicasController.text.trim(),
+        
+        // Tutor principal
+        tutorNombre: tutorNombre,
+        tutorParentesco: tutorParentesco,
+        tutorTelefono: tutorTelefono,
+        tutorEmail: tutorEmail,
+        tutorOcupacion: tutorOcupacion,
+        tutorCurp: tutorCurp,
+        
+        // Dirección
+        direccionCalle: _direccionController.text.trim(),
+        direccionColonia: _coloniaController.text.trim(),
+        direccionCP: _cpController.text.trim(),
+        direccionAlcaldia: _alcaldiaController.text.trim(),
+        direccionEstado: _estadoController.text.trim(),
+        
+        // Contacto de emergencia
+        emergNombre: _emergNombreController.text.trim(),
+        emergParentesco: _emergParentescoController.text.trim(),
+        emergTel1: _emergTel1Controller.text.trim(),
+        emergTel2: _emergTel2Controller.text.trim(),
+        emergDireccion: _emergDireccionController.text.trim(),
+        emergHorario: _emergHorarioController.text.trim(),
+        
+        // Empresa
+        empresaCodigo: empresaCodigo,
       );
+
+      // Cerrar indicador de carga
+      if (mounted) Navigator.pop(context);
+
+      // Limpiar formulario
+      _limpiarFormulario();
+
+      // Mostrar mensaje de éxito
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✓ Alumno registrado correctamente en Supabase'),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      // Cerrar indicador de carga
+      if (mounted) Navigator.pop(context);
+
+      // Mostrar error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: ${e.toString().replaceAll('Exception:', '').trim()}'),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
+  }
+
+  void _limpiarFormulario() {
+    _nombreController.clear();
+    _apellidoPController.clear();
+    _apellidoMController.clear();
+    _curpController.clear();
+    _fechaNacController.clear();
+    _lugarNacController.clear();
+    setState(() => _generoSeleccionado = null);
+    _nacionalidadController.text = 'Mexicana';
+    setState(() => _tipoSangreSeleccionado = null);
+    _nssController.clear();
+    _alergiasController.clear();
+    _condicionesController.clear();
+    _medicamentosController.clear();
+    _pesoController.clear();
+    _estaturaController.clear();
+    _discapacidadController.text = 'Ninguna';
+    _obsMedicasController.clear();
+    _nombrePadreController.clear();
+    _nombreMadreController.clear();
+    _nombreTutorController.clear();
+    _parentescoTutorController.clear();
+    _ocupacionPadreController.clear();
+    _ocupacionMadreController.clear();
+    _ocupacionTutorController.clear();
+    _curpTutorController.clear();
+    _telPadreController.clear();
+    _telMadreController.clear();
+    _telTutorController.clear();
+    _telCasaController.clear();
+    _emailPadreController.clear();
+    _emailMadreController.clear();
+    _emailTutorController.clear();
+    _telTrabajoController.clear();
+    _emergNombreController.clear();
+    _emergParentescoController.clear();
+    _emergTel1Controller.clear();
+    _emergTel2Controller.clear();
+    _emergDireccionController.clear();
+    _emergHorarioController.clear();
+    _direccionController.clear();
+    _coloniaController.clear();
+    _cpController.clear();
+    _alcaldiaController.clear();
+    _estadoController.clear();
   }
 
   Widget _buildHintText(String text, ThemePalette p) {

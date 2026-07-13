@@ -3,17 +3,14 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:portal_pilot_app/Areas/Educacion/Matricula/matricula.dart';
+import 'package:portal_pilot_app/Areas/Educacion/Matricula/matricula.dart' show RegistroEstudiantilScreen, ThemePalette;
+import 'package:portal_pilot_app/Areas/Educacion/Edu IA/eduia.dart' show CopilotScreen;
+import 'package:portal_pilot_app/Areas/Educacion/Notas/notas.dart' show NotasScreen; // 🆕 Import del sistema de notas
 import 'package:portal_pilot_app/theme/app_theme.dart';
 
 // ═══════════════════════════════════════════════════════════
 // EDUCACION SCREEN - Dashboard principal del área de Educación
 // ═══════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════
-// Areas/Educacion/educacion.dart
-// ═══════════════════════════════════════════════════════════
-
 
 class EducacionScreen extends StatefulWidget {
   const EducacionScreen({super.key});
@@ -29,7 +26,6 @@ class _EducacionScreenState extends State<EducacionScreen>
   late AnimationController _gridController;
   late Animation<double> _flashAnimation;
 
-  // Animaciones escalonadas para cada sección
   late Animation<double> _fadeLogo;
   late Animation<double> _fadeBanner;
   late Animation<double> _fadeWelcome;
@@ -45,12 +41,11 @@ class _EducacionScreenState extends State<EducacionScreen>
   void initState() {
     super.initState();
 
-    // Controlador de pulso (glow)
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2500),
       vsync: this,
     )..repeat(reverse: true);
-    // Controlador del flash inicial (parpadeo)
+
     _flashController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -62,13 +57,11 @@ class _EducacionScreenState extends State<EducacionScreen>
       ),
     );
 
-    // Grid animado de fondo
     _gridController = AnimationController(
       duration: const Duration(seconds: 20),
       vsync: this,
     )..repeat();
 
-    // Animaciones escalonadas (staggered fade-in)
     _fadeLogo = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: const Interval(0.0, 0.15, curve: Curves.easeOut)),
     );
@@ -91,13 +84,11 @@ class _EducacionScreenState extends State<EducacionScreen>
       CurvedAnimation(parent: _pulseController, curve: const Interval(0.55, 0.8, curve: Curves.easeOut)),
     );
 
-    // Lanzar animaciones
     _flashController.forward();
     Future.delayed(const Duration(milliseconds: 100), () {
       _pulseController.forward();
     });
 
-    // Reloj en tiempo real
     _currentTime = DateTime.now();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _currentTime = DateTime.now());
@@ -147,7 +138,6 @@ class _EducacionScreenState extends State<EducacionScreen>
       backgroundColor: p.bgPrimary,
       body: Stack(
         children: [
-          // Fondo con gradiente
           Container(
             decoration: BoxDecoration(
               gradient: RadialGradient(
@@ -160,11 +150,7 @@ class _EducacionScreenState extends State<EducacionScreen>
               ),
             ),
           ),
-
-          // Grid animado de fondo (sutil)
           _buildAnimatedGrid(p),
-
-          // Efecto flash inicial (parpadeo)
           AnimatedBuilder(
             animation: _flashController,
             builder: (context, child) {
@@ -186,15 +172,11 @@ class _EducacionScreenState extends State<EducacionScreen>
               );
             },
           ),
-
-          // Theme toggle
           Positioned(
             top: 24,
             right: 24,
             child: _buildThemeToggleButton(p),
           ),
-
-          // Contenido principal
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -202,56 +184,20 @@ class _EducacionScreenState extends State<EducacionScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Portal Pilot Logo
-                    _buildAnimatedSection(
-                      animation: _fadeLogo,
-                      child: _buildPortalPilotLogo(p),
-                    ),
+                    _buildAnimatedSection(animation: _fadeLogo, child: _buildPortalPilotLogo(p)),
                     const SizedBox(height: 36),
-
-                    // Education Banner (sin pp.edu.png)
-                    _buildAnimatedSection(
-                      animation: _fadeBanner,
-                      child: _buildEducationBanner(p),
-                    ),
+                    _buildAnimatedSection(animation: _fadeBanner, child: _buildEducationBanner(p)),
                     const SizedBox(height: 32),
-
-                    // Reloj y fecha
-                    _buildAnimatedSection(
-                      animation: _fadeClock,
-                      child: _buildClockWidget(p),
-                    ),
+                    _buildAnimatedSection(animation: _fadeClock, child: _buildClockWidget(p)),
                     const SizedBox(height: 28),
-
-                    // Welcome message
-                    _buildAnimatedSection(
-                      animation: _fadeWelcome,
-                      child: _buildWelcomeMessage(p),
-                    ),
+                    _buildAnimatedSection(animation: _fadeWelcome, child: _buildWelcomeMessage(p)),
                     const SizedBox(height: 28),
-
-                    // User info card
-                    _buildAnimatedSection(
-                      animation: _fadeUserCard,
-                      child: _buildUserInfoCard(p),
-                    ),
+                    _buildAnimatedSection(animation: _fadeUserCard, child: _buildUserInfoCard(p)),
                     const SizedBox(height: 32),
-
-                    // Stats rápidos
-                    _buildAnimatedSection(
-                      animation: _fadeStats,
-                      child: _buildQuickStats(p),
-                    ),
+                    _buildAnimatedSection(animation: _fadeStats, child: _buildQuickStats(p)),
                     const SizedBox(height: 32),
-
-                    // Áreas habilitadas
-                    _buildAnimatedSection(
-                      animation: _fadeAreas,
-                      child: _buildAreasSection(p),
-                    ),
+                    _buildAnimatedSection(animation: _fadeAreas, child: _buildAreasSection(p)),
                     const SizedBox(height: 24),
-
-                    // Footer
                     _buildFooter(p),
                   ],
                 ),
@@ -476,7 +422,7 @@ class _EducacionScreenState extends State<EducacionScreen>
     return Column(
       children: [
         Text(
-          'Bienvenida Gissel',
+          'Bienvenido/a Gissel',
           style: GoogleFonts.syne(
             fontSize: 42,
             fontWeight: FontWeight.w900,
@@ -677,6 +623,10 @@ class _EducacionScreenState extends State<EducacionScreen>
     );
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // 🆕 SECCIÓN DE ÁREAS HABILITADAS (4 TARJETAS ACTIVAS)
+  // ═══════════════════════════════════════════════════════════
+
   Widget _buildAreasSection(ThemePalette p) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 900),
@@ -712,6 +662,8 @@ class _EducacionScreenState extends State<EducacionScreen>
             style: GoogleFonts.dmSans(fontSize: 14, color: p.textMuted),
           ),
           const SizedBox(height: 24),
+
+          // ── FILA 1: 🆕 Sistema de Notas + Control de Asistencias ──
           Row(
             children: [
               Expanded(
@@ -720,8 +672,9 @@ class _EducacionScreenState extends State<EducacionScreen>
                   'Gestión de calificaciones y boletas',
                   Icons.grade_rounded,
                   p.accentPurple,
-                  false,
+                  true, // ✅ AHORA ESTÁ ACTIVO
                   p,
+                  destination: const NotasScreen(), // 🆕 Navega al sistema de notas
                 ),
               ),
               const SizedBox(width: 20),
@@ -735,7 +688,13 @@ class _EducacionScreenState extends State<EducacionScreen>
                   p,
                 ),
               ),
-              const SizedBox(width: 20),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // ── FILA 2: Registro Estudiantil + Edu IA ──
+          Row(
+            children: [
               Expanded(
                 child: _buildAreaCard(
                   'Registro Estudiantil',
@@ -744,6 +703,20 @@ class _EducacionScreenState extends State<EducacionScreen>
                   p.successGreen,
                   true,
                   p,
+                  destination: const RegistroEstudiantilScreen(),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: _buildAreaCard(
+                  'Edu IA',
+                  'Asistente inteligente de gestión escolar',
+                  Icons.smart_toy_rounded,
+                  p.accentPurpleDeep,
+                  true,
+                  p,
+                  destination: const CopilotScreen(),
+                  isAI: true,
                 ),
               ),
             ],
@@ -759,15 +732,17 @@ class _EducacionScreenState extends State<EducacionScreen>
     IconData icon,
     Color color,
     bool isPrimary,
-    ThemePalette p,
-  ) {
+    ThemePalette p, {
+    Widget? destination,
+    bool isAI = false,
+  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          if (isPrimary) {
+          if (destination != null) {
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const RegistroEstudiantilScreen()),
+              MaterialPageRoute(builder: (context) => destination),
             );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -816,24 +791,74 @@ class _EducacionScreenState extends State<EducacionScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [color, color.withOpacity(0.7)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withOpacity(0.4),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [color, color.withOpacity(0.7)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withOpacity(0.4),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Icon(icon, color: Colors.white, size: 28),
+                    child: Icon(icon, color: Colors.white, size: 28),
+                  ),
+                  const Spacer(),
+                  if (isAI)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [p.accentPurple, p.accentPurpleDark],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: p.accentPurple.withOpacity(0.4),
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.8),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'IA',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 20),
               Text(
@@ -945,12 +970,10 @@ class _GridPainter extends CustomPainter {
 
     const spacing = 60.0;
 
-    // Líneas verticales
     for (double x = -spacing + (offset % spacing); x < size.width + spacing; x += spacing) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
     }
 
-    // Líneas horizontales
     for (double y = -spacing + (offset % spacing); y < size.height + spacing; y += spacing) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }

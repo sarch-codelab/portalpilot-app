@@ -391,13 +391,13 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen>
               p,
               [
                 _buildFormRow(p, [
-                  _buildFormField('Nombre(s)', 'Ej. Carlos Eduardo', Icons.person_outline_rounded, p, controller: _nombreController,
+                  _buildFormField('Nombre(s)', 'Ej. Gissel Sofia', Icons.person_outline_rounded, p, controller: _nombreController,
                       validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                  _buildFormField('Apellido Paterno', 'Ej. Mendoza', Icons.person_outline_rounded, p, controller: _apellidoPController,
+                  _buildFormField('Apellido(s)', 'Ej. Guzman Castro', Icons.person_outline_rounded, p, controller: _apellidoPController,
                       validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
                 ]),
                 _buildFormRow(p, [
-                  _buildFormField('Apellido(s) Materno(s)', 'Ej. López García', Icons.person_outline_rounded, p, controller: _apellidoMController),
+                  _buildFormField('Numero de Identificación', 'Ej. 0501 2010 03127', Icons.person_outline_rounded, p, controller: _apellidoMController),
                   _buildFormField('CURP', 'MELC050115HDFNRL09', Icons.badge_outlined, p, controller: _curpController, isMono: true,
                       validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
                 ]),
@@ -412,7 +412,7 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen>
                       value: _generoSeleccionado,
                       onChanged: (v) => setState(() => _generoSeleccionado = v),
                       validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
-                  _buildFormField('Nacionalidad', 'Mexicana', Icons.flag_outlined, p, controller: _nacionalidadController,
+                  _buildFormField('Nacionalidad', 'Hondureña', Icons.flag_outlined, p, controller: _nacionalidadController,
                       validator: (v) => (v == null || v.isEmpty) ? 'Obligatorio' : null),
                 ]),
                 _buildFormRow(p, [
@@ -549,7 +549,7 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen>
                 ]),
                 // CURP Tutor y teléfono trabajo
                 _buildFormRow(p, [
-                  _buildFormField('CURP del Tutor', 'LOGM850322MDFPRL05', Icons.badge_outlined, p,
+                  _buildFormField('DNI del Tutor', 'LOGM850322MDFPRL05', Icons.badge_outlined, p,
                       controller: _curpTutorController, isMono: true),
                   _buildFormField('Teléfono de Casa / Trabajo', '55 8765 4321', Icons.business_outlined, p,
                       controller: _telTrabajoController),
@@ -664,12 +664,12 @@ class _RegistroEstudiantilScreenState extends State<RegistroEstudiantilScreen>
               [
                 _buildDocumentUploadRow(p, [
                   _buildDocumentCard('Acta de Nacimiento', 'PDF, JPG', Icons.description_outlined, true, p),
-                  _buildDocumentCard('CURP del Alumno', 'PDF', Icons.badge_outlined, true, p),
+                  _buildDocumentCard('DNI del Alumno', 'PDF', Icons.badge_outlined, true, p),
                   _buildDocumentCard('Cartilla de Vacunación', 'PDF, JPG', Icons.vaccines_outlined, false, p),
                   _buildDocumentCard('Comprobante de Domicilio', 'PDF, JPG', Icons.receipt_long_outlined, false, p),
                 ]),
                 _buildDocumentUploadRow(p, [
-                  _buildDocumentCard('CURP del Tutor', 'PDF', Icons.badge_outlined, false, p),
+                  _buildDocumentCard('DNI del Tutor', 'PDF', Icons.badge_outlined, false, p),
                   _buildDocumentCard('Certificado Anterior', 'PDF', Icons.school_outlined, false, p),
                   _buildDocumentCard('Fotografía', 'JPG, PNG', Icons.photo_camera_outlined, false, p),
                   _buildDocumentCard('Constancia Médica', 'PDF', Icons.local_hospital_outlined, false, p),
