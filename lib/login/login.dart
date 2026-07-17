@@ -164,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     await Future.delayed(const Duration(milliseconds: 800));
 
-    final uri = Uri.parse('https://portal-pilot.vercel.app/login.html');
+    final uri = Uri.parse('https://portalpilot-app.vercel.app/login.html');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
@@ -789,7 +789,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: 14),
         Text(
-          'Serás redirigido a portal-pilot.vercel.app',
+          'Serás redirigido a portalpilot-app.vercel.app',
           style: GoogleFonts.spaceGrotesk(
             fontSize: 11,
             color: textDark,

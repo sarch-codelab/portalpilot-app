@@ -1,0 +1,195 @@
+// lib/Areas/IA/ia.dart
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:portal_pilot_app/Areas/Educacion/Edu IA/reglas_ia.dart';
+
+// ═══════════════════════════════════════════════════════════
+// ENDPOINTS DE PRODUCCIÓN
+// ═══════════════════════════════════════════════════════════
+class APIConfig {
+  static const String apiRoot = String.fromEnvironment(
+    'API_ROOT',
+    defaultValue: 'https://portalpilot-app.vercel.app',
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// RESPUESTA DE IA
+// ═══════════════════════════════════════════════════════════
+
+class AIResponse {
+  final String text;
+  final String modelId;
+  final String provider;
+  final int tokensUsed;
+  final Duration duration;
+  final bool success;
+  final String? error;
+
+  AIResponse({
+    required this.text,
+    required this.modelId,
+    required this.provider,
+    required this.tokensUsed,
+    required this.duration,
+    required this.success,
+    this.error,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// GESTOR PRINCIPAL CON CONTEXTO DE USUARIO
+// ═══════════════════════════════════════════════════════════
+
+class AIManager {
+  AIManager._privateConstructor();
+  static final AIManager instance = AIManager._privateConstructor();
+
+  // ═══ DATOS DEL USUARIO LOGUEADO ═══
+  String _nombreUsuario = 'Usuario';
+  String _rolUsuario = 'profesor';
+  String _empresaCodigo = 'ROOT';
+  
+  String get nombreUsuario => _nombreUsuario;
+  String get rolUsuario => _rolUsuario;
+  String get empresaCodigo => _empresaCodigo;
+
+  bool _isInitialized = false;
+
+  // ═══════════════════════════════════════════════════════════
+  // INICIALIZACIÓN CON DATOS DE USUARIO
+  // ═══════════════════════════════════════════════════════════
+  
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
+    // Cargar datos del usuario desde SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    _nombreUsuario = prefs.getString('user_nombre') ?? 'Usuario';
+    _rolUsuario = prefs.getString('user_rol') ?? 'profesor';
+    _empresaCodigo = prefs.getString('company_code') ?? 'ROOT';
+    
+    _isInitialized = true;
+    debugPrint('✅ AIManager inicializado para: $_nombreUsuario ($_rolUsuario)');
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // GENERACIÓN CON CONTEXTO AUTOMÁTICO
+  // ═══════════════════════════════════════════════════════════
+  
+  Future<AIResponse> generate({
+    required String prompt,
+    String? contextoAdicional,
+    String modelId = 'llama-3.3-70b-versatile',
+    int maxTokens = 1500,
+    double temperature = 0.7,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    // Generar prompt maestro con reglas y contexto de usuario
+    final systemPrompt = EduIARules.generarPromptMaestro(
+      nombreUsuario: _nombreUsuario,
+      rolUsuario: _rolUsuario,
+      empresaCodigo: _empresaCodigo,
+      contextoAdicional: contextoAdicional,
+    );
+
+    return await _callGroq(
+      modelId: modelId,
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      maxTokens: maxTokens,
+      temperature: temperature,
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // PROVEEDOR GROQ
+  // ═══════════════════════════════════════════════════════════
+
+  Future<AIResponse> _callGroq({
+    required String modelId,
+    required String prompt,
+    required String systemPrompt,
+    int maxTokens = 1500,
+    double temperature = 0.7,
+  }) async {
+    final startTime = DateTime.now();
+
+    try {
+      final url = Uri.parse('${APIConfig.apiRoot}/api/ai/groq');
+
+      final body = {
+        'modelId': modelId,
+        'prompt': prompt,
+        'systemPrompt': systemPrompt,
+        'maxTokens': maxTokens > 2000 ? 2000 : maxTokens,
+        'temperature': temperature,
+      };
+
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final duration = DateTime.now().difference(startTime);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return AIResponse(
+          text: data['text'] ?? '',
+          modelId: data['modelId'] ?? modelId,
+          provider: data['provider'] ?? 'groq',
+          tokensUsed: data['tokensUsed'] ?? 0,
+          duration: duration,
+          success: data['success'] ?? true,
+        );
+      } else {
+        String errorMsg = 'Error ${response.statusCode}';
+        try {
+          final errData = jsonDecode(response.body);
+          errorMsg = errData['error'] ?? errData['message'] ?? errorMsg;
+        } catch (_) {}
+
+        return AIResponse(
+          text: '',
+          modelId: modelId,
+          provider: 'groq',
+          tokensUsed: 0,
+          duration: duration,
+          success: false,
+          error: errorMsg,
+        );
+      }
+    } catch (e) {
+      return AIResponse(
+        text: '',
+        modelId: modelId,
+        provider: 'groq',
+        tokensUsed: 0,
+        duration: DateTime.now().difference(startTime),
+        success: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // MÉTODOS DE UTILIDAD
+  // ═══════════════════════════════════════════════════════════
+  
+  String getMensajeBienvenida() {
+    return EduIARules.mensajeBienvenida(_nombreUsuario, _rolUsuario);
+  }
+
+  bool tienePermiso(String recurso) {
+    return EduIARules.puedeAccederA(_rolUsuario, recurso);
+  }
+}
