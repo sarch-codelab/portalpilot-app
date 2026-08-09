@@ -11,9 +11,9 @@ class AIRoutes {
   // PROVEEDORES DISPONIBLES (en orden de prioridad)
   // ═══════════════════════════════════════════════════════════
   
-  static const String GROQ_API = 'https://api.groq.com/openai/v1';
-  static const String HF_API = 'https://api-inference.huggingface.co';
-  static const String OPENROUTER_API = 'https://openrouter.ai/api/v1';
+  static const String groqApi = 'https://api.groq.com/openai/v1';
+  static const String hfApi = 'https://api-inference.huggingface.co';
+  static const String openrouterApi = 'https://openrouter.ai/api/v1';
   
   // Estado de salud de cada proveedor (se actualiza automáticamente)
   final Map<String, ProviderStatus> _providerHealth = {
@@ -179,7 +179,7 @@ class AIRoutes {
   Future<void> checkAllProviders() async {
     for (final provider in _providerHealth.keys) {
       try {
-        final isUp = await _pingProvider(provider);
+        await _pingProvider(provider);
         markProviderAsHealthy(provider);
         debugPrint('✓ $provider está activo');
       } catch (e) {

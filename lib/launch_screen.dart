@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:portal_pilot_app/login/login.dart';
+import 'package:portal_pilot_app/Auth/login.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -128,8 +128,8 @@ class _SplashScreenState extends State<SplashScreen>
                 center: Alignment.topRight,
                 radius: 1.8,
                 colors: [
-                  accentPurple.withOpacity(0.06),
-                  accentPurpleDeep.withOpacity(0.02),
+                  accentPurple.withValues(alpha: 0.06),
+                  accentPurpleDeep.withValues(alpha: 0.02),
                   bgPrimary,
                 ],
                 stops: const [0.0, 0.3, 1.0],
@@ -161,7 +161,7 @@ class _SplashScreenState extends State<SplashScreen>
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: accentPurple.withOpacity(
+                                color: accentPurple.withValues(alpha: 
                                   0.5 * _logoFade.value,
                                 ),
                                 blurRadius: 40,
@@ -259,7 +259,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     borderRadius: BorderRadius.circular(2),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: accentPurple.withOpacity(0.6),
+                                        color: accentPurple.withValues(alpha: 0.6),
                                         blurRadius: 8,
                                         spreadRadius: 0.5,
                                       ),
@@ -328,155 +328,3 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// WELCOME SCREEN - Pantalla después del login exitoso
-// ═══════════════════════════════════════════════════════════════════════════════
-class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF8B5CF6),
-                    Color(0xFF6D28D9),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF8B5CF6).withOpacity(0.5),
-                    blurRadius: 40,
-                    spreadRadius: 3,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.check_circle_rounded,
-                color: Colors.white,
-                size: 64,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              '¡Bienvenido!',
-              style: GoogleFonts.syne(
-                fontSize: 36,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -1.0,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Has iniciado sesión correctamente',
-              style: GoogleFonts.dmSans(
-                fontSize: 16,
-                color: const Color(0xFFA3A3A3),
-              ),
-            ),
-            const SizedBox(height: 48),
-            ElevatedButton(
-              onPressed: () {
-                // Aquí puedes navegar a tu dashboard real
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (_) => const DashboardPlaceholder(),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B5CF6),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 48,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Ir al Dashboard',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Pantalla temporal de dashboard - Reemplaza con tu dashboard real
-class DashboardPlaceholder extends StatelessWidget {
-  const DashboardPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF111111),
-        title: const Text(
-          'Dashboard',
-          style: TextStyle(color: Colors.white),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.dashboard_rounded,
-              size: 80,
-              color: Color(0xFF8B5CF6),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Tu Dashboard Aquí',
-              style: GoogleFonts.syne(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Reemplaza esta pantalla con tu dashboard real',
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                color: const Color(0xFFA3A3A3),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

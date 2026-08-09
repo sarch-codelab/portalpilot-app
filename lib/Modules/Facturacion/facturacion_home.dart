@@ -1,0 +1,666 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:portal_pilot_app/Modules/Facturacion/factura_form.dart';
+import 'package:portal_pilot_app/Modules/Facturacion/factura_list.dart';
+import 'package:portal_pilot_app/Modules/Facturacion/clientes/cliente_form.dart';
+import 'package:portal_pilot_app/Modules/Facturacion/reportes/reportes.dart';
+
+class FacturacionHome extends StatefulWidget {
+  const FacturacionHome({super.key});
+
+  @override
+  State<FacturacionHome> createState() => _FacturacionHomeState();
+}
+
+class _FacturacionHomeState extends State<FacturacionHome> {
+  String _empresaNombre = 'Mi Empresa';
+  String _rtn = '';
+  String _cai = '';
+  String _rangoInicio = '001-001-01-00000001';
+  String _rangoFin = '001-001-01-00000500';
+  String _fechaLimite = '';
+  int _facturasHoy = 0;
+  double _totalHoy = 0.0;
+  int _totalFacturas = 0;
+  double _montoTotal = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _empresaNombre = prefs.getString('empresa_nombre') ?? 'Mi Empresa';
+      _rtn = prefs.getString('empresa_rtn') ?? '';
+      _cai = prefs.getString('empresa_cai') ?? '';
+      _rangoInicio = prefs.getString('empresa_rango_inicio') ?? '001-001-01-00000001';
+      _rangoFin = prefs.getString('empresa_rango_fin') ?? '001-001-01-00000500';
+      _fechaLimite = prefs.getString('empresa_fecha_limite') ?? '';
+    });
+
+    final facturasJson = prefs.getString('facturas') ?? '[]';
+    final List<dynamic> facturas = jsonDecode(facturasJson);
+
+    final hoy = DateTime.now();
+    int fHoy = 0;
+    double tHoy = 0.0;
+
+    for (final f in facturas) {
+      final fecha = DateTime.tryParse(f['fecha'] ?? '') ?? DateTime.now();
+      if (fecha.year == hoy.year && fecha.month == hoy.month && fecha.day == hoy.day) {
+        fHoy++;
+        tHoy += (f['total'] as num?)?.toDouble() ?? 0.0;
+      }
+    }
+
+    setState(() {
+      _facturasHoy = fHoy;
+      _totalHoy = tHoy;
+      _totalFacturas = facturas.length;
+      _montoTotal = facturas.fold(0.0, (sum, f) => sum + ((f['total'] as num?)?.toDouble() ?? 0.0));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF080808),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF10B981), size: 18),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF10B981), Color(0xFF059669)],
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 16),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'FACTURACIÓN SAR',
+              style: GoogleFonts.syne(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: Color(0xFF737373), size: 20),
+            onPressed: _mostrarConfiguracion,
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _cargarDatos,
+        color: const Color(0xFF10B981),
+        backgroundColor: const Color(0xFF1A1A1A),
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          children: [
+            _buildCAIBanner(),
+            const SizedBox(height: 16),
+            _buildStatsGrid(),
+            const SizedBox(height: 20),
+            _buildSectionTitle('Acciones Rápidas'),
+            const SizedBox(height: 10),
+            _buildActionButtons(),
+            const SizedBox(height: 20),
+            _buildSectionTitle('Documentos Fiscales'),
+            const SizedBox(height: 10),
+            _buildDocumentTypes(),
+            const SizedBox(height: 20),
+            _buildSectionTitle('Resumen ISV'),
+            const SizedBox(height: 10),
+            _buildISVSummary(),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FacturaForm()),
+          );
+          _cargarDatos();
+        },
+        backgroundColor: const Color(0xFF10B981),
+        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+        label: Text(
+          'Nueva Factura',
+          style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCAIBanner() {
+    if (_cai.isEmpty) {
+      return GestureDetector(
+        onTap: _mostrarConfiguracion,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF92400E), Color(0xFF78350F)],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFD97706).withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Color(0xFFFBBF24), size: 28),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'CAI no configurado',
+                      style: GoogleFonts.syne(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Configurá tu CAI para empezar a facturar',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: const Color(0xFFD4D4D4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFFFBBF24), size: 22),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final vencido = _fechaLimite.isNotEmpty && DateTime.tryParse(_fechaLimite) != null
+        && DateTime.tryParse(_fechaLimite)!.isBefore(DateTime.now());
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: vencido ? const Color(0xFF7F1D1D).withValues(alpha: 0.3) : const Color(0xFF10B981).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: vencido ? const Color(0xFFEF4444).withValues(alpha: 0.3) : const Color(0xFF10B981).withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                vencido ? Icons.error_outline_rounded : Icons.verified_rounded,
+                color: vencido ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                vencido ? 'CAI VENCIDO' : 'CAI Activo',
+                style: GoogleFonts.syne(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: vencido ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const Spacer(),
+              if (_cai.isNotEmpty)
+                GestureDetector(
+                  onTap: _mostrarConfiguracion,
+                  child: Text(
+                    'Editar',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: const Color(0xFF737373),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'CAI: $_cai',
+            style: GoogleFonts.dmMono(
+              fontSize: 13,
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Rango: $_rangoInicio  →  $_rangoFin',
+            style: GoogleFonts.dmMono(
+              fontSize: 12,
+              color: const Color(0xFFA3A3A3),
+            ),
+          ),
+          if (_fechaLimite.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Vence: $_fechaLimite',
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                color: vencido ? const Color(0xFFEF4444) : const Color(0xFF737373),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsGrid() {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.5,
+      children: [
+        _buildStatCard('Facturas Hoy', '$_facturasHoy', Icons.today_rounded, const Color(0xFF3B82F6)),
+        _buildStatCard('Total Hoy', 'L.${_formatNumber(_totalHoy)}', Icons.payments_rounded, const Color(0xFF10B981)),
+        _buildStatCard('Total Facturas', '$_totalFacturas', Icons.receipt_long_rounded, const Color(0xFFF59E0B)),
+        _buildStatCard('Monto Total', 'L.${_formatNumber(_montoTotal)}', Icons.account_balance_wallet_rounded, const Color(0xFF8B5CF6)),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const Spacer(),
+          Text(
+            value,
+            style: GoogleFonts.syne(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: const Color(0xFF737373),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.syne(
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
+        color: Colors.white,
+        letterSpacing: 0.8,
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        _buildActionRow(
+          icon: Icons.add_circle_outline_rounded,
+          title: 'Nueva Factura',
+          subtitle: 'Crear factura con CAI y correlativo automático',
+          color: const Color(0xFF10B981),
+          onTap: () async {
+            await Navigator.push(context, MaterialPageRoute(builder: (_) => const FacturaForm()));
+            _cargarDatos();
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildActionRow(
+          icon: Icons.list_alt_rounded,
+          title: 'Ver Facturas',
+          subtitle: 'Lista completa de facturas emitidas',
+          color: const Color(0xFF3B82F6),
+          onTap: () async {
+            await Navigator.push(context, MaterialPageRoute(builder: (_) => const FacturaList()));
+            _cargarDatos();
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildActionRow(
+          icon: Icons.people_outline_rounded,
+          title: 'Clientes',
+          subtitle: 'Gestionar clientes y RTN',
+          color: const Color(0xFFF59E0B),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const ClienteForm()));
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildActionRow(
+          icon: Icons.analytics_outlined,
+          title: 'Reportes',
+          subtitle: 'Reportes diarios, mensuales y por cliente',
+          color: const Color(0xFF8B5CF6),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportesScreen()));
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141414),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF262626)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: const Color(0xFF737373),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF404040), size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDocumentTypes() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF262626)),
+      ),
+      child: Column(
+        children: [
+          _buildDocTypeRow('Factura', 'Documento fiscal principal', Icons.receipt_long_rounded, const Color(0xFF10B981)),
+          const Divider(color: Color(0xFF262626), height: 16),
+          _buildDocTypeRow('Nota de Crédito', 'Devoluciones y anulaciones', Icons.undo_rounded, const Color(0xFF3B82F6)),
+          const Divider(color: Color(0xFF262626), height: 16),
+          _buildDocTypeRow('Nota de Débito', 'Ajustes al alza', Icons.redo_rounded, const Color(0xFFF59E0B)),
+          const Divider(color: Color(0xFF262626), height: 16),
+          _buildDocTypeRow('Factura Exportación', 'Ventas al exterior', Icons.public_rounded, const Color(0xFF8B5CF6)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocTypeRow(String title, String subtitle, IconData icon, Color color) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+              Text(subtitle, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildISVSummary() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF262626)),
+      ),
+      child: Column(
+        children: [
+          _buildISVRow('ISV 15% (Bienes)', 'L.${_formatNumber(_montoTotal * 0.15)}', const Color(0xFF3B82F6)),
+          const SizedBox(height: 8),
+          _buildISVRow('ISV 18% (Bebidas/Tabaco)', 'L.${_formatNumber(_montoTotal * 0.03)}', const Color(0xFFF59E0B)),
+          const Divider(color: Color(0xFF262626), height: 16),
+          _buildISVRow('Total ISV a declarar', 'L.${_formatNumber(_montoTotal * 0.18)}', const Color(0xFF10B981)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildISVRow(String label, String value, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFA3A3A3))),
+        Text(value, style: GoogleFonts.dmMono(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
+      ],
+    );
+  }
+
+  void _mostrarConfiguracion() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) {
+        final caiController = TextEditingController(text: _cai);
+        final rtnController = TextEditingController(text: _rtn);
+        final nombreController = TextEditingController(text: _empresaNombre);
+        final rangoIniController = TextEditingController(text: _rangoInicio);
+        final rangoFinController = TextEditingController(text: _rangoFin);
+        final fechaLimiteController = TextEditingController(text: _fechaLimite);
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20, right: 20, top: 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF404040),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Configuración SAR',
+                  style: GoogleFonts.syne(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Datos de tu empresa para facturación',
+                  style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373)),
+                ),
+                const SizedBox(height: 20),
+                _buildTextField('Nombre de la Empresa', nombreController),
+                const SizedBox(height: 12),
+                _buildTextField('RTN', rtnController, hint: '0801-1999-12345'),
+                const SizedBox(height: 12),
+                _buildTextField('CAI', caiController, hint: 'ABC123-DEF456'),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: _buildTextField('Rango Inicio', rangoIniController, hint: '001-001-01-00000001')),
+                    const SizedBox(width: 10),
+                    Expanded(child: _buildTextField('Rango Fin', rangoFinController, hint: '001-001-01-00000500')),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildTextField('Fecha Límite de Emisión', fechaLimiteController, hint: '2026-12-31'),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('empresa_nombre', nombreController.text);
+                      await prefs.setString('empresa_rtn', rtnController.text);
+                      await prefs.setString('empresa_cai', caiController.text);
+                      await prefs.setString('empresa_rango_inicio', rangoIniController.text);
+                      await prefs.setString('empresa_rango_fin', rangoFinController.text);
+                      await prefs.setString('empresa_fecha_limite', fechaLimiteController.text);
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      _cargarDatos();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      'Guardar Configuración',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller, {String hint = ''}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
+            filled: true,
+            fillColor: const Color(0xFF0F0F0F),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF262626)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF262626)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF10B981)),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatNumber(double number) {
+    if (number == number.roundToDouble() && number < 1000000) {
+      return number.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]},',
+      );
+    }
+    return number.toStringAsFixed(2).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
+  }
+}

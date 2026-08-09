@@ -1,0 +1,313 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
+
+class ProductoList extends StatefulWidget {
+  const ProductoList({super.key});
+
+  @override
+  State<ProductoList> createState() => _ProductoListState();
+}
+
+class _ProductoListState extends State<ProductoList> {
+  List<Map<String, dynamic>> _productos = [];
+  List<Map<String, dynamic>> _filtrados = [];
+  String _busqueda = '';
+  final String _filtroCategoria = 'Todas';
+  String _filtroStock = 'Todos';
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarProductos();
+  }
+
+  Future<void> _cargarProductos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString('productos') ?? '[]';
+    setState(() {
+      _productos = List<Map<String, dynamic>>.from(jsonDecode(json));
+      _aplicarFiltros();
+    });
+  }
+
+  void _aplicarFiltros() {
+    List<Map<String, dynamic>> r = List.from(_productos);
+
+    if (_busqueda.isNotEmpty) {
+      r = r.where((p) {
+        final nombre = (p['nombre'] ?? '').toString().toLowerCase();
+        final codigo = (p['codigo'] ?? '').toString().toLowerCase();
+        final cat = (p['categoria'] ?? '').toString().toLowerCase();
+        return nombre.contains(_busqueda.toLowerCase()) ||
+            codigo.contains(_busqueda.toLowerCase()) ||
+            cat.contains(_busqueda.toLowerCase());
+      }).toList();
+    }
+
+    if (_filtroCategoria != 'Todas') {
+      r = r.where((p) => p['categoria'] == _filtroCategoria).toList();
+    }
+
+    if (_filtroStock == 'Bajo') {
+      r = r.where((p) {
+        final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
+        final min = (p['stock_minimo'] as num?)?.toInt() ?? 0;
+        return stock <= min && min > 0;
+      }).toList();
+    } else if (_filtroStock == 'Agotado') {
+      r = r.where((p) => ((p['stock_actual'] as num?)?.toInt() ?? 0) == 0).toList();
+    }
+
+    setState(() => _filtrados = r);
+  }
+
+  Future<void> _eliminarProducto(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString('productos') ?? '[]';
+    final List<dynamic> productos = jsonDecode(json);
+    productos.removeWhere((p) => p['id'] == id);
+    await prefs.setString('productos', jsonEncode(productos));
+    _cargarProductos();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF080808),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFF59E0B), size: 18),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'CATÁLOGO DE PRODUCTOS',
+          style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5),
+        ),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              onChanged: (v) { setState(() => _busqueda = v); _aplicarFiltros(); },
+              style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Buscar por nombre, código o categoría...',
+                hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
+                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF404040), size: 20),
+                filled: true,
+                fillColor: const Color(0xFF141414),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF59E0B))),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                _buildFilterChip('Todos', _filtroStock == 'Todos', () { setState(() => _filtroStock = 'Todos'); _aplicarFiltros(); }),
+                const SizedBox(width: 8),
+                _buildFilterChip('Stock Bajo', _filtroStock == 'Bajo', () { setState(() => _filtroStock = 'Bajo'); _aplicarFiltros(); }),
+                const SizedBox(width: 8),
+                _buildFilterChip('Agotado', _filtroStock == 'Agotado', () { setState(() => _filtroStock = 'Agotado'); _aplicarFiltros(); }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: _filtrados.isEmpty
+                ? Center(
+                    child: Text(
+                      _busqueda.isNotEmpty ? 'Sin resultados' : 'No hay productos',
+                      style: GoogleFonts.dmSans(color: const Color(0xFF525252)),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _filtrados.length,
+                    itemBuilder: (_, i) {
+                      final p = _filtrados[i];
+                      final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
+                      final min = (p['stock_minimo'] as num?)?.toInt() ?? 0;
+                      final precio = (p['precio_venta'] as num?)?.toDouble() ?? 0.0;
+                      final bajo = stock <= min && min > 0;
+                      final agotado = stock == 0;
+
+                      return GestureDetector(
+                        onTap: () async {
+                          await Navigator.push(context, MaterialPageRoute(builder: (_) => ProductoForm(productoExistente: p)));
+                          _cargarProductos();
+                        },
+                        onLongPress: () => _showOptions(p),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF141414),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: agotado
+                                  ? const Color(0xFFEF4444).withValues(alpha: 0.3)
+                                  : bajo
+                                      ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
+                                      : const Color(0xFF262626),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: (agotado
+                                          ? const Color(0xFFEF4444)
+                                          : bajo
+                                              ? const Color(0xFFF59E0B)
+                                              : const Color(0xFF10B981))
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.inventory_2_rounded,
+                                  color: agotado
+                                      ? const Color(0xFFEF4444)
+                                      : bajo
+                                          ? const Color(0xFFF59E0B)
+                                          : const Color(0xFF10B981),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          p['nombre'] ?? '',
+                                          style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                                        ),
+                                        if (agotado) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(color: const Color(0xFFEF4444).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                                            child: Text('AGOTADO', style: GoogleFonts.dmSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFFEF4444))),
+                                          ),
+                                        ] else if (bajo) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(color: const Color(0xFFF59E0B).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                                            child: Text('BAJO', style: GoogleFonts.dmSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFFF59E0B))),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${p['codigo'] ?? 'S/C'}  •  ${p['categoria'] ?? ''}  •  ${p['bodega'] ?? 'General'}',
+                                      style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    'Stock: $stock',
+                                    style: GoogleFonts.dmMono(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: agotado ? const Color(0xFFEF4444) : bajo ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                                    ),
+                                  ),
+                                  Text(
+                                    'L.${precio.toStringAsFixed(2)}',
+                                    style: GoogleFonts.dmMono(fontSize: 12, color: const Color(0xFF737373)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFF59E0B).withValues(alpha: 0.15) : const Color(0xFF141414),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? const Color(0xFFF59E0B) : const Color(0xFF262626)),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? const Color(0xFFF59E0B) : const Color(0xFF737373),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showOptions(Map<String, dynamic> producto) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFF404040), borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            Text(producto['nombre'] ?? '', style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.edit_rounded, color: Color(0xFF3B82F6), size: 22),
+              title: Text('Editar', style: GoogleFonts.dmSans(color: Colors.white)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => ProductoForm(productoExistente: producto)));
+                _cargarProductos();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_rounded, color: Color(0xFFEF4444), size: 22),
+              title: Text('Eliminar', style: GoogleFonts.dmSans(color: const Color(0xFFEF4444))),
+              onTap: () {
+                Navigator.pop(ctx);
+                _eliminarProducto(producto['id']);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

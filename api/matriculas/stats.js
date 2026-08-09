@@ -37,7 +37,24 @@ module.exports = async function handler(req, res) {
     ? `?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}`
     : '';
 
-  const result = await supabaseRequest(`/matriculas${query}`);
+  let result = await supabaseRequest(`/matriculas${query}`);
+
+  // Si la columna empresa_codigo aún no existe (migración pendiente),
+  // traer todo y filtrar en memoria.
+  if (result.status >= 400 && empresaCodigo) {
+    const all = await supabaseRequest('/matriculas');
+    if (all.status < 400) {
+      try {
+        const rows = JSON.parse(all.body || '[]');
+        const filtered = rows.filter((r) => r.empresa_codigo === empresaCodigo);
+        result = { status: 200, body: JSON.stringify(filtered) };
+      } catch {
+        res.status(500).json({ error: 'Respuesta inválida de Supabase.' });
+        return;
+      }
+    }
+  }
+
   if (result.status >= 400) {
     res.status(result.status).json({ error: result.body });
     return;

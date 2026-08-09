@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  window_manager: ^0.4.3
   google_fonts: ^8.1.0
   intl: ^0.18.0
   shared_preferences: ^2.0.20
@@ -30,6 +31,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - lib/Areas/Educacion/img/iconos/pp.edu.png
-    - lib/Areas/Educacion/img/educacion.png
+    - lib/Modules/Educacion/img/iconos/pp.edu.png
+    - lib/Modules/Educacion/img/educacion.png
     - assets/img/

@@ -45,3 +45,8 @@ app.*.map.json
 /android/app/release
 .vercel
 .env*
+
+# Vercel env dumps (contienen secretos/tokens)
+.vercel-env
+.vercel-prod
+*.env.vercel

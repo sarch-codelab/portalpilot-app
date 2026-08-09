@@ -1,6 +1,7 @@
 # Ignore everything by default; only deploy Vercel API routes and config.
 *
-!api/
-!api/**
-!vercel.json
-!package.json
+!/.vercelignore
+!/package.json
+!/vercel.json
+!/api
+!/api/**
