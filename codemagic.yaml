@@ -1,0 +1,4 @@
+scripts:
+  - name: Build iOS IPA without signing
+    script: |
+      flutter build ipa --no-codesign
