@@ -83,6 +83,12 @@ class Modulo {
         return Icons.local_shipping_rounded;
       case 'crm_advanced':
         return Icons.groups_rounded;
+      case 'fiscal_advanced':
+        return Icons.gavel_rounded;
+      case 'seguridad':
+        return Icons.security_rounded;
+      case 'multi_empresa':
+        return Icons.business_rounded;
       default:
         return Icons.extension_rounded;
     }
@@ -126,6 +132,12 @@ class Modulo {
         return const Color(0xFF14B8A6);
       case 'crm_advanced':
         return const Color(0xFF8B5CF6);
+      case 'fiscal_advanced':
+        return const Color(0xFFDC2626);
+      case 'seguridad':
+        return const Color(0xFF6366F1);
+      case 'multi_empresa':
+        return const Color(0xFFEC4899);
       default:
         return const Color(0xFF6366F1);
     }
@@ -275,6 +287,30 @@ class Modulo {
       icono: Icons.groups_rounded,
       color: Color(0xFF8B5CF6),
       ruta: '/modules/crm_advanced',
+    ),
+    Modulo(
+      id: 'fiscal_advanced',
+      nombre: 'Fiscal Avanzado',
+      descripcion: 'Retenciones, libros contables, facturación electrónica',
+      icono: Icons.gavel_rounded,
+      color: Color(0xFFDC2626),
+      ruta: '/modules/fiscal_advanced',
+    ),
+    Modulo(
+      id: 'seguridad',
+      nombre: 'Seguridad',
+      descripcion: 'Roles granulares, auditoría, 2FA',
+      icono: Icons.security_rounded,
+      color: Color(0xFF6366F1),
+      ruta: '/modules/seguridad',
+    ),
+    Modulo(
+      id: 'multi_empresa',
+      nombre: 'Multi-Empresa',
+      descripcion: 'Holding, filiales, consolidado, tipo de cambio',
+      icono: Icons.business_rounded,
+      color: Color(0xFFEC4899),
+      ruta: '/modules/multi_empresa',
     ),
   ];
 }

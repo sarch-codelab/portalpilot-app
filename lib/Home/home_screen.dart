@@ -22,6 +22,9 @@ import 'package:portal_pilot_app/Modules/Settings/settings_home.dart';
 import 'package:portal_pilot_app/Modules/Analytics/analytics_home.dart';
 import 'package:portal_pilot_app/Modules/SupplyChain/supply_chain_home.dart';
 import 'package:portal_pilot_app/Modules/CRMAdvanced/crm_advanced_home.dart';
+import 'package:portal_pilot_app/Modules/FiscalAdvanced/fiscal_advanced_home.dart';
+import 'package:portal_pilot_app/Modules/Seguridad/seguridad_home.dart';
+import 'package:portal_pilot_app/Modules/MultiEmpresa/multi_empresa_home.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/multi_area_config.dart';
 import 'package:portal_pilot_app/Home/multi_area_config_screen.dart';
@@ -648,6 +651,15 @@ class _HomeScreenState extends State<HomeScreen>
         break;
       case 'crm_advanced':
         destination = const CRMAdvancedHome();
+        break;
+      case 'fiscal_advanced':
+        destination = const FiscalAdvancedHome();
+        break;
+      case 'seguridad':
+        destination = const SeguridadHome();
+        break;
+      case 'multi_empresa':
+        destination = const MultiEmpresaHome();
         break;
       default:
         ScaffoldMessenger.of(context).showSnackBar(
