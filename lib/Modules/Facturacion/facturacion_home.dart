@@ -9,6 +9,7 @@ import 'package:portal_pilot_app/Modules/Facturacion/reportes/reportes.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/sar_config_screen.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
+import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class FacturacionHome extends StatefulWidget {
   const FacturacionHome({super.key});
@@ -33,6 +34,15 @@ class _FacturacionHomeState extends State<FacturacionHome> {
   void initState() {
     super.initState();
     _cargarDatos();
+    appThemeNotifier.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    appThemeNotifier.removeListener(() {});
+    super.dispose();
   }
 
   Future<void> _cargarDatos() async {
@@ -91,10 +101,11 @@ class _FacturacionHomeState extends State<FacturacionHome> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: palette.bgPrimary,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF080808),
+        backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(
@@ -134,6 +145,16 @@ class _FacturacionHomeState extends State<FacturacionHome> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: const Color(0xFF10B981),
+              size: 20,
+            ),
+            onPressed: () async {
+              await appThemeNotifier.toggle();
+            },
+          ),
           IconButton(
             icon: const Icon(
               Icons.settings_outlined,

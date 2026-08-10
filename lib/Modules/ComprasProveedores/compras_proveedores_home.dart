@@ -1,0 +1,124 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+
+/// Pantalla principal del módulo de Compras y Proveedores
+class ComprasProveedoresHome extends StatefulWidget {
+  const ComprasProveedoresHome({super.key});
+
+  @override
+  State<ComprasProveedoresHome> createState() => _ComprasProveedoresHomeState();
+}
+
+class _ComprasProveedoresHomeState extends State<ComprasProveedoresHome> {
+  @override
+  void initState() {
+    super.initState();
+    appThemeNotifier.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    appThemeNotifier.removeListener(() {});
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
+    return Scaffold(
+      backgroundColor: palette.bgPrimary,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF14B8A6),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF14B8A6), Color(0xFF0D9488)]),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.shopping_cart_rounded, color: Colors.white, size: 16),
+            ),
+            const SizedBox(width: 12),
+            Text('COMPRAS Y PROVEEDORES', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () async {
+              await appThemeNotifier.toggle();
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF14B8A6).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.shopping_cart_rounded,
+                size: 80,
+                color: const Color(0xFF14B8A6),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Módulo de Compras y Proveedores',
+              style: GoogleFonts.syne(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Órdenes de compra, recepción, costeo',
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Funcionalidad en desarrollo'),
+                    backgroundColor: const Color(0xFF14B8A6),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Nueva Orden de Compra'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF14B8A6),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

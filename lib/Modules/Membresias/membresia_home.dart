@@ -3,8 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Modules/Membresias/plan_screen.dart';
 import 'package:portal_pilot_app/Modules/Membresias/precio_screen.dart';
 import 'package:portal_pilot_app/Modules/Membresias/socio_screen.dart';
+import 'package:portal_pilot_app/Modules/Membresias/puntos_recompensas.dart';
+import 'package:portal_pilot_app/Modules/Membresias/niveles_membresia.dart';
+import 'package:portal_pilot_app/Modules/Membresias/renovaciones_automaticas.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/membresia_service.dart';
+import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 /// Hub del módulo de Membresías: socios, planes y precios preferenciales.
 class MembresiaHome extends StatefulWidget {
@@ -37,11 +41,12 @@ class _MembresiaHomeState extends State<MembresiaHome> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     final d = _dashboard;
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: palette.bgPrimary,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF080808),
+        backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(
@@ -76,6 +81,18 @@ class _MembresiaHomeState extends State<MembresiaHome> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: const Color(0xFF8B5CF6),
+              size: 20,
+            ),
+            onPressed: () async {
+              await appThemeNotifier.toggle();
+            },
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _cargar,
@@ -128,6 +145,39 @@ class _MembresiaHomeState extends State<MembresiaHome> {
               () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const PrecioScreen()),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildAccion(
+              Icons.card_giftcard_rounded,
+              'Puntos y Recompensas',
+              'Sistema de puntos y canjes',
+              const Color(0xFFF59E0B),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PuntosRecompensas()),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildAccion(
+              Icons.workspace_premium_rounded,
+              'Niveles de Membresía',
+              'Beneficios escalonados por nivel',
+              const Color(0xFFCD7F32),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NivelesMembresia()),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildAccion(
+              Icons.autorenew_rounded,
+              'Renovaciones Automáticas',
+              'Gestión de renovaciones automáticas',
+              const Color(0xFF3B82F6),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RenovacionesAutomaticas()),
               ),
             ),
           ],

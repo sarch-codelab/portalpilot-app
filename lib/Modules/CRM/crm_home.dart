@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:portal_pilot_app/Modules/CRM/clientes/cliente_form.dart';
 import 'package:portal_pilot_app/Modules/CRM/clientes/cliente_list.dart';
 import 'package:portal_pilot_app/Modules/CRM/ventas/ventas_home.dart';
+import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class CrmHome extends StatefulWidget {
   const CrmHome({super.key});
@@ -24,6 +25,15 @@ class _CrmHomeState extends State<CrmHome> {
   void initState() {
     super.initState();
     _cargarDatos();
+    appThemeNotifier.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    appThemeNotifier.removeListener(() {});
+    super.dispose();
   }
 
   Future<void> _cargarDatos() async {
@@ -64,10 +74,11 @@ class _CrmHomeState extends State<CrmHome> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: palette.bgPrimary,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF080808),
+        backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF06B6D4), size: 18),
@@ -88,6 +99,18 @@ class _CrmHomeState extends State<CrmHome> {
             Text('CRM', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: const Color(0xFF06B6D4),
+              size: 20,
+            ),
+            onPressed: () async {
+              await appThemeNotifier.toggle();
+            },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {

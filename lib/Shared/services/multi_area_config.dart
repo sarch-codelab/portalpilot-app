@@ -34,26 +34,96 @@ class AreaNegocio {
   });
 }
 
-/// Catálogo estático de áreas de negocio soportadas.
+/// Catálogo estático de áreas de negocio soportadas (Honduras).
 class AreasNegocio {
+  static const String comercialGenerico = 'comercial_generico';
+  static const String retail = 'retail';
+  static const String membresias = 'membresias';
+  static const String canalTradicional = 'canal_tradicional';
+  static const String canalModerno = 'canal_moderno';
   static const String general = 'general';
-  static const String comercio = 'comercio';
-  static const String servicios = 'servicios';
   static const String educacion = 'educacion';
-  static const String salud = 'salud';
-  static const String finanzas = 'finanzas';
-  static const String produccion = 'produccion';
 
   static List<String> get todosModulos =>
       Modulo.modulosDisponibles.map((m) => m.id).toList();
 
   static const List<AreaNegocio> catalogo = [
     AreaNegocio(
+      id: comercialGenerico,
+      nombre: 'Comercial Genérico',
+      descripcion: 'Distribuidoras, mayoristas',
+      icono: Icons.local_shipping_rounded,
+      color: Color(0xFF6B7280),
+      modulosPorDefecto: [
+        'comercial',
+        'facturacion',
+        'inventario',
+        'contabilidad',
+        'crm',
+        'cotizaciones',
+      ],
+    ),
+    AreaNegocio(
+      id: retail,
+      nombre: 'Retail',
+      descripcion: 'Pulperías, abarroterías, supers',
+      icono: Icons.store_rounded,
+      color: Color(0xFFF59E0B),
+      modulosPorDefecto: [
+        'pos',
+        'facturacion',
+        'inventario',
+        'crm',
+        'contabilidad',
+      ],
+    ),
+    AreaNegocio(
+      id: membresias,
+      nombre: 'Membresías',
+      descripcion: 'PriceSmart, clubes de compra',
+      icono: Icons.card_membership_rounded,
+      color: Color(0xFF8B5CF6),
+      modulosPorDefecto: [
+        'membresias',
+        'pos',
+        'facturacion',
+        'inventario',
+        'crm',
+      ],
+    ),
+    AreaNegocio(
+      id: canalTradicional,
+      nombre: 'Canal Tradicional',
+      descripcion: 'Mercaditos barrio, fiado',
+      icono: Icons.storefront_rounded,
+      color: Color(0xFF10B981),
+      modulosPorDefecto: [
+        'pos',
+        'facturacion',
+        'crm',
+        'inventario',
+      ],
+    ),
+    AreaNegocio(
+      id: canalModerno,
+      nombre: 'Canal Moderno',
+      descripcion: 'Cadenas, multi-sucursal',
+      icono: Icons.business_rounded,
+      color: Color(0xFF3B82F6),
+      modulosPorDefecto: [
+        'pos',
+        'facturacion',
+        'inventario',
+        'contabilidad',
+        'crm',
+      ],
+    ),
+    AreaNegocio(
       id: general,
       nombre: 'General',
       descripcion: 'Todos los módulos habilitados',
       icono: Icons.grid_view_rounded,
-      color: Color(0xFF8B5CF6),
+      color: Color(0xFFEC4899),
       modulosPorDefecto: [
         'educacion',
         'facturacion',
@@ -62,29 +132,10 @@ class AreasNegocio {
         'rrhh',
         'crm',
         'pos',
+        'comercial',
+        'membresias',
+        'cotizaciones',
       ],
-    ),
-    AreaNegocio(
-      id: comercio,
-      nombre: 'Comercio',
-      descripcion: 'Ventas, facturación e inventario',
-      icono: Icons.storefront_rounded,
-      color: Color(0xFFF59E0B),
-      modulosPorDefecto: [
-        'facturacion',
-        'inventario',
-        'pos',
-        'contabilidad',
-        'crm',
-      ],
-    ),
-    AreaNegocio(
-      id: servicios,
-      nombre: 'Servicios',
-      descripcion: 'Clientes, facturación y nómina',
-      icono: Icons.support_agent_rounded,
-      color: Color(0xFF3B82F6),
-      modulosPorDefecto: ['facturacion', 'crm', 'rrhh', 'contabilidad'],
     ),
     AreaNegocio(
       id: educacion,
@@ -100,39 +151,16 @@ class AreasNegocio {
         'crm',
       ],
     ),
-    AreaNegocio(
-      id: salud,
-      nombre: 'Salud',
-      descripcion: 'Clínicas y consultorios',
-      icono: Icons.medical_services_rounded,
-      color: Color(0xFFEF4444),
-      modulosPorDefecto: ['facturacion', 'inventario', 'crm'],
-    ),
-    AreaNegocio(
-      id: finanzas,
-      nombre: 'Finanzas',
-      descripcion: 'Contabilidad y facturación',
-      icono: Icons.payments_rounded,
-      color: Color(0xFF10B981),
-      modulosPorDefecto: ['contabilidad', 'facturacion', 'inventario'],
-    ),
-    AreaNegocio(
-      id: produccion,
-      nombre: 'Producción',
-      descripcion: 'Manufactura y bodegas',
-      icono: Icons.factory_rounded,
-      color: Color(0xFFF97316),
-      modulosPorDefecto: ['inventario', 'facturacion', 'contabilidad'],
-    ),
   ];
 
-  /// Devuelve el área por id (o la "general" si no existe).
+  /// Devuelve el área por id (o retail por defecto si no existe).
   static AreaNegocio porId(String? id) {
     final normalized = (id ?? '').trim().toLowerCase();
     for (final area in catalogo) {
       if (area.id == normalized) return area;
     }
-    return catalogo.first;
+    // Fallback a retail para Honduras
+    return catalogo.firstWhere((a) => a.id == retail, orElse: () => catalogo.first);
   }
 
   /// Devuelve los módulos por defecto de un área; lista vacía si es desconocida.
@@ -153,7 +181,7 @@ class MultiAreaConfig extends ChangeNotifier {
   static final MultiAreaConfig instance = MultiAreaConfig._();
 
   String _empresaCodigo = '';
-  String _areaNegocio = AreasNegocio.general;
+  String _areaNegocio = AreasNegocio.retail;
   Set<String> _modulosActivos = {};
   bool _inicializado = false;
 

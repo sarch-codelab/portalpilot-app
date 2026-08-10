@@ -96,7 +96,7 @@ class _EducacionScreenState extends State<EducacionScreen>
 
   @override
   Widget build(BuildContext context) {
-    final p = _palette(context);
+    final p = ThemePalette(isDark: appThemeNotifier.isDark);
 
     return Scaffold(
       backgroundColor: p.bgPrimary,

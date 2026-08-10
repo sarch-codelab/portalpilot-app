@@ -355,7 +355,7 @@ class ComercialService {
         correlativo: Value(correlativo),
         proveedorId: proveedorId,
         proveedorNombre: proveedor.nombre,
-        fecha: Value(DateTime.now()),
+        fecha: DateTime.now(),
         validezDias: Value(validezDias),
         estado: const Value(EstadoCotizacion.borrador),
         subtotal: Value(subtotal),
@@ -378,7 +378,7 @@ class ComercialService {
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           cotizacionId: id,
           empresaId: empresaId,
-          productoId: p.id,
+          productoId: Value(p.id),
           productoCodigo: Value(p.codigo),
           productoNombre: p.nombre,
           descripcion: Value(p.descripcion),
@@ -477,22 +477,21 @@ class ComercialService {
 
   Future<void> _marcarCotizacionesVencidas() async {
     final ahora = DateTime.now();
-    final vencidas = await (_db.select(_db.cotizaciones)
-          ..where(
-            (c) =>
-                c.empresaId.equals(empresaId) &
-                c.estado.equals(EstadoCotizacion.enviada) &
-                c.fecha.add(Duration(days: c.validezDias)).isBefore(ahora),
-          ))
+    final todas = await (_db.select(_db.cotizaciones)
+          ..where((c) => c.empresaId.equals(empresaId) & c.estado.equals(EstadoCotizacion.enviada)))
         .get();
-    for (final c in vencidas) {
-      await (_db.update(_db.cotizaciones)..where((c2) => c2.id.equals(c.id))).write(
-        CotizacionesCompanion(
-          estado: const Value(EstadoCotizacion.vencida),
-          updatedAt: Value(DateTime.now()),
-          synced: const Value(false),
-        ),
-      );
+    
+    for (final c in todas) {
+      final fechaVencimiento = c.fecha.add(Duration(days: c.validezDias));
+      if (fechaVencimiento.isBefore(ahora)) {
+        await (_db.update(_db.cotizaciones)..where((c2) => c2.id.equals(c.id))).write(
+          CotizacionesCompanion(
+            estado: const Value(EstadoCotizacion.vencida),
+            updatedAt: Value(DateTime.now()),
+            synced: const Value(false),
+          ),
+        );
+      }
     }
   }
 
@@ -529,31 +528,6 @@ class ComercialService {
 
   Future<OrdenCompraDetalle?> getOrdenCompra(String id) async {
     final q = _db.select(_db.ordenesCompra)..where((o) => o.id.equals(id));
-    // Encolar orden de compra para sync
-    await SyncService.instance.enqueueSync(
-      tabla: 'ordenes_compra',
-      operacion: SyncOperation.insert,
-      datos: {
-        'empresa_codigo': empresaId,
-        'orden_compra': {
-          'id': id,
-          'correlativo': correlativo,
-          'proveedor_id': proveedorId,
-          'proveedor_nombre': proveedor.nombre,
-          'fecha': DateTime.now().toIso8601String(),
-          'fecha_entrega': fechaEntrega?.toIso8601String(),
-          'estado': EstadoOrdenCompra.borrador,
-          'subtotal': subtotal,
-          'isv15': isv15,
-          'isv18': isv18,
-          'descuento': descuento,
-          'total': total,
-          'notas': notas,
-          'usuario_id': usuarioId,
-        },
-      },
-      empresaId: empresaId,
-    );
     final o = await q.getSingleOrNull();
     if (o == null) return null;
     final items = await (_db.select(_db.ordenCompraItems)
@@ -609,7 +583,7 @@ class ComercialService {
         proveedorId: proveedorId,
         proveedorNombre: proveedor.nombre,
         cotizacionId: Value(cotizacionId),
-        fecha: Value(DateTime.now()),
+        fecha: DateTime.now(),
         fechaEntrega: Value(fechaEntrega),
         estado: const Value(EstadoOrdenCompra.borrador),
         subtotal: Value(subtotal),
@@ -632,7 +606,7 @@ class ComercialService {
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           ordenCompraId: id,
           empresaId: empresaId,
-          productoId: p.id,
+          productoId: Value(p.id),
           productoCodigo: Value(p.codigo),
           productoNombre: p.nombre,
           descripcion: Value(p.descripcion),
@@ -733,33 +707,6 @@ class ComercialService {
 
   Future<CompraDetalle?> getCompra(String id) async {
     final q = _db.select(_db.compras)..where((c) => c.id.equals(id));
-    // Encolar compra para sync
-    await SyncService.instance.enqueueSync(
-      tabla: 'compras',
-      operacion: SyncOperation.insert,
-      datos: {
-        'empresa_codigo': empresaId,
-        'compra': {
-          'id': id,
-          'correlativo': correlativo,
-          'proveedor_id': proveedorId,
-          'proveedor_nombre': proveedor.nombre,
-          'orden_compra_id': ordenCompraId,
-          'numero_factura': numeroFactura,
-          'fecha': DateTime.now().toIso8601String(),
-          'fecha_vencimiento': fechaVencimiento?.toIso8601String(),
-          'estado': EstadoCompra.pendiente,
-          'subtotal': subtotal,
-          'isv15': isv15,
-          'isv18': isv18,
-          'descuento': descuento,
-          'total': total,
-          'notas': notas,
-          'usuario_id': usuarioId,
-        },
-      },
-      empresaId: empresaId,
-    );
     final c = await q.getSingleOrNull();
     if (c == null) return null;
     final items = await (_db.select(_db.compraItems)
@@ -845,7 +792,7 @@ class ComercialService {
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           compraId: id,
           empresaId: empresaId,
-          productoId: p.id,
+          productoId: Value(p.id),
           productoCodigo: Value(p.codigo),
           productoNombre: p.nombre,
           descripcion: Value(p.descripcion),
@@ -970,10 +917,11 @@ class ComercialService {
     // Devolver stock si se anula
     await _db.transaction(() async {
       for (final item in detalle.items) {
-        final q = _db.select(_db.productos)..where((p) => p.id.equals(item.productoId));
+        if (item.productoId == null) continue;
+        final q = _db.select(_db.productos)..where((p) => p.id.equals(item.productoId!));
         final prod = await q.getSingleOrNull();
         if (prod != null && prod.stockActual >= item.cantidad) {
-          await (_db.update(_db.productos)..where((p) => p.id.equals(item.productoId))).write(
+          await (_db.update(_db.productos)..where((p) => p.id.equals(item.productoId!))).write(
             ProductosCompanion(
               stockActual: Value(prod.stockActual - item.cantidad),
               updatedAt: Value(DateTime.now()),

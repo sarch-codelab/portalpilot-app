@@ -11,6 +11,16 @@ import 'package:portal_pilot_app/Modules/Inventario/inventario_home.dart';
 import 'package:portal_pilot_app/Modules/RRHH/rrhh_home.dart';
 import 'package:portal_pilot_app/Modules/CRM/crm_home.dart';
 import 'package:portal_pilot_app/Modules/POS/pos_home.dart';
+import 'package:portal_pilot_app/Modules/Comercial/comercial_home.dart';
+import 'package:portal_pilot_app/Modules/Membresias/membresia_home.dart';
+import 'package:portal_pilot_app/Modules/CanalModerno/canal_moderno_home.dart';
+import 'package:portal_pilot_app/Modules/Cotizaciones/cotizaciones_home.dart';
+import 'package:portal_pilot_app/Modules/ComprasProveedores/compras_proveedores_home.dart';
+import 'package:portal_pilot_app/Modules/SectorRetail/sector_retail_home.dart';
+import 'package:portal_pilot_app/Modules/CanalTradicional/canal_tradicional_home.dart';
+import 'package:portal_pilot_app/Modules/Settings/settings_home.dart';
+import 'package:portal_pilot_app/Modules/Analytics/analytics_home.dart';
+import 'package:portal_pilot_app/Modules/SupplyChain/supply_chain_home.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/multi_area_config.dart';
 import 'package:portal_pilot_app/Home/multi_area_config_screen.dart';
@@ -121,9 +131,13 @@ class _HomeScreenState extends State<HomeScreen>
     _empresaNombre = AuthController.instance.empresaNombre.isNotEmpty
         ? AuthController.instance.empresaNombre
         : _empresaCodigo;
-    _modulosAsignados = AuthController.instance.modulos.isNotEmpty
-        ? AuthController.instance.modulos
-        : ['educacion'];
+    if (AuthController.instance.esRoot) {
+      _modulosAsignados = Modulo.modulosDisponibles.map((m) => m.id).toList();
+    } else {
+      _modulosAsignados = AuthController.instance.modulos.isNotEmpty
+          ? AuthController.instance.modulos
+          : ['educacion'];
+    }
 
     _modulosDisponibles = Modulo.modulosDisponibles
         .where((m) => _modulosAsignados.contains(m.id))
@@ -151,9 +165,10 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isMobile = size.width < 768;
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: palette.bgPrimary,
       body: Stack(
         children: [
           Container(
@@ -256,23 +271,25 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: const Color(0xFF111111),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0x29FFFFFF)),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
+              child: Tooltip(
+                message: 'Cambiar tema',
+                child: IconButton(
+                  icon: Icon(
                     appThemeNotifier.isDark
                         ? Icons.light_mode_rounded
                         : Icons.dark_mode_rounded,
                     color: const Color(0xFF8B5CF6),
                     size: 16,
                   ),
-                ],
+                  onPressed: () async {
+                    await appThemeNotifier.toggle();
+                  },
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -597,6 +614,36 @@ class _HomeScreenState extends State<HomeScreen>
         break;
       case 'pos':
         destination = const PosHome();
+        break;
+      case 'comercial':
+        destination = const ComercialHome();
+        break;
+      case 'membresias':
+        destination = const MembresiaHome();
+        break;
+      case 'canal_moderno':
+        destination = const CanalModernoHome();
+        break;
+      case 'cotizaciones':
+        destination = const CotizacionesHome();
+        break;
+      case 'compras_proveedores':
+        destination = const ComprasProveedoresHome();
+        break;
+      case 'sector_retail':
+        destination = const SectorRetailHome();
+        break;
+      case 'canal_tradicional':
+        destination = const CanalTradicionalHome();
+        break;
+      case 'settings':
+        destination = const SettingsHome();
+        break;
+      case 'analytics':
+        destination = const AnalyticsHome();
+        break;
+      case 'supply_chain':
+        destination = const SupplyChainHome();
         break;
       default:
         ScaffoldMessenger.of(context).showSnackBar(

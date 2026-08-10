@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Modules/Contabilidad/cierres_mensuales.dart';
 
 class ContabilidadHome extends StatefulWidget {
   const ContabilidadHome({super.key});
@@ -451,10 +453,11 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
     }).toList()
       ..sort((a, b) => (b['fecha'] ?? '').compareTo(a['fecha'] ?? ''));
 
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: palette.bgPrimary,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF080808),
+        backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF3B82F6), size: 18),
@@ -485,6 +488,18 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: const Color(0xFF3B82F6),
+              size: 20,
+            ),
+            onPressed: () async {
+              await appThemeNotifier.toggle();
+            },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _agregarTransaccion,

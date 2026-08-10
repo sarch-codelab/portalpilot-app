@@ -61,6 +61,26 @@ class Modulo {
         return Icons.contacts_rounded;
       case 'pos':
         return Icons.point_of_sale_rounded;
+      case 'compras_proveedores':
+        return Icons.shopping_cart_rounded;
+      case 'cotizaciones':
+        return Icons.request_quote_rounded;
+      case 'membresias':
+        return Icons.card_membership_rounded;
+      case 'canal_moderno':
+        return Icons.account_balance_rounded;
+      case 'canal_tradicional':
+        return Icons.route_rounded;
+      case 'comercial':
+        return Icons.storefront_rounded;
+      case 'sector_retail':
+        return Icons.store_rounded;
+      case 'settings':
+        return Icons.settings_rounded;
+      case 'analytics':
+        return Icons.analytics_rounded;
+      case 'supply_chain':
+        return Icons.local_shipping_rounded;
       default:
         return Icons.extension_rounded;
     }
@@ -82,6 +102,26 @@ class Modulo {
         return const Color(0xFF06B6D4);
       case 'pos':
         return const Color(0xFFF97316);
+      case 'compras_proveedores':
+        return const Color(0xFF14B8A6);
+      case 'cotizaciones':
+        return const Color(0xFFF43F5E);
+      case 'membresias':
+        return const Color(0xFF8B5CF6);
+      case 'canal_moderno':
+        return const Color(0xFF3B82F6);
+      case 'canal_tradicional':
+        return const Color(0xFF8B5CF6);
+      case 'comercial':
+        return const Color(0xFF6B7280);
+      case 'sector_retail':
+        return const Color(0xFFEC4899);
+      case 'settings':
+        return const Color(0xFF6B7280);
+      case 'analytics':
+        return const Color(0xFF6366F1);
+      case 'supply_chain':
+        return const Color(0xFF14B8A6);
       default:
         return const Color(0xFF6366F1);
     }
@@ -143,6 +183,86 @@ class Modulo {
       icono: Icons.point_of_sale_rounded,
       color: Color(0xFFF97316),
       ruta: '/modules/pos',
+    ),
+    Modulo(
+      id: 'comercial',
+      nombre: 'Comercial',
+      descripcion: 'Compras, proveedores, cotizaciones, OC',
+      icono: Icons.storefront_rounded,
+      color: Color(0xFF6B7280),
+      ruta: '/modules/comercial',
+    ),
+    Modulo(
+      id: 'membresias',
+      nombre: 'Membresías',
+      descripcion: 'Socios, precios preferenciales, vigencias',
+      icono: Icons.card_membership_rounded,
+      color: Color(0xFF8B5CF6),
+      ruta: '/modules/membresias',
+    ),
+    Modulo(
+      id: 'canal_moderno',
+      nombre: 'Canal Moderno',
+      descripcion: 'Multi-sucursal, transferencias, consolidado',
+      icono: Icons.account_balance_rounded,
+      color: Color(0xFF3B82F6),
+      ruta: '/modules/canal_moderno',
+    ),
+    Modulo(
+      id: 'canal_tradicional',
+      nombre: 'Canal Tradicional',
+      descripcion: 'Fiado, rutas de reparto',
+      icono: Icons.route_rounded,
+      color: Color(0xFF8B5CF6),
+      ruta: '/modules/canal_tradicional',
+    ),
+    Modulo(
+      id: 'cotizaciones',
+      nombre: 'Cotizaciones',
+      descripcion: 'Cotizaciones a clientes, conversión a ventas',
+      icono: Icons.request_quote_rounded,
+      color: Color(0xFFF43F5E),
+      ruta: '/modules/cotizaciones',
+    ),
+    Modulo(
+      id: 'compras_proveedores',
+      nombre: 'Compras y Proveedores',
+      descripcion: 'Órdenes de compra, recepción, costeo',
+      icono: Icons.shopping_cart_rounded,
+      color: Color(0xFF14B8A6),
+      ruta: '/modules/compras_proveedores',
+    ),
+    Modulo(
+      id: 'sector_retail',
+      nombre: 'Sector Retail',
+      descripcion: 'Precios por canal, promociones, inventario por tienda',
+      icono: Icons.store_rounded,
+      color: Color(0xFFEC4899),
+      ruta: '/modules/sector_retail',
+    ),
+    Modulo(
+      id: 'settings',
+      nombre: 'Configuración',
+      descripcion: 'Configuración fiscal, backups, logs del sistema',
+      icono: Icons.settings_rounded,
+      color: Color(0xFF6B7280),
+      ruta: '/modules/settings',
+    ),
+    Modulo(
+      id: 'analytics',
+      nombre: 'Analytics & BI',
+      descripcion: 'Dashboards gerenciales, KPIs, forecasting',
+      icono: Icons.analytics_rounded,
+      color: Color(0xFF6366F1),
+      ruta: '/modules/analytics',
+    ),
+    Modulo(
+      id: 'supply_chain',
+      nombre: 'Cadena de Suministro',
+      descripcion: 'Recepción, trazabilidad, multi-bodega',
+      icono: Icons.local_shipping_rounded,
+      color: Color(0xFF14B8A6),
+      ruta: '/modules/supply_chain',
     ),
   ];
 }

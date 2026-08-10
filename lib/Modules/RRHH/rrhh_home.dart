@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:portal_pilot_app/Modules/RRHH/empleados/empleado_form.dart';
 import 'package:portal_pilot_app/Modules/RRHH/empleados/empleado_list.dart';
 import 'package:portal_pilot_app/Modules/RRHH/nomina/nomina_home.dart';
+import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class RrhhHome extends StatefulWidget {
   const RrhhHome({super.key});
@@ -24,6 +25,15 @@ class _RrhhHomeState extends State<RrhhHome> {
   void initState() {
     super.initState();
     _cargarDatos();
+    appThemeNotifier.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    appThemeNotifier.removeListener(() {});
+    super.dispose();
   }
 
   Future<void> _cargarDatos() async {
@@ -56,10 +66,11 @@ class _RrhhHomeState extends State<RrhhHome> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: palette.bgPrimary,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF080808),
+        backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFEC4899), size: 18),
@@ -90,6 +101,18 @@ class _RrhhHomeState extends State<RrhhHome> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: const Color(0xFFEC4899),
+              size: 20,
+            ),
+            onPressed: () async {
+              await appThemeNotifier.toggle();
+            },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {

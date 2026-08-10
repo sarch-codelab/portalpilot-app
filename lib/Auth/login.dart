@@ -105,13 +105,13 @@ class _LoginScreenState extends State<LoginScreen>
       String modulos = 'educacion';
 
       if (area == 'educacion' || area == 'educación') {
-        modulos = 'educacion,facturacion,inventario,contabilidad,rrhh,crm,pos';
+        modulos = 'educacion,facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
       } else if (area == 'finanzas') {
         modulos = 'contabilidad,facturacion';
       } else if (area == 'salud') {
         modulos = 'facturacion,inventario';
       } else if (loggedUser.isRoot) {
-        modulos = 'educacion,facturacion,inventario,contabilidad,rrhh,crm,pos';
+        modulos = 'educacion,facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
       }
 
       await AuthController.instance.setSession(

@@ -3,8 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Modules/CanalModerno/consolidado_screen.dart';
 import 'package:portal_pilot_app/Modules/CanalModerno/sucursal_screen.dart';
 import 'package:portal_pilot_app/Modules/CanalModerno/transferencia_screen.dart';
+import 'package:portal_pilot_app/Modules/CanalModerno/stock_consolidado.dart';
+import 'package:portal_pilot_app/Modules/CanalModerno/cadenas_franquicias.dart';
+import 'package:portal_pilot_app/Modules/CanalModerno/precios_centralizados.dart';
+import 'package:portal_pilot_app/Modules/CanalModerno/reportes_cadena.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/canal_moderno_service.dart';
+import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 /// Hub del Canal Moderno: multi-sucursal, transferencias y consolidado.
 class CanalModernoHome extends StatefulWidget {
@@ -25,6 +30,15 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
   void initState() {
     super.initState();
     _cargar();
+    appThemeNotifier.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    appThemeNotifier.removeListener(() {});
+    super.dispose();
   }
 
   Future<void> _cargar() async {
@@ -43,10 +57,11 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: palette.bgPrimary,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF080808),
+        backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(
@@ -82,6 +97,18 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: const Color(0xFF3B82F6),
+              size: 20,
+            ),
+            onPressed: () async {
+              await appThemeNotifier.toggle();
+            },
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _cargar,
@@ -132,6 +159,50 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
               () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const ConsolidadoScreen()),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildAccion(
+              Icons.inventory_2_rounded,
+              'Stock Consolidado',
+              'Ver inventario total distribuido entre canales',
+              const Color(0xFF8B5CF6),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const StockConsolidado()),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildAccion(
+              Icons.business_rounded,
+              'Cadenas y Franquicias',
+              'Gestión de cadenas y franquicias',
+              const Color(0xFFEC4899),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CadenasFranquicias()),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildAccion(
+              Icons.price_check_rounded,
+              'Precios Centralizados',
+              'Centralización de precios',
+              const Color(0xFF6366F1),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PreciosCentralizados()),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildAccion(
+              Icons.bar_chart_rounded,
+              'Reportes por Cadena',
+              'Reportes consolidados por cadena',
+              const Color(0xFF14B8A6),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportesCadena()),
               ),
             ),
           ],

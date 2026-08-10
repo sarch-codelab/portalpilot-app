@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/canal_tradicional_service.dart';
+import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 /// Rutas de reparto / visita del Canal Tradicional.
 /// CRUD de rutas y asignación de clientes a cada ruta.
@@ -23,7 +24,16 @@ class _RutaScreenState extends State<RutaScreen> {
   @override
   void initState() {
     super.initState();
+    appThemeNotifier.addListener(() {
+      if (mounted) setState(() {});
+    });
     _cargar();
+  }
+
+  @override
+  void dispose() {
+    appThemeNotifier.removeListener(() {});
+    super.dispose();
   }
 
   Future<void> _cargar() async {
@@ -43,10 +53,11 @@ class _RutaScreenState extends State<RutaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: palette.bgPrimary,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF080808),
+        backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(

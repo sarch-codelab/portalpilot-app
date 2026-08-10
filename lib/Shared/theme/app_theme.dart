@@ -31,20 +31,21 @@ class ThemePalette {
 
   ThemePalette({required this.isDark});
 
-  Color get bgPrimary => isDark ? const Color(0xFF000000) : const Color(0xFFF0F0F5);
-  Color get bgSecondary => isDark ? const Color(0xFF080808) : const Color(0xFFE8E8EE);
-  Color get bgTertiary => isDark ? const Color(0xFF0F0F0F) : const Color(0xFFDDDDE5);
+  Color get bgPrimary => isDark ? const Color(0xFF000000) : const Color(0xFFF8F9FA);
+  Color get bgSecondary => isDark ? const Color(0xFF080808) : const Color(0xFFE9ECEF);
+  Color get bgTertiary => isDark ? const Color(0xFF0F0F0F) : const Color(0xFFDEE2E6);
   Color get cardColor => isDark ? const Color(0xFF111111) : const Color(0xFFFFFFFF);
   Color get borderLight => isDark ? const Color(0x29FFFFFF) : const Color(0x1A000000);
+  Color get appBarColor => isDark ? const Color(0xFF080808) : const Color(0xFFFFFFFF);
 
   Color get accentPurple => const Color(0xFF8B5CF6);
   Color get accentPurpleDark => const Color(0xFF6D28D9);
   Color get accentPurpleLight => const Color(0xFFA78BFA);
   Color get accentPurpleDeep => const Color(0xFF5B21B6);
 
-  Color get textPrimary => isDark ? const Color(0xFFFFFFFF) : const Color(0xFF000000);
-  Color get textMuted => isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280);
-  Color get textDark => isDark ? const Color(0xFF525252) : const Color(0xFF9CA3AF);
+  Color get textPrimary => isDark ? const Color(0xFFFFFFFF) : const Color(0xFF212529);
+  Color get textMuted => isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6C757D);
+  Color get textDark => isDark ? const Color(0xFF525252) : const Color(0xFF495057);
 
   Color get successGreen => const Color(0xFF10B981);
   Color get warningAmber => const Color(0xFFF59E0B);

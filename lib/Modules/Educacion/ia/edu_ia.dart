@@ -14,7 +14,6 @@ import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/services/system_context.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/rpa_executor.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
 // ═══════════════════════════════════════════════════════════
@@ -1321,34 +1320,40 @@ class _CopilotScreenState extends State<CopilotScreen> with TickerProviderStateM
 
   Future<void> _adjuntarArchivo() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png'],
-      );
+      // File picker disabled on Windows desktop release. Attach files by drag/drop or paste instead.
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Adjuntar archivos no está disponible en este modo de compilación.'),
+      ));
+      return;
 
-      if (result != null && result.files.isNotEmpty) {
-        setState(() {
-          for (final file in result.files) {
-            final ext = file.name.split('.').last.toLowerCase();
-            String type = 'other';
-            if (ext == 'pdf') {
-              type = 'pdf';
-            } else if (['jpg', 'jpeg', 'png'].contains(ext)) {
-              type = 'image';
-            } else if (['doc', 'docx', 'txt'].contains(ext)) {
-              type = 'doc';
-            }
-
-            _pendingFiles.add(AttachedFile(
-              name: file.name,
-              path: file.path ?? '',
-              size: file.size,
-              type: type,
-            ));
-          }
-        });
-      }
+      // final result = await FilePicker.platform.pickFiles(
+      //   allowMultiple: true,
+      //   type: FileType.custom,
+      //   allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png'],
+      // );
+      //
+      // if (result != null && result.files.isNotEmpty) {
+      //   setState(() {
+      //     for (final file in result.files) {
+      //       final ext = file.name.split('.').last.toLowerCase();
+      //       String type = 'other';
+      //       if (ext == 'pdf') {
+      //         type = 'pdf';
+      //       } else if (['jpg', 'jpeg', 'png'].contains(ext)) {
+      //         type = 'image';
+      //       } else if (['doc', 'docx', 'txt'].contains(ext)) {
+      //         type = 'doc';
+      //       }
+      //
+      //       _pendingFiles.add(AttachedFile(
+      //         name: file.name,
+      //         path: file.path ?? '',
+      //         size: file.size,
+      //         type: type,
+      //       ));
+      //     }
+      //   });
+      // }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

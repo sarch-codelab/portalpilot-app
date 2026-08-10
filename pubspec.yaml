@@ -17,9 +17,9 @@ dependencies:
   http: ^1.2.0
   posthog_flutter: ^5.30.0
   supabase_flutter: ^2.16.0
-  file_picker: ^6.1.1
+  # file_picker: ^6.1.1  # disabled for Windows release build (native implementations conflict)
   flutter_markdown: ^0.6.18
-  speech_to_text: ^6.6.0
+  # speech_to_text: ^6.6.0  # disabled for Windows
   share_plus: ^7.2.1
   path_provider: ^2.1.1
   connectivity_plus: ^6.0.3
@@ -35,7 +35,7 @@ dependencies:
   pdf: ^3.10.7                    # Generar PDF tickets
   printing: ^5.11.0               # Imprimir PDF
   image: ^4.1.7                   # Procesar logo para ticket
-  flutter_sound: ^9.2.13          # Sonido confirmación venta
+  # flutter_sound: ^9.2.13          # Sonido confirmación venta
 
 dev_dependencies:
   flutter_test:
