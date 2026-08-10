@@ -96,13 +96,24 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
   Future<void> _cargarProductos() async {
     setState(() => _isLoading = true);
     
-    final productos = await _localDb.getProductos(_auth.empresaCodigo);
-    
-    if (mounted) {
-      setState(() {
-        _productos = productos;
-        _isLoading = false;
-      });
+    try {
+      final productos = await _localDb.getProductos(_auth.empresaCodigo);
+      
+      if (mounted) {
+        setState(() {
+          _productos = productos;
+          _isLoading = false;
+        });
+      }
+      
+      if (productos.isEmpty) {
+        _mostrarSnackBar('No hay productos cargados. Ve a Inventario para agregar productos.', isError: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      _mostrarSnackBar('Error cargando productos: $e', isError: true);
     }
   }
 
@@ -357,7 +368,12 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
           facing: CameraFacing.back,
           torchEnabled: false,
         );
+        // Iniciar el escáner después de crear el controlador
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _scannerController?.start();
+        });
       } else {
+        _scannerController?.stop();
         _scannerController?.dispose();
         _scannerController = null;
       }
@@ -582,7 +598,8 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
         ? _productos
         : _productos.where((p) => 
             (p.nombre ?? '').toLowerCase().contains(_searchQuery) || 
-            (p.codigo ?? '').toLowerCase().contains(_searchQuery)
+            (p.codigo ?? '').toLowerCase().contains(_searchQuery) ||
+            (p.descripcion ?? '').toLowerCase().contains(_searchQuery)
           ).toList();
 
     if (_isLoading) {
@@ -596,9 +613,15 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
           children: [
             Icon(Icons.inventory_2_rounded, color: const Color(0xFF262626), size: 60),
             const SizedBox(height: 12),
-            Text('Sin productos', style: GoogleFonts.dmSans(fontSize: 16, color: const Color(0xFF525252))),
+            Text(
+              _searchQuery.isEmpty ? 'Sin productos' : 'No se encontraron productos',
+              style: GoogleFonts.dmSans(fontSize: 16, color: const Color(0xFF525252)),
+            ),
             const SizedBox(height: 6),
-            Text('Agrega productos desde Inventario', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF404040))),
+            Text(
+              _searchQuery.isEmpty ? 'Agrega productos desde Inventario' : 'Intenta con otra búsqueda',
+              style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF404040)),
+            ),
           ],
         ),
       );
