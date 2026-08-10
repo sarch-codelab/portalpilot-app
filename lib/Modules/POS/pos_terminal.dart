@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/pos_service.dart';
@@ -97,6 +99,9 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
     setState(() => _isLoading = true);
     
     try {
+      // Inicializar base de datos local si no está inicializada
+      await _localDb.initialize();
+      
       final productos = await _localDb.getProductos(_auth.empresaCodigo);
       
       if (mounted) {
@@ -104,16 +109,70 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
           _productos = productos;
           _isLoading = false;
         });
-      }
-      
-      if (productos.isEmpty) {
-        _mostrarSnackBar('No hay productos cargados. Ve a Inventario para agregar productos.', isError: true);
+        
+        debugPrint('✅ Cargados ${productos.length} productos de base de datos local');
+        
+        if (productos.isEmpty) {
+          // Fallback: intentar cargar desde SharedPreferences
+          await _cargarProductosFromSharedPreferences();
+        } else {
+          // Mostrar primeros productos para debugging
+          if (productos.length > 0) {
+            debugPrint('Primeros productos: ${productos.take(3).map((p) => p.nombre).toList()}');
+          }
+        }
       }
     } catch (e) {
+      debugPrint('❌ Error cargando productos: $e');
+      // Fallback a SharedPreferences en caso de error
+      await _cargarProductosFromSharedPreferences();
+      
       if (mounted) {
         setState(() => _isLoading = false);
       }
-      _mostrarSnackBar('Error cargando productos: $e', isError: true);
+    }
+  }
+
+  Future<void> _cargarProductosFromSharedPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final productosJson = prefs.getString('productos_pos') ?? '[]';
+      final List<dynamic> productosData = jsonDecode(productosJson);
+      
+      // Convertir a formato Producto
+      final productosFallback = productosData.map((p) => Producto(
+        id: p['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        empresaId: _auth.empresaCodigo,
+        codigo: p['codigo']?.toString(),
+        nombre: p['nombre']?.toString() ?? '',
+        descripcion: p['descripcion']?.toString(),
+        precioCosto: (p['precioCosto'] as num?)?.toDouble() ?? 0.0,
+        precioVenta: (p['precioVenta'] as num?)?.toDouble() ?? 0.0,
+        stock: (p['stock'] as num?)?.toInt() ?? 0,
+        isvRate: (p['isvRate'] as num?)?.toDouble() ?? 15.0,
+        activo: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      )).toList();
+      
+      if (mounted) {
+        setState(() {
+          _productos = productosFallback;
+          _isLoading = false;
+        });
+        
+        debugPrint('✅ Cargados ${productosFallback.length} productos de SharedPreferences (fallback)');
+        
+        if (productosFallback.isNotEmpty) {
+          _mostrarSnackBar('Usando productos locales de respaldo', isError: false);
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error cargando productos fallback: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      _mostrarSnackBar('No hay productos disponibles. Agrega productos desde Inventario.', isError: true);
     }
   }
 
@@ -368,9 +427,11 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
           facing: CameraFacing.back,
           torchEnabled: false,
         );
-        // Iniciar el escáner después de crear el controlador
-        Future.delayed(const Duration(milliseconds: 100), () {
-          _scannerController?.start();
+        // Iniciar el escáner inmediatamente
+        _scannerController?.start().catchError((error) {
+          debugPrint('Error iniciando escáner: $error');
+          _mostrarSnackBar('Error iniciando cámara: $error', isError: true);
+          setState(() => _showScanner = false);
         });
       } else {
         _scannerController?.stop();
@@ -485,6 +546,29 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
         MobileScanner(
           controller: _scannerController,
           onDetect: _onBarcodeDetected,
+          errorBuilder: (context, error, child) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error de cámara: $error',
+                    style: GoogleFonts.dmSans(color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      _toggleScanner();
+                    },
+                    child: Text('Reintentar', style: GoogleFonts.dmSans()),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
         Positioned(
           top: 20,

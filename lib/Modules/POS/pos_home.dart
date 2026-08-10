@@ -142,7 +142,7 @@ class _PosHomeState extends State<PosHome> {
   Widget _buildStatsGrid() {
     return GridView.count(
       crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.2,
+      mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 3.0,
       children: [
         _buildStatCard('Ventas Hoy', '$_totalVentas', Icons.receipt_rounded, const Color(0xFFF97316)),
         _buildStatCard('Ingresos', 'L.${_formatNumber(_ventasHoy)}', Icons.attach_money_rounded, const Color(0xFF10B981)),
