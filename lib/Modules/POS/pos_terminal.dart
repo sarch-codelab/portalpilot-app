@@ -140,21 +140,33 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
       final List<dynamic> productosData = jsonDecode(productosJson);
       
       // Convertir a formato Producto
-      final productosFallback = productosData.map((p) => Producto(
-        id: p['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
-        empresaId: _auth.empresaCodigo,
-        codigo: p['codigo']?.toString(),
-        nombre: p['nombre']?.toString() ?? '',
-        descripcion: p['descripcion']?.toString(),
-        precioCompra: (p['precioCompra'] as num?)?.toDouble() ?? 0.0,
-        precioVenta: (p['precioVenta'] as num?)?.toDouble() ?? 0.0,
-        stockMinimo: (p['stockMinimo'] as num?)?.toInt() ?? 0,
-        stockActual: (p['stockActual'] as num?)?.toInt() ?? 0,
-        isvRate: (p['isvRate'] as num?)?.toDouble() ?? 15.0,
-        activo: true,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      )).toList();
+      final productosFallback = <Producto>[];
+      for (final p in productosData) {
+        try {
+          productosFallback.add(Producto(
+            id: p['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+            empresaId: _auth.empresaCodigo,
+            codigo: p['codigo']?.toString(),
+            nombre: p['nombre']?.toString() ?? '',
+            descripcion: p['descripcion']?.toString(),
+            categoria: p['categoria']?.toString(),
+            unidadMedida: p['unidadMedida']?.toString() ?? 'Unidad',
+            precioCompra: (p['precioCompra'] as num?)?.toDouble() ?? 0.0,
+            precioVenta: (p['precioVenta'] as num?)?.toDouble() ?? 0.0,
+            stockMinimo: (p['stockMinimo'] as num?)?.toInt() ?? 0,
+            stockActual: (p['stockActual'] as num?)?.toInt() ?? 0,
+            bodega: p['bodega']?.toString() ?? 'General',
+            isvRate: (p['isvRate'] as num?)?.toDouble() ?? 15.0,
+            exento: (p['exento'] as bool?) ?? false,
+            imagenUrl: p['imagenUrl']?.toString(),
+            activo: true,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ));
+        } catch (e) {
+          debugPrint('Error convirtiendo producto $p: $e');
+        }
+      }
       
       if (mounted) {
         setState(() {
