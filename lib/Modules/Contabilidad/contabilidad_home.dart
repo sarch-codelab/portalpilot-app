@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Modules/Contabilidad/cierres_mensuales.dart';
+import 'package:portal_pilot_app/Modules/Contabilidad/conciliacion_bancaria.dart';
+import 'package:portal_pilot_app/Modules/Contabilidad/configuracion_impuestos.dart';
 
 class ContabilidadHome extends StatefulWidget {
   const ContabilidadHome({super.key});
@@ -521,6 +523,37 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
             const SizedBox(height: 14),
             _buildResumenMensual(),
             const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildQuickAction(
+                    Icons.calendar_month_rounded,
+                    'Cierres Mensuales',
+                    const Color(0xFF8B5CF6),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CierresMensuales())),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildQuickAction(
+                    Icons.account_balance_rounded,
+                    'Conciliacion',
+                    const Color(0xFF3B82F6),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ConciliacionBancaria())),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildQuickAction(
+                    Icons.percent_rounded,
+                    'Impuestos',
+                    const Color(0xFF10B981),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ConfiguracionImpuestos())),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
             Text(
               'ÚLTIMAS TRANSACCIONES',
               style: GoogleFonts.syne(
@@ -662,6 +695,31 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
           style: GoogleFonts.dmMono(fontSize: 15, fontWeight: FontWeight.w700, color: color),
         ),
       ],
+    );
+  }
+
+  Widget _buildQuickAction(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141414),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF262626)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFFA3A3A3)),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 

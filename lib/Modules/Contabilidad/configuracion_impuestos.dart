@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
-class Recepcion extends StatefulWidget {
-  const Recepcion({super.key});
+class ConfiguracionImpuestos extends StatefulWidget {
+  const ConfiguracionImpuestos({super.key});
 
   @override
-  State<Recepcion> createState() => _RecepcionState();
+  State<ConfiguracionImpuestos> createState() => _ConfiguracionImpuestosState();
 }
 
-class _RecepcionState extends State<Recepcion> {
-  List<Map<String, dynamic>> _recepciones = [
-    {'id': '1', 'proveedor': 'Distribuidora Nacional', 'producto': 'Arroz Premium 5kg', 'cantidad': 100, 'fecha': '2026-08-10', 'estado': 'Completado'},
-    {'id': '2', 'proveedor': 'Importadora Centro', 'producto': 'Aceite Vegetal 1L', 'cantidad': 50, 'fecha': '2026-08-09', 'estado': 'Pendiente'},
-    {'id': '3', 'proveedor': 'Fabrica Lacteos', 'producto': 'Leche Entera 1L', 'cantidad': 200, 'fecha': '2026-08-08', 'estado': 'Completado'},
+class _ConfiguracionImpuestosState extends State<ConfiguracionImpuestos> {
+  List<Map<String, dynamic>> _impuestos = [
+    {'id': '1', 'nombre': 'ISV (IVA)', 'tasa': 15.0, 'tipo': 'Ventas', 'descripcion': 'Impuesto Sobre Ventas'},
+    {'id': '2', 'nombre': 'ISR', 'tasa': 25.0, 'tipo': 'Retencion', 'descripcion': 'Impuesto Sobre Renta'},
+    {'id': '3', 'nombre': 'Timbre Fiscal', 'tasa': 0.5, 'tipo': 'Fijo', 'descripcion': 'Timbre de L.0.50 por factura'},
   ];
 
   @override
@@ -39,15 +39,15 @@ class _RecepcionState extends State<Recepcion> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF14B8A6), size: 18),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF8B5CF6), size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Recepcion de Mercancia', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text('Configuracion de Impuestos', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
         actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-              color: const Color(0xFF14B8A6),
+              color: const Color(0xFF8B5CF6),
               size: 20,
             ),
             onPressed: () async {
@@ -58,23 +58,25 @@ class _RecepcionState extends State<Recepcion> {
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _recepciones.length,
+        itemCount: _impuestos.length,
         itemBuilder: (context, index) {
-          final recepcion = _recepciones[index];
-          return _buildRecepcionCard(recepcion, palette);
+          final impuesto = _impuestos[index];
+          return _buildImpuestoCard(impuesto, palette);
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddRecepcionDialog(),
-        backgroundColor: const Color(0xFF14B8A6),
+        onPressed: () => _showAddImpuestoDialog(),
+        backgroundColor: const Color(0xFF8B5CF6),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Nueva Recepcion', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text('Nuevo Impuesto', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
       ),
     );
   }
 
-  Widget _buildRecepcionCard(Map<String, dynamic> recepcion, ThemePalette palette) {
-    final estadoColor = recepcion['estado'] == 'Completado' ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+  Widget _buildImpuestoCard(Map<String, dynamic> impuesto, ThemePalette palette) {
+    final tipoColor = impuesto['tipo'] == 'Ventas' ? const Color(0xFF10B981) : 
+                     impuesto['tipo'] == 'Retencion' ? const Color(0xFFEF4444) : 
+                     const Color(0xFF8B5CF6);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -91,7 +93,7 @@ class _RecepcionState extends State<Recepcion> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                recepcion['producto'],
+                impuesto['nombre'],
                 style: GoogleFonts.syne(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -101,15 +103,15 @@ class _RecepcionState extends State<Recepcion> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: estadoColor.withValues(alpha: 0.1),
+                  color: tipoColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  recepcion['estado'],
+                  impuesto['tipo'],
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: estadoColor,
+                    color: tipoColor,
                   ),
                 ),
               ),
@@ -119,16 +121,14 @@ class _RecepcionState extends State<Recepcion> {
           Row(
             children: [
               Expanded(
-                child: _buildInfoRow('Proveedor', recepcion['proveedor']),
+                child: _buildInfoRow('Tasa', '${impuesto['tasa'].toStringAsFixed(1)}%'),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildInfoRow('Cantidad', '${recepcion['cantidad']} unidades'),
+                child: _buildInfoRow('Descripcion', impuesto['descripcion']),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          _buildInfoRow('Fecha', recepcion['fecha']),
         ],
       ),
     );
@@ -158,45 +158,63 @@ class _RecepcionState extends State<Recepcion> {
     );
   }
 
-  void _showAddRecepcionDialog() {
-    final proveedorController = TextEditingController();
-    final productoController = TextEditingController();
-    final cantidadController = TextEditingController();
+  void _showAddImpuestoDialog() {
+    final nombreController = TextEditingController();
+    final tasaController = TextEditingController();
+    final descripcionController = TextEditingController();
+    String tipo = 'Ventas';
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Nueva Recepcion', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        title: Text('Nuevo Impuesto', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: proveedorController,
+              controller: nombreController,
               decoration: InputDecoration(
-                labelText: 'Proveedor',
+                labelText: 'Nombre del impuesto',
                 labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
                 border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: productoController,
-              decoration: InputDecoration(
-                labelText: 'Producto',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: cantidadController,
+              controller: tasaController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Cantidad',
+                labelText: 'Tasa (%)',
                 labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
                 border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
               ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descripcionController,
+              decoration: InputDecoration(
+                labelText: 'Descripcion',
+                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
+                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: tipo,
+              decoration: InputDecoration(
+                labelText: 'Tipo',
+                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
+                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'Ventas', child: Text('Ventas')),
+                DropdownMenuItem(value: 'Retencion', child: Text('Retencion')),
+                DropdownMenuItem(value: 'Fijo', child: Text('Fijo')),
+              ],
+              onChanged: (value) {
+                tipo = value ?? 'Ventas';
+              },
             ),
           ],
         ),
@@ -208,18 +226,17 @@ class _RecepcionState extends State<Recepcion> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                _recepciones.add({
+                _impuestos.add({
                   'id': DateTime.now().toString(),
-                  'proveedor': proveedorController.text,
-                  'producto': productoController.text,
-                  'cantidad': int.tryParse(cantidadController.text) ?? 0,
-                  'fecha': DateTime.now().toString().substring(0, 10),
-                  'estado': 'Pendiente',
+                  'nombre': nombreController.text,
+                  'tasa': double.tryParse(tasaController.text) ?? 0.0,
+                  'tipo': tipo,
+                  'descripcion': descripcionController.text,
                 });
               });
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF14B8A6)),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
             child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
           ),
         ],
