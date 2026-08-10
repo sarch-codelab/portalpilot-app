@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/services/factura_pdf_service.dart';
+import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 
 class FacturaDetalle extends StatelessWidget {
   final Map<String, dynamic> factura;
@@ -36,7 +38,11 @@ class FacturaDetalle extends StatelessWidget {
         backgroundColor: const Color(0xFF080808),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF10B981), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF10B981),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -49,6 +55,26 @@ class FacturaDetalle extends StatelessWidget {
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Imprimir PDF',
+            icon: const Icon(
+              Icons.print_rounded,
+              color: Color(0xFF10B981),
+              size: 20,
+            ),
+            onPressed: () => _imprimir(context),
+          ),
+          IconButton(
+            tooltip: 'Compartir PDF',
+            icon: const Icon(
+              Icons.share_rounded,
+              color: Color(0xFF38BDF8),
+              size: 20,
+            ),
+            onPressed: () => _compartir(context),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -76,7 +102,10 @@ class FacturaDetalle extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: estadoColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
@@ -96,9 +125,12 @@ class FacturaDetalle extends StatelessWidget {
                 const SizedBox(height: 16),
                 _buildInfoRow('Tipo', factura['tipo_documento'] ?? 'Factura'),
                 _buildInfoRow('Correlativo', factura['correlativo'] ?? ''),
-                _buildInfoRow('Fecha', dt != null
-                    ? '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}'
-                    : fecha),
+                _buildInfoRow(
+                  'Fecha',
+                  dt != null
+                      ? '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}'
+                      : fecha,
+                ),
                 const Divider(color: Color(0xFF262626), height: 20),
                 _buildInfoRow('Empresa', factura['empresa_nombre'] ?? ''),
                 _buildInfoRow('RTN Empresa', factura['empresa_rtn'] ?? ''),
@@ -127,10 +159,19 @@ class FacturaDetalle extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildInfoRow('Nombre', factura['cliente_nombre'] ?? 'Cliente general'),
+                _buildInfoRow(
+                  'Nombre',
+                  factura['cliente_nombre'] ?? 'Cliente general',
+                ),
                 _buildInfoRow('RTN', factura['cliente_rtn'] ?? 'N/A'),
-                _buildInfoRow('Dirección', factura['cliente_direccion'] ?? 'N/A'),
-                _buildInfoRow('Condición de Pago', factura['condicion_pago'] ?? 'Contado'),
+                _buildInfoRow(
+                  'Dirección',
+                  factura['cliente_direccion'] ?? 'N/A',
+                ),
+                _buildInfoRow(
+                  'Condición de Pago',
+                  factura['condicion_pago'] ?? 'Contado',
+                ),
               ],
             ),
           ),
@@ -156,10 +197,14 @@ class FacturaDetalle extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 if (items.isEmpty)
-                  Text('Sin conceptos', style: GoogleFonts.dmSans(color: const Color(0xFF737373)))
+                  Text(
+                    'Sin conceptos',
+                    style: GoogleFonts.dmSans(color: const Color(0xFF737373)),
+                  )
                 else
                   ...items.map((item) {
-                    final cantidad = (item['cantidad'] as num?)?.toDouble() ?? 0;
+                    final cantidad =
+                        (item['cantidad'] as num?)?.toDouble() ?? 0;
                     final precio = (item['precio'] as num?)?.toDouble() ?? 0;
                     final lineaTotal = cantidad * precio;
                     final isvRate = (item['isv'] as num?)?.toDouble() ?? 15.0;
@@ -189,7 +234,10 @@ class FacturaDetalle extends StatelessWidget {
                                 const SizedBox(height: 2),
                                 Text(
                                   '${cantidad.toInt()} x L.${precio.toStringAsFixed(2)}  •  ISV ${isvRate.toInt()}%',
-                                  style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
+                                  style: GoogleFonts.dmMono(
+                                    fontSize: 11,
+                                    color: const Color(0xFF737373),
+                                  ),
                                 ),
                               ],
                             ),
@@ -215,18 +263,36 @@ class FacturaDetalle extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF10B981).withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.15)),
+              border: Border.all(
+                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+              ),
             ),
             child: Column(
               children: [
-                _buildSummaryRow('Subtotal', 'L.${subtotal.toStringAsFixed(2)}', const Color(0xFFA3A3A3)),
+                _buildSummaryRow(
+                  'Subtotal',
+                  'L.${subtotal.toStringAsFixed(2)}',
+                  const Color(0xFFA3A3A3),
+                ),
                 const SizedBox(height: 6),
-                _buildSummaryRow('ISV 15%', 'L.${isv15.toStringAsFixed(2)}', const Color(0xFF3B82F6)),
+                _buildSummaryRow(
+                  'ISV 15%',
+                  'L.${isv15.toStringAsFixed(2)}',
+                  const Color(0xFF3B82F6),
+                ),
                 const SizedBox(height: 6),
-                _buildSummaryRow('ISV 18%', 'L.${isv18.toStringAsFixed(2)}', const Color(0xFFF59E0B)),
+                _buildSummaryRow(
+                  'ISV 18%',
+                  'L.${isv18.toStringAsFixed(2)}',
+                  const Color(0xFFF59E0B),
+                ),
                 if (descuento > 0) ...[
                   const SizedBox(height: 6),
-                  _buildSummaryRow('Descuento', '-L.${descuento.toStringAsFixed(2)}', const Color(0xFFEF4444)),
+                  _buildSummaryRow(
+                    'Descuento',
+                    '-L.${descuento.toStringAsFixed(2)}',
+                    const Color(0xFFEF4444),
+                  ),
                 ],
                 const Divider(color: Color(0xFF262626), height: 16),
                 Row(
@@ -259,6 +325,72 @@ class FacturaDetalle extends StatelessWidget {
     );
   }
 
+  Future<void> _imprimir(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final config = await SarService.instance.getConfiguracion();
+    if (config == null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Configurá los datos del CAI para imprimir',
+            style: GoogleFonts.dmSans(),
+          ),
+          backgroundColor: const Color(0xFFF59E0B),
+        ),
+      );
+      return;
+    }
+    try {
+      await FacturaPdfService.instance.imprimir(
+        factura: factura,
+        config: config,
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'No se pudo imprimir la factura',
+            style: GoogleFonts.dmSans(),
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
+  Future<void> _compartir(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final config = await SarService.instance.getConfiguracion();
+    if (config == null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Configurá los datos del CAI para compartir',
+            style: GoogleFonts.dmSans(),
+          ),
+          backgroundColor: const Color(0xFFF59E0B),
+        ),
+      );
+      return;
+    }
+    try {
+      await FacturaPdfService.instance.compartir(
+        factura: factura,
+        config: config,
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'No se pudo compartir la factura',
+            style: GoogleFonts.dmSans(),
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -269,7 +401,10 @@ class FacturaDetalle extends StatelessWidget {
             width: 110,
             child: Text(
               label,
-              style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373)),
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                color: const Color(0xFF737373),
+              ),
             ),
           ),
           Expanded(
@@ -287,7 +422,13 @@ class FacturaDetalle extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFA3A3A3))),
+        Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 13,
+            color: const Color(0xFFA3A3A3),
+          ),
+        ),
         Text(value, style: GoogleFonts.dmMono(fontSize: 13, color: color)),
       ],
     );

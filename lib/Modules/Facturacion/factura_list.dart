@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_form.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_detalle.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 
 class FacturaList extends StatefulWidget {
   const FacturaList({super.key});
@@ -31,10 +32,19 @@ class _FacturaListState extends State<FacturaList> {
     final facturasJson = prefs.getString('facturas') ?? '[]';
     final locales = List<Map<String, dynamic>>.from(jsonDecode(facturasJson));
 
+    for (final f in locales) {
+      f.putIfAbsent('contingencia', () => false);
+    }
+
     setState(() {
       _facturas = locales;
       _aplicarFiltros();
     });
+
+    // Dispara la cola de sincronización offline (pendientes -> Supabase).
+    try {
+      await LocalDatabaseService.instance.forceSyncNow();
+    } catch (_) {}
 
     try {
       final empresa = prefs.getString('company_code') ?? '';
@@ -77,7 +87,9 @@ class _FacturaListState extends State<FacturaList> {
     List<Map<String, dynamic>> resultado = List.from(_facturas);
 
     if (_filtroEstado != 'Todos') {
-      resultado = resultado.where((f) => f['estado'] == _filtroEstado.toLowerCase()).toList();
+      resultado = resultado
+          .where((f) => f['estado'] == _filtroEstado.toLowerCase())
+          .toList();
     }
 
     if (_busqueda.isNotEmpty) {
@@ -98,9 +110,13 @@ class _FacturaListState extends State<FacturaList> {
         case 'fecha_asc':
           return (a['fecha'] ?? '').compareTo(b['fecha'] ?? '');
         case 'monto_desc':
-          return ((b['total'] as num?) ?? 0).compareTo((a['total'] as num?) ?? 0);
+          return ((b['total'] as num?) ?? 0).compareTo(
+            (a['total'] as num?) ?? 0,
+          );
         case 'monto_asc':
-          return ((a['total'] as num?) ?? 0).compareTo((b['total'] as num?) ?? 0);
+          return ((a['total'] as num?) ?? 0).compareTo(
+            (b['total'] as num?) ?? 0,
+          );
         default:
           return 0;
       }
@@ -127,9 +143,15 @@ class _FacturaListState extends State<FacturaList> {
     try {
       final prefsEmpresa = await SharedPreferences.getInstance();
       final empresa = prefsEmpresa.getString('company_code') ?? '';
-      final serverId = facturas.firstWhere((f) => f['id'] == id, orElse: () => {})['server_id'];
+      final serverId = facturas.firstWhere(
+        (f) => f['id'] == id,
+        orElse: () => {},
+      )['server_id'];
       if (empresa.isNotEmpty && serverId != null) {
-        await PortalPilotDB.anularFactura(id: serverId.toString(), empresaCodigo: empresa);
+        await PortalPilotDB.anularFactura(
+          id: serverId.toString(),
+          empresaCodigo: empresa,
+        );
       }
     } catch (_) {}
 
@@ -144,7 +166,11 @@ class _FacturaListState extends State<FacturaList> {
         backgroundColor: const Color(0xFF080808),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF10B981), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF10B981),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -159,18 +185,48 @@ class _FacturaListState extends State<FacturaList> {
         centerTitle: true,
         actions: [
           PopupMenuButton<String>(
-            icon: const Icon(Icons.sort_rounded, color: Color(0xFF737373), size: 20),
+            icon: const Icon(
+              Icons.sort_rounded,
+              color: Color(0xFF737373),
+              size: 20,
+            ),
             onSelected: (v) {
               setState(() => _ordenarPor = v);
               _aplicarFiltros();
             },
             color: const Color(0xFF1A1A1A),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             itemBuilder: (_) => [
-              PopupMenuItem(value: 'fecha_desc', child: Text('Más recientes', style: GoogleFonts.dmSans(color: Colors.white))),
-              PopupMenuItem(value: 'fecha_asc', child: Text('Más antiguas', style: GoogleFonts.dmSans(color: Colors.white))),
-              PopupMenuItem(value: 'monto_desc', child: Text('Mayor monto', style: GoogleFonts.dmSans(color: Colors.white))),
-              PopupMenuItem(value: 'monto_asc', child: Text('Menor monto', style: GoogleFonts.dmSans(color: Colors.white))),
+              PopupMenuItem(
+                value: 'fecha_desc',
+                child: Text(
+                  'Más recientes',
+                  style: GoogleFonts.dmSans(color: Colors.white),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'fecha_asc',
+                child: Text(
+                  'Más antiguas',
+                  style: GoogleFonts.dmSans(color: Colors.white),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'monto_desc',
+                child: Text(
+                  'Mayor monto',
+                  style: GoogleFonts.dmSans(color: Colors.white),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'monto_asc',
+                child: Text(
+                  'Menor monto',
+                  style: GoogleFonts.dmSans(color: Colors.white),
+                ),
+              ),
             ],
           ),
         ],
@@ -188,7 +244,11 @@ class _FacturaListState extends State<FacturaList> {
               decoration: InputDecoration(
                 hintText: 'Buscar por correlativo, cliente o RTN...',
                 hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
-                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF404040), size: 20),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: Color(0xFF404040),
+                  size: 20,
+                ),
                 filled: true,
                 fillColor: const Color(0xFF141414),
                 border: OutlineInputBorder(
@@ -203,7 +263,10 @@ class _FacturaListState extends State<FacturaList> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Color(0xFF10B981)),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
               ),
             ),
           ),
@@ -235,12 +298,19 @@ class _FacturaListState extends State<FacturaList> {
                 _aplicarFiltros();
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: selected ? const Color(0xFF10B981).withValues(alpha: 0.15) : const Color(0xFF141414),
+                  color: selected
+                      ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                      : const Color(0xFF141414),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: selected ? const Color(0xFF10B981) : const Color(0xFF262626),
+                    color: selected
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFF262626),
                   ),
                 ),
                 child: Text(
@@ -248,7 +318,9 @@ class _FacturaListState extends State<FacturaList> {
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    color: selected ? const Color(0xFF10B981) : const Color(0xFF737373),
+                    color: selected
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFF737373),
                   ),
                 ),
               ),
@@ -270,19 +342,30 @@ class _FacturaListState extends State<FacturaList> {
               color: const Color(0xFF10B981).withValues(alpha: 0.06),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF10B981), size: 40),
+            child: const Icon(
+              Icons.receipt_long_rounded,
+              color: Color(0xFF10B981),
+              size: 40,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
             'No hay facturas',
-            style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
+            style: GoogleFonts.syne(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             _busqueda.isNotEmpty || _filtroEstado != 'Todos'
                 ? 'No se encontraron resultados para este filtro'
                 : 'Creá tu primera factura desde el módulo de facturación',
-            style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF737373)),
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              color: const Color(0xFF737373),
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -320,7 +403,9 @@ class _FacturaListState extends State<FacturaList> {
           onTap: () async {
             await Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => FacturaDetalle(factura: factura)),
+              MaterialPageRoute(
+                builder: (_) => FacturaDetalle(factura: factura),
+              ),
             );
             _cargarFacturas();
           },
@@ -338,7 +423,8 @@ class _FacturaListState extends State<FacturaList> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 40, height: 4,
+                        width: 40,
+                        height: 4,
                         decoration: BoxDecoration(
                           color: const Color(0xFF404040),
                           borderRadius: BorderRadius.circular(2),
@@ -355,19 +441,38 @@ class _FacturaListState extends State<FacturaList> {
                       ),
                       const SizedBox(height: 16),
                       ListTile(
-                        leading: const Icon(Icons.edit_rounded, color: Color(0xFF3B82F6), size: 22),
-                        title: Text('Editar', style: GoogleFonts.dmSans(color: Colors.white)),
+                        leading: const Icon(
+                          Icons.edit_rounded,
+                          color: Color(0xFF3B82F6),
+                          size: 22,
+                        ),
+                        title: Text(
+                          'Editar',
+                          style: GoogleFonts.dmSans(color: Colors.white),
+                        ),
                         onTap: () {
                           Navigator.pop(ctx);
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => FacturaForm(facturaExistente: factura)),
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  FacturaForm(facturaExistente: factura),
+                            ),
                           ).then((_) => _cargarFacturas());
                         },
                       ),
                       ListTile(
-                        leading: const Icon(Icons.cancel_rounded, color: Color(0xFFEF4444), size: 22),
-                        title: Text('Anular', style: GoogleFonts.dmSans(color: const Color(0xFFEF4444))),
+                        leading: const Icon(
+                          Icons.cancel_rounded,
+                          color: Color(0xFFEF4444),
+                          size: 22,
+                        ),
+                        title: Text(
+                          'Anular',
+                          style: GoogleFonts.dmSans(
+                            color: const Color(0xFFEF4444),
+                          ),
+                        ),
                         onTap: () {
                           Navigator.pop(ctx);
                           _confirmarAnulacion(factura['id']);
@@ -418,7 +523,10 @@ class _FacturaListState extends State<FacturaList> {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: estadoColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
@@ -433,17 +541,52 @@ class _FacturaListState extends State<FacturaList> {
                               ),
                             ),
                           ),
+                          if (factura['contingencia'] == true) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFFF59E0B,
+                                ).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFFF59E0B,
+                                  ).withValues(alpha: 0.35),
+                                ),
+                              ),
+                              child: Text(
+                                'CONTINGENCIA',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFFF59E0B),
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
                         factura['cliente_nombre'] ?? 'Sin cliente',
-                        style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFA3A3A3)),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: const Color(0xFFA3A3A3),
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         _formatearFecha(fecha),
-                        style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF525252)),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: const Color(0xFF525252),
+                        ),
                       ),
                     ],
                   ),
@@ -453,7 +596,9 @@ class _FacturaListState extends State<FacturaList> {
                   style: GoogleFonts.dmMono(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: estado == 'anulada' ? const Color(0xFF737373) : const Color(0xFF10B981),
+                    color: estado == 'anulada'
+                        ? const Color(0xFF737373)
+                        : const Color(0xFF10B981),
                   ),
                 ),
               ],
@@ -472,7 +617,10 @@ class _FacturaListState extends State<FacturaList> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           '¿Anular factura?',
-          style: GoogleFonts.syne(fontWeight: FontWeight.w800, color: Colors.white),
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
         ),
         content: Text(
           'Esta acción no se puede deshacer. La factura quedará marcada como anulada.',
@@ -481,15 +629,23 @@ class _FacturaListState extends State<FacturaList> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFF737373))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFF737373)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
               _anularFactura(id);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
-            child: Text('Anular', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+            child: Text(
+              'Anular',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

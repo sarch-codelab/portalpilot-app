@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
+import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 import 'package:portal_pilot_app/Shared/services/window_manager.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/launch_screen.dart';
@@ -8,10 +10,13 @@ import 'package:portal_pilot_app/launch_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await LocalDatabaseService.instance.initialize();
+  await SarService.instance.initialize();
+
   try {
     await PortalPilotDB.initialize();
   } catch (e) {
-    debugPrint('Error al inicializar Supabase: $e');
+    debugPrint('Error al inicializar backend: $e');
   }
 
   runApp(const PortalPilotApp());
@@ -76,12 +81,18 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
             primaryColor: const Color(0xFF7C3AED),
             scaffoldBackgroundColor: const Color(0xFFF0F0F5),
           ),
-          home: _windowRestored ? const SplashScreen() : const Scaffold(
-            backgroundColor: Color(0xFF000000),
-            body: Center(
-              child: Icon(Icons.blur_on_rounded, color: Color(0xFF8B5CF6), size: 40),
-            ),
-          ),
+          home: _windowRestored
+              ? const SplashScreen()
+              : const Scaffold(
+                  backgroundColor: Color(0xFF000000),
+                  body: Center(
+                    child: Icon(
+                      Icons.blur_on_rounded,
+                      color: Color(0xFF8B5CF6),
+                      size: 40,
+                    ),
+                  ),
+                ),
         );
       },
     );

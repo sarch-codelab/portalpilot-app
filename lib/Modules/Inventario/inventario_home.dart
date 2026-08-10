@@ -6,6 +6,7 @@ import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
 import 'package:portal_pilot_app/Modules/Inventario/producto_list.dart';
 import 'package:portal_pilot_app/Modules/Inventario/kardex.dart';
 import 'package:portal_pilot_app/Modules/Inventario/bodegas.dart';
+import 'package:portal_pilot_app/Modules/CanalModerno/canal_moderno_home.dart';
 
 class InventarioHome extends StatefulWidget {
   const InventarioHome({super.key});
@@ -242,6 +243,10 @@ class _InventarioHomeState extends State<InventarioHome> {
         _buildActionRow(Icons.warehouse_rounded, 'Bodegas', 'Gestionar almacenes', const Color(0xFF8B5CF6), () async {
           await Navigator.push(context, MaterialPageRoute(builder: (_) => const BodegasScreen()));
           _cargarDatos();
+        }),
+        const SizedBox(height: 8),
+        _buildActionRow(Icons.account_balance_rounded, 'Canal Moderno', 'Multi-sucursal, transferencias y consolidado', const Color(0xFF0EA5E9), () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const CanalModernoHome()));
         }),
       ],
     );

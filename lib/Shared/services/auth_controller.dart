@@ -19,6 +19,7 @@ class AuthController extends ChangeNotifier {
   String _rango = '';
   String _empresaCodigo = 'ROOT';
   String _empresaNombre = '';
+  String _empresaAreaNegocio = '';
   String _token = '';
   List<String> _modulos = const [];
   bool _isLoggedIn = false;
@@ -31,6 +32,7 @@ class AuthController extends ChangeNotifier {
   String get rango => _rango;
   String get empresaCodigo => _empresaCodigo;
   String get empresaNombre => _empresaNombre;
+  String get empresaAreaNegocio => _empresaAreaNegocio;
   String get token => _token;
   bool get isLoggedIn => _isLoggedIn;
   List<String> get modulos => _modulos;
@@ -58,10 +60,15 @@ class AuthController extends ChangeNotifier {
     _rango = prefs.getString('user_rango') ?? '';
     _empresaCodigo = prefs.getString('company_code') ?? 'ROOT';
     _empresaNombre = prefs.getString('empresa_nombre') ?? '';
+    _empresaAreaNegocio = prefs.getString('empresa_area_negocio') ?? '';
     _token = prefs.getString('auth_token') ?? '';
     final modulosRaw = prefs.getString('user_modulos') ?? '';
     _modulos = modulosRaw.isNotEmpty
-        ? modulosRaw.split(',').map((m) => m.trim()).where((m) => m.isNotEmpty).toList()
+        ? modulosRaw
+              .split(',')
+              .map((m) => m.trim())
+              .where((m) => m.isNotEmpty)
+              .toList()
         : const ['educacion'];
     _isLoggedIn = _token.isNotEmpty;
     notifyListeners();
@@ -79,6 +86,7 @@ class AuthController extends ChangeNotifier {
     required String empresaNombre,
     required String token,
     List<String>? modulos,
+    String? empresaAreaNegocio,
   }) async {
     _nombre = nombre;
     _apellido = apellido;
@@ -88,6 +96,7 @@ class AuthController extends ChangeNotifier {
     _rango = rango;
     _empresaCodigo = empresaCodigo.toUpperCase();
     _empresaNombre = empresaNombre;
+    _empresaAreaNegocio = (empresaAreaNegocio ?? '').trim().toLowerCase();
     _token = token;
     _isLoggedIn = true;
     if (modulos != null) _modulos = modulos;
@@ -102,6 +111,7 @@ class AuthController extends ChangeNotifier {
     await prefs.setString('user_nombre', nombre);
     await prefs.setString('user_apellido', apellido);
     await prefs.setString('empresa_nombre', empresaNombre);
+    await prefs.setString('empresa_area_negocio', _empresaAreaNegocio);
     await prefs.setString('auth_token', token);
     await prefs.setString('user_modulos', _modulos.join(','));
     notifyListeners();
@@ -127,6 +137,7 @@ class AuthController extends ChangeNotifier {
     _rango = '';
     _empresaCodigo = 'ROOT';
     _empresaNombre = '';
+    _empresaAreaNegocio = '';
     _token = '';
     _modulos = const [];
     _isLoggedIn = false;
@@ -140,6 +151,7 @@ class AuthController extends ChangeNotifier {
     await prefs.remove('user_nombre');
     await prefs.remove('user_apellido');
     await prefs.remove('empresa_nombre');
+    await prefs.remove('empresa_area_negocio');
     await prefs.remove('auth_token');
     await prefs.remove('user_modulos');
     notifyListeners();

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/multi_area_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:portal_pilot_app/Home/home_screen.dart';
@@ -98,6 +99,8 @@ class _LoginScreenState extends State<LoginScreen>
         throw Exception('Tu cuenta está pendiente de activación por el Owner.');
       }
 
+      final String areaNegocio = _areaNegocioDesdeRespuesta(response, userJson);
+
       final area = (loggedUser.area ?? '').toLowerCase();
       String modulos = 'educacion';
 
@@ -122,6 +125,12 @@ class _LoginScreenState extends State<LoginScreen>
         empresaNombre: loggedUser.empresaNombre ?? '',
         token: token,
         modulos: modulos.split(',').map((m) => m.trim()).toList(),
+        empresaAreaNegocio: areaNegocio,
+      );
+
+      await MultiAreaConfig.instance.cargar(
+        areaNegocio: areaNegocio,
+        modulosAsignados: modulos.split(',').map((m) => m.trim()).toList(),
       );
 
       _notificationManager.showNotification(
@@ -145,6 +154,27 @@ class _LoginScreenState extends State<LoginScreen>
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Extrae empresa.area_negocio de la respuesta del backend (si existe).
+  String _areaNegocioDesdeRespuesta(
+    Map<String, dynamic> response,
+    Map<String, dynamic> userJson,
+  ) {
+    final empresa = response['empresa'];
+    if (empresa is Map<String, dynamic>) {
+      final v = empresa['area_negocio'];
+      if (v != null && v.toString().trim().isNotEmpty) {
+        return v.toString().trim();
+      }
+    }
+    for (final key in ['area_negocio', 'empresa_area_negocio']) {
+      final v = response[key] ?? userJson[key];
+      if (v != null && v.toString().trim().isNotEmpty) {
+        return v.toString().trim();
+      }
+    }
+    return '';
   }
 
   Future<void> _handleRegister() async {
@@ -354,7 +384,9 @@ class _LoginScreenState extends State<LoginScreen>
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: accentPurple.withValues(alpha: 0.5 * _pulseAnimation.value),
+                color: accentPurple.withValues(
+                  alpha: 0.5 * _pulseAnimation.value,
+                ),
                 blurRadius: 30,
                 spreadRadius: 2,
               ),
@@ -441,7 +473,11 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             child: Center(
               child: active
-                  ? const Icon(Icons.check_rounded, color: textPrimary, size: 16)
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: textPrimary,
+                      size: 16,
+                    )
                   : Text(
                       '$step',
                       style: GoogleFonts.spaceGrotesk(
@@ -582,7 +618,7 @@ class _LoginScreenState extends State<LoginScreen>
             },
           ),
           const SizedBox(height: 16),
-            _buildInputField(
+          _buildInputField(
             label: 'CONTRASEÑA',
             hint: '••••••••',
             controller: _passwordController,
@@ -626,10 +662,7 @@ class _LoginScreenState extends State<LoginScreen>
                     const SizedBox(width: 8),
                     Text(
                       'Recordarme',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        color: textMuted,
-                      ),
+                      style: GoogleFonts.dmSans(fontSize: 12, color: textMuted),
                     ),
                   ],
                 ),
@@ -787,10 +820,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.dmSans(
-                fontSize: 14,
-                color: textDark,
-              ),
+              hintStyle: GoogleFonts.dmSans(fontSize: 14, color: textDark),
               prefixIcon: Icon(prefixIcon, color: textMuted, size: 18),
               suffixIcon: suffixIcon,
               border: InputBorder.none,
@@ -798,10 +828,7 @@ class _LoginScreenState extends State<LoginScreen>
                 horizontal: 16,
                 vertical: 14,
               ),
-              errorStyle: GoogleFonts.dmSans(
-                fontSize: 11,
-                color: errorRed,
-              ),
+              errorStyle: GoogleFonts.dmSans(fontSize: 11, color: errorRed),
             ),
           ),
         ),
@@ -922,7 +949,8 @@ class NotificationManager extends ChangeNotifier {
   final List<NotificationModel> _notifications = [];
   final Map<int, Timer> _timers = {};
 
-  List<NotificationModel> get notifications => List.unmodifiable(_notifications);
+  List<NotificationModel> get notifications =>
+      List.unmodifiable(_notifications);
 
   void showNotification(String message, NotificationType type) {
     final notification = NotificationModel(
@@ -1106,10 +1134,7 @@ class _NotificationProgressBar extends StatefulWidget {
   final Color color;
   final Duration duration;
 
-  const _NotificationProgressBar({
-    required this.color,
-    required this.duration,
-  });
+  const _NotificationProgressBar({required this.color, required this.duration});
 
   @override
   State<_NotificationProgressBar> createState() =>
@@ -1123,10 +1148,8 @@ class _NotificationProgressBarState extends State<_NotificationProgressBar>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    )..forward();
+    _controller = AnimationController(duration: widget.duration, vsync: this)
+      ..forward();
   }
 
   @override
@@ -1154,7 +1177,10 @@ class _NotificationProgressBarState extends State<_NotificationProgressBar>
                   width: constraints.maxWidth * (1 - _controller.value),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [widget.color, widget.color.withValues(alpha: 0.7)],
+                      colors: [
+                        widget.color,
+                        widget.color.withValues(alpha: 0.7),
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(2),
                     boxShadow: [

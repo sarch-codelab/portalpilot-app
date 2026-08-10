@@ -12,6 +12,8 @@ import 'package:portal_pilot_app/Modules/RRHH/rrhh_home.dart';
 import 'package:portal_pilot_app/Modules/CRM/crm_home.dart';
 import 'package:portal_pilot_app/Modules/POS/pos_home.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/multi_area_config.dart';
+import 'package:portal_pilot_app/Home/multi_area_config_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -69,18 +71,28 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF111111),
-        title: const Text('Cerrar sesión',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text('¿Seguro que deseas salir de tu cuenta?',
-            style: TextStyle(color: Color(0xFFA3A3A3))),
+        title: const Text(
+          'Cerrar sesión',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          '¿Seguro que deseas salir de tu cuenta?',
+          style: TextStyle(color: Color(0xFFA3A3A3)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar', style: TextStyle(color: Color(0xFFA3A3A3))),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Color(0xFFA3A3A3)),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Salir', style: TextStyle(color: Color(0xFFEF4444))),
+            child: const Text(
+              'Salir',
+              style: TextStyle(color: Color(0xFFEF4444)),
+            ),
           ),
         ],
       ),
@@ -97,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadUserData() async {
     await AuthController.instance.restore();
+    await MultiAreaConfig.instance.cargar();
     if (mounted) {
       setState(() => _applySession());
     }
@@ -120,6 +133,17 @@ class _HomeScreenState extends State<HomeScreen>
       _modulosDisponibles = Modulo.modulosDisponibles
           .where((m) => m.id == 'educacion')
           .toList();
+    }
+
+    // Multi-área: filtra por feature flags de la empresa (configuración admin).
+    if (MultiAreaConfig.instance.inicializado) {
+      final visibles = Modulo.modulosDisponibles.where((m) {
+        return _modulosAsignados.contains(m.id) &&
+            MultiAreaConfig.instance.moduloActivo(m.id);
+      }).toList();
+      if (visibles.isNotEmpty) {
+        _modulosDisponibles = visibles;
+      }
     }
   }
 
@@ -252,6 +276,26 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             const SizedBox(width: 12),
+            if (AuthController.instance.esRoot)
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111111),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0x29FFFFFF)),
+                ),
+                child: Tooltip(
+                  message: 'Configuración Multi-Área',
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.settings_rounded,
+                      color: Color(0xFF8B5CF6),
+                      size: 18,
+                    ),
+                    onPressed: () => _openMultiAreaConfig(),
+                  ),
+                ),
+              ),
+            const SizedBox(width: 12),
             Container(
               decoration: BoxDecoration(
                 color: const Color(0xFF111111),
@@ -341,6 +385,36 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ),
+            const SizedBox(width: 8),
+            if (MultiAreaConfig.instance.inicializado)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: MultiAreaConfig.instance.areaInfo.color.withValues(
+                    alpha: 0.15,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      MultiAreaConfig.instance.areaInfo.icono,
+                      color: MultiAreaConfig.instance.areaInfo.color,
+                      size: 11,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      MultiAreaConfig.instance.areaInfo.nombre,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: MultiAreaConfig.instance.areaInfo.color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 20),
@@ -486,6 +560,19 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  void _openMultiAreaConfig() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const MultiAreaConfigScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   void _openModule(Modulo modulo) {
     Widget destination;
 
@@ -530,10 +617,7 @@ class _HomeScreenState extends State<HomeScreen>
         transitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (context, animation, secondaryAnimation) => destination,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
     );

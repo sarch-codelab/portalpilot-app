@@ -6,6 +6,9 @@ import 'package:portal_pilot_app/Modules/POS/pos_terminal.dart';
 import 'package:portal_pilot_app/Modules/POS/pos_historial.dart';
 import 'package:portal_pilot_app/Modules/POS/pos_reportes.dart';
 import 'package:portal_pilot_app/Modules/Inventario/producto_list.dart';
+import 'package:portal_pilot_app/Modules/CanalTradicional/fiado_screen.dart';
+import 'package:portal_pilot_app/Modules/CanalTradicional/ruta_screen.dart';
+import 'package:portal_pilot_app/Modules/Membresias/membresia_home.dart';
 
 class PosHome extends StatefulWidget {
   const PosHome({super.key});
@@ -167,6 +170,18 @@ class _PosHomeState extends State<PosHome> {
         const SizedBox(height: 8),
         _buildActionRow(Icons.analytics_rounded, 'Reportes', 'Estadísticas de ventas', const Color(0xFF8B5CF6), () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const PosReportes()));
+        }),
+        const SizedBox(height: 8),
+        _buildActionRow(Icons.account_balance_wallet_rounded, 'Fiado · Cuentas por Cobrar', 'Saldos, abonos y límites de crédito', const Color(0xFF10B981), () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const FiadoScreen()));
+        }),
+        const SizedBox(height: 8),
+        _buildActionRow(Icons.route_rounded, 'Rutas', 'Rutas de reparto y clientes asignados', const Color(0xFF8B5CF6), () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const RutaScreen()));
+        }),
+        const SizedBox(height: 8),
+        _buildActionRow(Icons.badge_rounded, 'Membresías', 'Socios, precios preferenciales y vigencias', const Color(0xFF8B5CF6), () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const MembresiaHome()));
         }),
       ],
     );
