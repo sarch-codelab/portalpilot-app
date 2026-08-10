@@ -10,6 +10,12 @@ class ConfiguracionSeguridad extends StatefulWidget {
 }
 
 class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
+  bool _2FAHabilitado = true;
+  bool _sesionUnica = true;
+  bool _bloqueoIntentos = true;
+  int _intentosMaximos = 5;
+  int _tiempoBloqueo = 15;
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +42,7 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFF59E0B), size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Configuración de Seguridad', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text('Configuracion de Seguridad', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
         actions: [
           IconButton(
             icon: Icon(
@@ -50,33 +56,226 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildSecurityCard(
+            Icons.verified_user_rounded,
+            'Autenticacion de Dos Factores (2FA)',
+            'Proteccion adicional para iniciar sesion',
+            _2FAHabilitado,
+            (value) => setState(() => _2FAHabilitado = value),
+          ),
+          const SizedBox(height: 12),
+          _buildSecurityCard(
+            Icons.devices_rounded,
+            'Sesion Unica',
+            'Permitir solo una sesion activa por usuario',
+            _sesionUnica,
+            (value) => setState(() => _sesionUnica = value),
+          ),
+          const SizedBox(height: 12),
+          _buildSecurityCard(
+            Icons.lock_rounded,
+            'Bloqueo por Intentos',
+            'Bloquear cuenta tras intentos fallidos',
+            _bloqueoIntentos,
+            (value) => setState(() => _bloqueoIntentos = value),
+          ),
+          const SizedBox(height: 20),
+          if (_bloqueoIntentos) ...[
+            _buildSettingsCard(
+              'Intentos Maximos',
+              '$_intentosMaximos intentos',
+              Icons.numbers_rounded,
+              () => _showIntentosDialog(),
+            ),
+            const SizedBox(height: 12),
+            _buildSettingsCard(
+              'Tiempo de Bloqueo',
+              '$_tiempoBloqueo minutos',
+              Icons.timer_rounded,
+              () => _showTiempoDialog(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecurityCard(IconData icon, String title, String subtitle, bool value, Function(bool) onChanged) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B), size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.syne(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: const Color(0xFFF59E0B),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard(String title, String value, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
           children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: const Color(0xFF8B5CF6), size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.syne(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Icon(
-              Icons.verified_user_rounded,
-              size: 64,
-              color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '2FA y Políticas',
-              style: GoogleFonts.syne(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: appThemeNotifier.isDark ? Colors.white : Colors.black,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Configuración avanzada de seguridad',
-              style: GoogleFonts.dmSans(
-                color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
-              ),
+              Icons.arrow_forward_ios_rounded,
+              color: appThemeNotifier.isDark ? const Color(0xFF525252) : const Color(0xFF9CA3AF),
+              size: 16,
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showIntentosDialog() {
+    final controller = TextEditingController(text: _intentosMaximos.toString());
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        title: Text('Intentos Maximos', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Numero de intentos',
+            labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
+            border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() => _intentosMaximos = int.tryParse(controller.text) ?? 5);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTiempoDialog() {
+    final controller = TextEditingController(text: _tiempoBloqueo.toString());
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        title: Text('Tiempo de Bloqueo', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Minutos',
+            labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
+            border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() => _tiempoBloqueo = int.tryParse(controller.text) ?? 15);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
