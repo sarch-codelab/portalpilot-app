@@ -81,6 +81,8 @@ class Modulo {
         return Icons.analytics_rounded;
       case 'supply_chain':
         return Icons.local_shipping_rounded;
+      case 'crm_advanced':
+        return Icons.groups_rounded;
       default:
         return Icons.extension_rounded;
     }
@@ -122,6 +124,8 @@ class Modulo {
         return const Color(0xFF6366F1);
       case 'supply_chain':
         return const Color(0xFF14B8A6);
+      case 'crm_advanced':
+        return const Color(0xFF8B5CF6);
       default:
         return const Color(0xFF6366F1);
     }
@@ -263,6 +267,14 @@ class Modulo {
       icono: Icons.local_shipping_rounded,
       color: Color(0xFF14B8A6),
       ruta: '/modules/supply_chain',
+    ),
+    Modulo(
+      id: 'crm_advanced',
+      nombre: 'CRM Avanzado',
+      descripcion: 'Leads, oportunidades, campañas, segmentación',
+      icono: Icons.groups_rounded,
+      color: Color(0xFF8B5CF6),
+      ruta: '/modules/crm_advanced',
     ),
   ];
 }
