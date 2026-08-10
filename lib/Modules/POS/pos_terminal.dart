@@ -160,6 +160,7 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
             exento: (p['exento'] as bool?) ?? false,
             imagenUrl: p['imagenUrl']?.toString(),
             activo: true,
+            synced: false,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           ));
