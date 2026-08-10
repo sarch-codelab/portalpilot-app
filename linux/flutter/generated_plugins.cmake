@@ -3,7 +3,6 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  flutter_sound
   gtk
   printing
   screen_retriever_linux
