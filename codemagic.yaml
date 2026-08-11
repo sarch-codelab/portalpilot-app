@@ -11,3 +11,21 @@ workflows:
           flutter build web --release
     artifacts:
       - build/web/**
+
+  ios-workflow:
+    name: Build Flutter iOS IPA
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      ios_signing:
+        distribution_type: ad_hoc
+        bundle_identifier: com.example.portalPilotApp
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Configure iOS code signing
+        script: xcode-project use-profiles
+      - name: Build signed IPA
+        script: flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
