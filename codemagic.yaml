@@ -1,24 +1,11 @@
 workflows:
-  ios-workflow:
-    name: Build iOS IPA without signing
-    max_build_duration: 60
+  web-workflow:
+    name: Build Flutter Web
     instance_type: mac_mini_m1
-    environment:
-      flutter: stable
-      xcode: latest
     scripts:
-      - name: Get Flutter packages
+      - name: Build Web
         script: |
           flutter packages pub get
-      - name: Pod install
-        script: |
-          find . -name "Podfile" -execdir pod install \;
-      - name: Build iOS App and create IPA
-        script: |
-          flutter build ios --release --no-codesign
-          cd build/ios/iphoneos
-          mkdir Payload
-          mv Runner.app Payload/
-          zip -r Payload.ipa Payload
+          flutter build web --release
     artifacts:
-      - build/ios/iphoneos/Payload.ipa
+      - build/web/**
