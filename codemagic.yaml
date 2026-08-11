@@ -2,6 +2,8 @@ workflows:
   web-workflow:
     name: Build Flutter Web
     instance_type: mac_mini_m1
+    environment:
+      flutter: stable
     scripts:
       - name: Build Web
         script: |
