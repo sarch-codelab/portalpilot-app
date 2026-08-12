@@ -688,24 +688,45 @@ async function productosHandler(req, res) {
         if (empresaId) p.empresa_id = empresaId;
       });
 
-      let result;
-      try {
-        result = await supabaseRequest(
-          '/productos?on_conflict=empresa_codigo,codigo',
-          {
-            method: 'POST',
-            body: JSON.stringify(payloads),
-            headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-          }
-        );
-      } catch (e) {
-        result = { status: 0, body: '' };
+      // Upsert manual idempotente por (empresa_codigo, codigo):
+      // el on_conflict requiere un constraint UNIQUE que aún no existe en la tabla.
+      const results = [];
+      const errores = [];
+      for (const payload of payloads) {
+        const codigo = payload.codigo;
+        if (!codigo) {
+          const r = await supabaseRequest('/productos', { method: 'POST', body: JSON.stringify(payload) });
+          if (r.status >= 400) { errores.push(r.body); continue; }
+          const inserted = JSON.parse(r.body || '[]');
+          results.push(...(Array.isArray(inserted) ? inserted : [inserted]));
+          continue;
+        }
+
+        const filtro = `/productos?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&codigo=eq.${encodeURIComponent(codigo)}&select=id`;
+        const existing = await supabaseRequest(filtro);
+        let rows = [];
+        try { rows = JSON.parse(existing.body || '[]'); } catch {}
+
+        if (existing.status < 400 && rows.length > 0) {
+          const { id: _ignored, ...update } = payload;
+          const r = await supabaseRequest(`/productos?id=eq.${encodeURIComponent(rows[0].id)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ ...update, updated_at: new Date().toISOString() }),
+          });
+          if (r.status >= 400) { errores.push(r.body); continue; }
+          results.push({ id: rows[0].id, ...payload });
+        } else {
+          const r = await supabaseRequest('/productos', { method: 'POST', body: JSON.stringify(payload) });
+          if (r.status >= 400) { errores.push(r.body); continue; }
+          const inserted = JSON.parse(r.body || '[]');
+          results.push(...(Array.isArray(inserted) ? inserted : [inserted]));
+        }
       }
-      if (result.status >= 400) {
-        result = await supabaseRequest('/productos', { method: 'POST', body: JSON.stringify(payloads) });
+
+      if (results.length === 0 && errores.length > 0) {
+        return fail(res, { message: errores.join(' | ') });
       }
-      if (result.status >= 400) return fail(res, { message: result.body });
-      return ok(res, { success: true, data: JSON.parse(result.body) }, 201);
+      return ok(res, { success: true, data: results, errores }, 201);
     }
 
     if (req.method === 'DELETE') {

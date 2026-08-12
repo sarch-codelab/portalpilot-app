@@ -173,6 +173,22 @@ ALTER TABLE productos ADD COLUMN IF NOT EXISTS empresa_id UUID;
 CREATE INDEX IF NOT EXISTS idx_productos_empresa_codigo ON productos(empresa_codigo);
 CREATE INDEX IF NOT EXISTS idx_productos_nombre ON productos(nombre);
 
+-- 4.1 PRODUCTOS: dedupe + constraint UNIQUE (evita duplicados en el futuro).
+-- Los endpoints serverless ya hacen upsert manual por (empresa_codigo, codigo);
+-- este índice es la garantía definitiva a nivel de base de datos.
+-- Primero elimina duplicados previos conservando el registro más reciente:
+DELETE FROM productos a
+USING productos b
+WHERE a.empresa_codigo = b.empresa_codigo
+  AND a.codigo = b.codigo
+  AND (
+    a.updated_at < b.updated_at
+    OR (a.updated_at = b.updated_at AND a.id::text > b.id::text)
+  );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_productos_empresa_codigo_codigo
+  ON productos(empresa_codigo, codigo);
+
 DROP TRIGGER IF EXISTS trigger_productos_updated ON productos;
 CREATE TRIGGER trigger_productos_updated BEFORE UPDATE ON productos
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

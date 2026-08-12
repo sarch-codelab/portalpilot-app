@@ -179,7 +179,7 @@ class _ProductoFormState extends State<ProductoForm> {
     String? code;
     if (capture.raw is String && (capture.raw as String).isNotEmpty) {
       code = capture.raw as String;
-    } else if (capture.barcades.isNotEmpty) {
+    } else if (capture.barcodes.isNotEmpty) {
       code = capture.barcodes.first.rawValue;
     }
     
@@ -286,9 +286,10 @@ class _ProductoFormState extends State<ProductoForm> {
     final json = prefs.getString('productos') ?? '[]';
     final List<dynamic> productos = jsonDecode(json);
 
-    if (widget.productoExistente != null) {
-      final idx = productos.indexWhere((p) => p['id'] == producto['id']);
-      if (idx >= 0) productos[idx] = producto;
+    final idx = productos.indexWhere((p) =>
+        (codigo.isNotEmpty && p['codigo'] == codigo) || p['id'] == producto['id']);
+    if (idx >= 0) {
+      productos[idx] = producto;
     } else {
       productos.add(producto);
     }
@@ -317,9 +318,10 @@ class _ProductoFormState extends State<ProductoForm> {
       'created_at': producto['created_at'],
     };
     
-    if (widget.productoExistente != null) {
-      final idx = productosPos.indexWhere((p) => p['id'] == producto['id']);
-      if (idx >= 0) productosPos[idx] = productoPos;
+    final idxPos = productosPos.indexWhere((p) =>
+        (codigo.isNotEmpty && p['codigo'] == codigo) || p['id'] == producto['id']);
+    if (idxPos >= 0) {
+      productosPos[idxPos] = productoPos;
     } else {
       productosPos.add(productoPos);
     }
@@ -453,12 +455,10 @@ class _ProductoFormState extends State<ProductoForm> {
         ),
         centerTitle: true,
       ),
-      body: Stack(
+      body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _buildSection('Información Básica'),
+          _buildSection('Información Básica'),
               const SizedBox(height: 8),
               _buildImagenPicker(),
               const SizedBox(height: 16),

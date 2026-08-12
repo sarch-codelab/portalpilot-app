@@ -296,13 +296,35 @@ class LocalDatabaseService {
   Future<void> upsertProductosLocal({
     required String empresaId,
     required List<Map<String, dynamic>> productos,
+    bool enqueueSync = true,
   }) async {
     for (final p in productos) {
-      final id = p['id'] as String? ?? DateTime.now().microsecondsSinceEpoch.toString();
+      final codigo = p['codigo'] as String?;
+      String id;
+
+      // Dedupe por (empresa, codigo): si ya existe, reutiliza su id
+      // para no crear filas duplicadas en la BD local.
+      if (codigo != null && codigo.isNotEmpty) {
+        final existing = await (_db.select(_db.productos)
+              ..where((x) => x.empresaId.equals(empresaId) & x.codigo.equals(codigo)))
+            .get();
+        if (existing.isNotEmpty) {
+          id = existing.first.id;
+        } else {
+          id = (p['id'] as String?)?.isNotEmpty == true
+              ? p['id'] as String
+              : DateTime.now().microsecondsSinceEpoch.toString();
+        }
+      } else {
+        id = (p['id'] as String?)?.isNotEmpty == true
+            ? p['id'] as String
+            : DateTime.now().microsecondsSinceEpoch.toString();
+      }
+
       final companion = ProductosCompanion.insert(
         id: id,
         empresaId: empresaId,
-        codigo: Value(p['codigo'] as String?),
+        codigo: Value(codigo),
         nombre: p['nombre'] as String,
         descripcion: Value(p['descripcion'] as String?),
         categoria: Value(p['categoria'] as String?),
@@ -323,15 +345,17 @@ class LocalDatabaseService {
       await _db.into(_db.productos).insertOnConflictUpdate(companion);
     }
 
-    await _syncService.enqueueSync(
-      tabla: 'productos',
-      operacion: SyncOperation.insert,
-      datos: {
-        'empresa_codigo': empresaId,
-        'productos': productos,
-      },
-      empresaId: empresaId,
-    );
+    if (enqueueSync) {
+      await _syncService.enqueueSync(
+        tabla: 'productos',
+        operacion: SyncOperation.insert,
+        datos: {
+          'empresa_codigo': empresaId,
+          'productos': productos,
+        },
+        empresaId: empresaId,
+      );
+    }
   }
 
   Future<void> updateProductoStock(String id, int nuevoStock) async {
@@ -342,6 +366,16 @@ class LocalDatabaseService {
         synced: const Value(false),
       ),
     );
+  }
+
+  Future<void> deleteProductoLocal({
+    required String empresaId,
+    required String codigo,
+  }) async {
+    if (codigo.isEmpty) return;
+    await (_db.delete(_db.productos)
+          ..where((p) => p.empresaId.equals(empresaId) & p.codigo.equals(codigo)))
+        .go();
   }
 
   // ═══════════════════════════════════════════════════════════════

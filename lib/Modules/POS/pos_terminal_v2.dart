@@ -129,7 +129,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       final empresaCodigo = _auth.empresaCodigo;
       debugPrint('📡 Intentando descargar productos de Supabase para empresa: $empresaCodigo');
       
-      final url = Uri.parse('https://portal-pilot.vercel.app/api/productos?empresa_codigo=$empresaCodigo');
+      final url = Uri.parse('https://portalpilot-app.vercel.app/api/productos?empresaCodigo=$empresaCodigo');
       debugPrint('🌐 URL: $url');
       
       final response = await http.get(url);
@@ -143,7 +143,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           // Guardar en base de datos local
           await _localDb.upsertProductosLocal(
             empresaId: empresaCodigo,
-            productos: productosData,
+            productos: productosData.cast<Map<String, dynamic>>(),
+            enqueueSync: false,
           );
           debugPrint('✅ Productos guardados en base local');
           

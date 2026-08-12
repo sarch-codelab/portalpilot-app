@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
+import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
@@ -38,7 +39,42 @@ class _ProductoListState extends State<ProductoList> {
       final productosDb = await localDb.getProductos(empresaCodigo);
       
       // Convertir al formato esperado
-      final productosFromDb = productosDb.map((p) => {
+      final productosFromDb = productosDb.map(_productoDbAMap).toList();
+      
+      // Si hay productos en SharedPreferences, mezclarlos (para migración)
+      final json = prefs.getString('productos') ?? '[]';
+      final productosFromPrefs = List<Map<String, dynamic>>.from(jsonDecode(json));
+      
+      // Usar productos de DB como prioridad, agregar los de prefs que no estén en DB
+      final codigosEnDb = productosFromDb
+          .map((p) => (p['codigo'] ?? '').toString())
+          .where((c) => c.isNotEmpty)
+          .toSet();
+      final productosFinales = [...productosFromDb];
+      for (final p in productosFromPrefs) {
+        final codigo = (p['codigo'] ?? '').toString();
+        if (codigo.isEmpty || !codigosEnDb.contains(codigo)) {
+          productosFinales.add(p);
+        }
+      }
+      
+      setState(() {
+        _productos = _dedupePorCodigo(productosFinales);
+        _aplicarFiltros();
+      });
+    } catch (e) {
+      debugPrint('Error cargando productos: $e');
+      // Fallback a SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString('productos') ?? '[]';
+      setState(() {
+        _productos = _dedupePorCodigo(List<Map<String, dynamic>>.from(jsonDecode(json)));
+        _aplicarFiltros();
+      });
+    }
+  }
+  
+  Map<String, dynamic> _productoDbAMap(Producto p) => {
         'id': p.id,
         'codigo': p.codigo,
         'nombre': p.nombre,
@@ -54,35 +90,40 @@ class _ProductoListState extends State<ProductoList> {
         'exento': p.exento,
         'imagen_url': p.imagenUrl,
         'created_at': p.createdAt?.toIso8601String(),
-      }).toList();
-      
-      // Si hay productos en SharedPreferences, mezclarlos (para migración)
-      final json = prefs.getString('productos') ?? '[]';
-      final productosFromPrefs = List<Map<String, dynamic>>.from(jsonDecode(json));
-      
-      // Usar productos de DB como prioridad, agregar los de prefs que no estén en DB
-      final idsEnDb = productosFromDb.map((p) => p['id'] as String).toSet();
-      final productosFinales = [...productosFromDb];
-      for (final p in productosFromPrefs) {
-        if (!idsEnDb.contains(p['id'])) {
-          productosFinales.add(p);
-        }
+      };
+
+  Map<String, dynamic> _productoAPosMap(Map<String, dynamic> p) => {
+        'id': p['id'],
+        'codigo': p['codigo'],
+        'nombre': p['nombre'],
+        'descripcion': p['descripcion'],
+        'categoria': p['categoria'],
+        'unidad_medida': p['unidad_medida'],
+        'precio_compra': p['precio_compra'],
+        'precio_venta': p['precio_venta'],
+        'stock_actual': p['stock_actual'],
+        'stock_minimo': p['stock_minimo'],
+        'bodega': p['bodega'],
+        'isv_rate': p['isv_rate'],
+        'exento': p['exento'],
+        'imagen_base64': p['imagen_url'],
+        'created_at': p['created_at'],
+      };
+
+  List<Map<String, dynamic>> _dedupePorCodigo(List<Map<String, dynamic>> items) {
+    final visto = <String>{};
+    final resultado = <Map<String, dynamic>>[];
+    for (final p in items) {
+      final codigo = (p['codigo'] ?? '').toString();
+      if (codigo.isEmpty) {
+        resultado.add(p);
+        continue;
       }
-      
-      setState(() {
-        _productos = productosFinales;
-        _aplicarFiltros();
-      });
-    } catch (e) {
-      debugPrint('Error cargando productos: $e');
-      // Fallback a SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      final json = prefs.getString('productos') ?? '[]';
-      setState(() {
-        _productos = List<Map<String, dynamic>>.from(jsonDecode(json));
-        _aplicarFiltros();
-      });
+      if (visto.add(codigo)) {
+        resultado.add(p);
+      }
     }
+    return resultado;
   }
   
   Future<void> _sincronizarDesdeSupabase() async {
@@ -103,49 +144,30 @@ class _ProductoListState extends State<ProductoList> {
         debugPrint('📦 Productos recibidos: ${productosData.length}');
         
         if (productosData.isNotEmpty) {
-          // Obtener productos existentes para evitar duplicados
-          final productosExistentesJson = prefs.getString('productos') ?? '[]';
-          final List<dynamic> productosExistentes = jsonDecode(productosExistentesJson);
-          final idsExistentes = productosExistentes.map((p) => p['id'] as String).toSet();
-          
-          // Filtrar solo productos nuevos
-          final productosNuevos = productosData.where((p) => !idsExistentes.contains(p['id'])).toList();
-          
-          if (productosNuevos.isEmpty) {
-            debugPrint('✅ No hay productos nuevos, todos ya están sincronizados');
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Productos ya están sincronizados', style: GoogleFonts.dmSans()),
-                  backgroundColor: const Color(0xFF10B981),
-                ),
-              );
-            }
-            return;
-          }
-          
-          debugPrint('✅ ${productosNuevos.length} productos nuevos para agregar');
-          
-          // Guardar en base de datos local
+          // Upsert en BD local (dedupe por codigo en el propio método). No se
+          // re-encola sync porque estos datos ya vienen del servidor.
           final localDb = LocalDatabaseService.instance;
           await localDb.upsertProductosLocal(
             empresaId: empresaCodigo,
-            productos: productosNuevos.cast<Map<String, dynamic>>(),
+            productos: productosData.cast<Map<String, dynamic>>(),
+            enqueueSync: false,
           );
-          debugPrint('✅ Productos guardados en base local');
+          debugPrint('✅ Productos guardados en base local (sin duplicados)');
           
-          // Combinar productos existentes con nuevos
-          final productosFinales = [...productosExistentes, ...productosNuevos];
-          await prefs.setString('productos', jsonEncode(productosFinales));
-          debugPrint('✅ Productos guardados en SharedPreferences');
+          // Reconstruir prefs 'productos' y 'productos_pos' desde la BD local
+          final dbProductos = await localDb.getProductos(empresaCodigo);
+          final lista = dbProductos.map(_productoDbAMap).toList();
+          final dedup = _dedupePorCodigo(lista);
+          await prefs.setString('productos', jsonEncode(dedup));
+          await prefs.setString('productos_pos', jsonEncode(dedup.map(_productoAPosMap).toList()));
+          debugPrint('✅ SharedPreferences reconstruidas con ${dedup.length} productos únicos');
           
-          // Recargar productos
           await _cargarProductos();
           
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Sincronizados ${productosNuevos.length} productos nuevos', style: GoogleFonts.dmSans()),
+                content: Text('Sincronizados ${dedup.length} productos', style: GoogleFonts.dmSans()),
                 backgroundColor: const Color(0xFF10B981),
               ),
             );
@@ -246,28 +268,36 @@ class _ProductoListState extends State<ProductoList> {
     final prefs = await SharedPreferences.getInstance();
     final empresaCodigo = prefs.getString('empresa_codigo') ?? 'ROOT';
     
-    // Eliminar de SharedPreferences
+    // Eliminar de la BD local Drift (causa real de que el producto reapareciera)
+    await LocalDatabaseService.instance.deleteProductoLocal(
+      empresaId: empresaCodigo,
+      codigo: codigo,
+    );
+    
+    // Eliminar de SharedPreferences por codigo (y por id como respaldo)
     final json = prefs.getString('productos') ?? '[]';
     final List<dynamic> productos = jsonDecode(json);
-    productos.removeWhere((p) => p['id'] == id);
+    productos.removeWhere((p) => (p['codigo'] ?? '') == codigo || p['id'] == id);
     await prefs.setString('productos', jsonEncode(productos));
     
     // Eliminar de productos_pos también
     final productosPosJson = prefs.getString('productos_pos') ?? '[]';
     final List<dynamic> productosPos = jsonDecode(productosPosJson);
-    productosPos.removeWhere((p) => p['id'] == id);
+    productosPos.removeWhere((p) => (p['codigo'] ?? '') == codigo || p['id'] == id);
     await prefs.setString('productos_pos', jsonEncode(productosPos));
     
-    // Sincronizar eliminación con Supabase
-    await SyncService.instance.enqueueSync(
-      tabla: 'productos',
-      operacion: SyncOperation.delete,
-      datos: {
-        'empresa_codigo': empresaCodigo,
-        'codigo': codigo,
-      },
-      empresaId: empresaCodigo,
-    );
+    // Sincronizar eliminación con Supabase (solo si tiene código)
+    if (codigo.isNotEmpty) {
+      await SyncService.instance.enqueueSync(
+        tabla: 'productos',
+        operacion: SyncOperation.delete,
+        datos: {
+          'empresa_codigo': empresaCodigo,
+          'codigo': codigo,
+        },
+        empresaId: empresaCodigo,
+      );
+    }
 
     _cargarProductos();
   }
