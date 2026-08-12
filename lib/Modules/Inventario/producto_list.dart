@@ -105,7 +105,7 @@ class _ProductoListState extends State<ProductoList> {
           final localDb = LocalDatabaseService.instance;
           await localDb.upsertProductosLocal(
             empresaId: empresaCodigo,
-            productos: productosData,
+            productos: productosData.cast<Map<String, dynamic>>(),
           );
           
           // También guardar en SharedPreferences

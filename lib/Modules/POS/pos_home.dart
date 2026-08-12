@@ -294,7 +294,7 @@ class _PosHomeState extends State<PosHome> {
           () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const PosTerminalV2()),
+              MaterialPageRoute(builder: (_) => const PosTerminal()),
             );
           },
         ),
