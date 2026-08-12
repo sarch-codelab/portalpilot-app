@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
@@ -81,6 +82,77 @@ class _ProductoListState extends State<ProductoList> {
         _productos = List<Map<String, dynamic>>.from(jsonDecode(json));
         _aplicarFiltros();
       });
+    }
+  }
+  
+  Future<void> _sincronizarDesdeSupabase() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final empresaCodigo = prefs.getString('empresa_codigo') ?? 'ROOT';
+      
+      debugPrint('📡 Sincronizando productos de Supabase para empresa: $empresaCodigo');
+      
+      final url = Uri.parse('https://portal-pilot.vercel.app/api/productos?empresa_codigo=$empresaCodigo');
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> productosData = jsonDecode(response.body);
+        
+        if (productosData.isNotEmpty) {
+          debugPrint('✅ Descargados ${productosData.length} productos de Supabase');
+          
+          // Guardar en base de datos local
+          final localDb = LocalDatabaseService.instance;
+          await localDb.upsertProductosLocal(
+            empresaId: empresaCodigo,
+            productos: productosData,
+          );
+          
+          // También guardar en SharedPreferences
+          await prefs.setString('productos', jsonEncode(productosData));
+          
+          // Recargar productos
+          await _cargarProductos();
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Sincronizados ${productosData.length} productos', style: GoogleFonts.dmSans()),
+                backgroundColor: const Color(0xFF10B981),
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('No hay productos en la base de datos', style: GoogleFonts.dmSans()),
+                backgroundColor: const Color(0xFFF59E0B),
+              ),
+            );
+          }
+        }
+      } else {
+        debugPrint('❌ Error de API: ${response.statusCode}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error de API: ${response.statusCode}', style: GoogleFonts.dmSans()),
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error sincronizando: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error de conexión: $e', style: GoogleFonts.dmSans()),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
     }
   }
 
@@ -186,6 +258,16 @@ class _ProductoListState extends State<ProductoList> {
           style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF10B981), size: 20),
+            onPressed: () async {
+              await _sincronizarDesdeSupabase();
+            },
+            tooltip: 'Sincronizar desde Supabase',
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Column(
         children: [
@@ -291,9 +373,13 @@ class _ProductoListState extends State<ProductoList> {
                                   children: [
                                     Row(
                                       children: [
-                                        Text(
-                                          p['nombre'] ?? '',
-                                          style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                                        Expanded(
+                                          child: Text(
+                                            p['nombre'] ?? '',
+                                            style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
                                         ),
                                         if (agotado) ...[
                                           const SizedBox(width: 6),
