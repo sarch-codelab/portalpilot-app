@@ -441,6 +441,8 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
         setState(() => _showScanner = !_showScanner);
       } else {
         _mostrarSnackBar('Permiso de cámara denegado', isError: true);
+        // Si no hay permiso, mostrar diálogo manual
+        _mostrarDialogoCodigoManual();
       }
     } else {
       _mostrarDialogoCodigoManual();
@@ -448,13 +450,42 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
-    final Object? raw = capture.raw;
-    if (raw is String && raw.isNotEmpty) {
-      _agregarPorCodigo(raw);
+    debugPrint('📷 BarcodeCapture recibido');
+    debugPrint('📷 raw: ${capture.raw}');
+    debugPrint('📷 barcodes.length: ${capture.barcodes.length}');
+    
+    // Intentar obtener el código de barras de múltiples formas
+    String? code;
+    
+    // Método 1: raw value
+    if (capture.raw is String && (capture.raw as String).isNotEmpty) {
+      code = capture.raw as String;
+      debugPrint('📷 Código desde raw: $code');
+    }
+    
+    // Método 2: barcodes list
+    if (code == null && capture.barcodes.isNotEmpty) {
+      final barcode = capture.barcodes.first;
+      code = barcode.rawValue;
+      debugPrint('📷 Código desde rawValue: $code');
+    }
+    
+    // Método 3: displayValue
+    if (code == null && capture.barcodes.isNotEmpty) {
+      final barcode = capture.barcodes.first;
+      code = barcode.displayValue;
+      debugPrint('📷 Código desde displayValue: $code');
+    }
+    
+    if (code != null && code.isNotEmpty) {
+      debugPrint('✅ Código detectado: $code');
+      _agregarPorCodigo(code);
       if (mounted) {
         setState(() => _showScanner = false);
-        _mostrarSnackBar('Código escaneado: $raw', isError: false);
+        _mostrarSnackBar('Código escaneado: $code', isError: false);
       }
+    } else {
+      debugPrint('⚠️ No se pudo extraer código del barcode');
     }
   }
 
