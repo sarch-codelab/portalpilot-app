@@ -455,7 +455,7 @@ class _ProductoFormState extends State<ProductoForm> {
         ),
         centerTitle: true,
       ),
-      body: ListView(
+      body: _showScanner ? _buildScannerView() : ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildSection('Información Básica'),
@@ -577,6 +577,85 @@ class _ProductoFormState extends State<ProductoForm> {
           const SizedBox(height: 30),
         ],
       ),
+    );
+  }
+
+  Widget _buildScannerView() {
+    return Stack(
+      children: [
+        MobileScanner(
+          controller: MobileScannerController(
+            detectionSpeed: DetectionSpeed.normal,
+            facing: CameraFacing.back,
+            torchEnabled: false,
+            formats: [
+              BarcodeFormat.ean13,
+              BarcodeFormat.ean8,
+              BarcodeFormat.upcA,
+              BarcodeFormat.upcE,
+              BarcodeFormat.code128,
+              BarcodeFormat.code39,
+              BarcodeFormat.code93,
+              BarcodeFormat.itf,
+              BarcodeFormat.dataMatrix,
+              BarcodeFormat.qrCode,
+            ],
+          ),
+          onDetect: _onBarcodeDetected,
+          errorBuilder: (context, error, child) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error de cámara: $error',
+                    style: GoogleFonts.dmSans(color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => setState(() => _showScanner = false),
+                    child: Text('Cerrar', style: GoogleFonts.dmSans()),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        Positioned(
+          top: 20,
+          left: 20,
+          right: 20,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Apunte al código de barras del producto',
+              style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 40,
+          left: 20,
+          right: 20,
+          child: ElevatedButton.icon(
+            onPressed: () => setState(() => _showScanner = false),
+            icon: const Icon(Icons.close_rounded),
+            label: Text('Cerrar Escáner', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
