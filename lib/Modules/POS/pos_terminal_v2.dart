@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
@@ -103,7 +104,14 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         });
         
         if (productos.isEmpty) {
-          await _cargarProductosFromSharedPreferences();
+          debugPrint('⚠️ No hay productos en base local, intentando descargar de Supabase...');
+          await _cargarProductosFromSupabase();
+          
+          // Si aún no hay, usar SharedPreferences como último fallback
+          final productosAfterSync = await _localDb.getProductos(_auth.empresaCodigo);
+          if (productosAfterSync.isEmpty) {
+            await _cargarProductosFromSharedPreferences();
+          }
         }
       }
     } catch (e) {
@@ -113,6 +121,39 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+  
+  Future<void> _cargarProductosFromSupabase() async {
+    try {
+      final empresaCodigo = _auth.empresaCodigo;
+      final url = Uri.parse('https://portal-pilot.vercel.app/api/productos?empresa_codigo=$empresaCodigo');
+      
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> productosData = jsonDecode(response.body);
+        
+        if (productosData.isNotEmpty) {
+          debugPrint('✅ Descargados ${productosData.length} productos de Supabase');
+          
+          // Guardar en base de datos local
+          await _localDb.upsertProductosLocal(
+            empresaId: empresaCodigo,
+            productos: productosData,
+          );
+          
+          // Actualizar UI
+          final productos = await _localDb.getProductos(empresaCodigo);
+          if (mounted) {
+            setState(() {
+              _productos = productos;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error descargando productos de Supabase: $e');
     }
   }
 
@@ -346,12 +387,32 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
-    final Object? raw = capture.raw;
-    if (raw is String && raw.isNotEmpty) {
-      _agregarPorCodigo(raw);
+    // Intentar obtener el código de barras de múltiples formas
+    String? code;
+    
+    // Método 1: raw value
+    if (capture.raw is String && (capture.raw as String).isNotEmpty) {
+      code = capture.raw as String;
+    }
+    
+    // Método 2: barcodes list
+    if (code == null && capture.barcodes.isNotEmpty) {
+      final barcode = capture.barcodes.first;
+      code = barcode.rawValue;
+    }
+    
+    // Método 3: displayValue
+    if (code == null && capture.barcodes.isNotEmpty) {
+      final barcode = capture.barcodes.first;
+      code = barcode.displayValue;
+    }
+    
+    if (code != null && code.isNotEmpty) {
+      debugPrint('📷 Código detectado: $code');
+      _agregarPorCodigo(code);
       if (mounted) {
         setState(() => _showScanner = false);
-        _mostrarSnackBar('Código escaneado: $raw', isError: false);
+        _mostrarSnackBar('Código escaneado: $code', isError: false);
       }
     }
   }
@@ -1106,6 +1167,23 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     return Stack(
       children: [
         MobileScanner(
+          controller: MobileScannerController(
+            detectionSpeed: DetectionSpeed.normal,
+            facing: CameraFacing.back,
+            torchEnabled: false,
+            formats: [
+              BarcodeFormat.ean13,
+              BarcodeFormat.ean8,
+              BarcodeFormat.upcA,
+              BarcodeFormat.upcE,
+              BarcodeFormat.code128,
+              BarcodeFormat.code39,
+              BarcodeFormat.code93,
+              BarcodeFormat.itf,
+              BarcodeFormat.dataMatrix,
+              BarcodeFormat.qrCode,
+            ],
+          ),
           onDetect: _onBarcodeDetected,
           errorBuilder: (context, error, child) {
             return Center(
