@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
@@ -329,10 +330,16 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     );
   }
 
-  void _toggleScanner() {
+  void _toggleScanner() async {
     final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     if (isMobile) {
-      setState(() => _showScanner = !_showScanner);
+      // Solicitar permiso de cámara
+      final status = await Permission.camera.request();
+      if (status.isGranted) {
+        setState(() => _showScanner = !_showScanner);
+      } else {
+        _mostrarSnackBar('Permiso de cámara denegado', isError: true);
+      }
     } else {
       _mostrarDialogoCodigoManual();
     }
