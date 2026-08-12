@@ -11,22 +11,45 @@ class LoteCaducidad extends StatefulWidget {
 
 class _LoteCaducidadState extends State<LoteCaducidad> {
   List<Map<String, dynamic>> _lotes = [
-    {'id': '1', 'producto': 'Leche Entera 1L', 'lote': 'L-2026-001', 'caducidad': '2026-08-15', 'cantidad': 200, 'estado': 'Vigente'},
-    {'id': '2', 'producto': 'Yogurt Natural', 'lote': 'L-2026-002', 'caducidad': '2026-08-12', 'cantidad': 150, 'estado': 'Proximo a vencer'},
-    {'id': '3', 'producto': 'Queso Fresco', 'lote': 'L-2026-003', 'caducidad': '2026-08-20', 'cantidad': 80, 'estado': 'Vigente'},
+    {
+      'id': '1',
+      'producto': 'Leche Entera 1L',
+      'lote': 'L-2026-001',
+      'caducidad': '2026-08-15',
+      'cantidad': 200,
+      'estado': 'Vigente',
+    },
+    {
+      'id': '2',
+      'producto': 'Yogurt Natural',
+      'lote': 'L-2026-002',
+      'caducidad': '2026-08-12',
+      'cantidad': 150,
+      'estado': 'Proximo a vencer',
+    },
+    {
+      'id': '3',
+      'producto': 'Queso Fresco',
+      'lote': 'L-2026-003',
+      'caducidad': '2026-08-20',
+      'cantidad': 80,
+      'estado': 'Vigente',
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -39,14 +62,28 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFEF4444), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFEF4444),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Lotes y Caducidad', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Lotes y Caducidad',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFFEF4444),
               size: 20,
             ),
@@ -68,21 +105,33 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
         onPressed: () => _showAddLoteDialog(),
         backgroundColor: const Color(0xFFEF4444),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Nuevo Lote', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text(
+          'Nuevo Lote',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildLoteCard(Map<String, dynamic> lote, ThemePalette palette) {
-    final estadoColor = lote['estado'] == 'Vigente' ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
-    
+    final estadoColor = lote['estado'] == 'Vigente'
+        ? const Color(0xFF10B981)
+        : const Color(0xFFF59E0B);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,12 +167,13 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(
-                child: _buildInfoRow('Lote', lote['lote']),
-              ),
+              Expanded(child: _buildInfoRow('Lote', lote['lote'])),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildInfoRow('Cantidad', '${lote['cantidad']} unidades'),
+                child: _buildInfoRow(
+                  'Cantidad',
+                  '${lote['cantidad']} unidades',
+                ),
               ),
             ],
           ),
@@ -142,7 +192,9 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
           label,
           style: GoogleFonts.dmSans(
             fontSize: 11,
-            color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
           ),
         ),
         const SizedBox(height: 4),
@@ -167,8 +219,16 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Nuevo Lote', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Nuevo Lote',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -176,8 +236,18 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
               controller: productoController,
               decoration: InputDecoration(
                 labelText: 'Producto',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -185,8 +255,18 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
               controller: loteController,
               decoration: InputDecoration(
                 labelText: 'Numero de lote',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -194,8 +274,18 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
               controller: caducidadController,
               decoration: InputDecoration(
                 labelText: 'Fecha caducidad (YYYY-MM-DD)',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -204,8 +294,18 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Cantidad',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
           ],
@@ -213,7 +313,10 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -229,8 +332,13 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
               });
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
-            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

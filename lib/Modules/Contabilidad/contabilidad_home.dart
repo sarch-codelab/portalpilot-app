@@ -623,9 +623,21 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
           const SizedBox(height: 12),
           Row(
             children: [
-              _buildMiniStat('Ingresos', 'L.${_totalIngresos.toStringAsFixed(2)}', const Color(0xFF10B981)),
+              Expanded(
+                child: _buildMiniStat(
+                  'Ingresos',
+                  'L.${_totalIngresos.toStringAsFixed(2)}',
+                  const Color(0xFF10B981),
+                ),
+              ),
               const SizedBox(width: 20),
-              _buildMiniStat('Gastos', 'L.${_totalGastos.toStringAsFixed(2)}', const Color(0xFFEF4444)),
+              Expanded(
+                child: _buildMiniStat(
+                  'Gastos',
+                  'L.${_totalGastos.toStringAsFixed(2)}',
+                  const Color(0xFFEF4444),
+                ),
+              ),
             ],
           ),
         ],
@@ -673,11 +685,18 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
           ),
           const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildResumenItem('Ingresos', _ingresosMes, const Color(0xFF10B981)),
-              _buildResumenItem('Gastos', _gastosMes, const Color(0xFFEF4444)),
-              _buildResumenItem('Neto', neta, neta >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+              Expanded(
+                child: _buildResumenItem('Ingresos', _ingresosMes, const Color(0xFF10B981)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildResumenItem('Gastos', _gastosMes, const Color(0xFFEF4444)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildResumenItem('Neto', neta, neta >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+              ),
             ],
           ),
         ],
@@ -692,6 +711,8 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
         const SizedBox(height: 4),
         Text(
           'L.${monto.toStringAsFixed(0)}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.dmMono(fontSize: 15, fontWeight: FontWeight.w700, color: color),
         ),
       ],

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -38,7 +40,6 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
   String _metodoPago = 'efectivo';
   bool _isProcessing = false;
   bool _showScanner = false;
-  MobileScannerController? _scannerController;
   StreamSubscription<SyncStatus>? _syncSubscription;
   SyncStatus _syncStatus = SyncStatus(pendingCount: 0, message: 'Iniciando...');
 
@@ -54,18 +55,13 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
-    _scannerController?.dispose();
     _syncSubscription?.cancel();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _showScanner) {
-      _scannerController?.start();
-    } else if (state == AppLifecycleState.paused) {
-      _scannerController?.stop();
-    }
+    // Escáner deshabilitado en Windows
   }
 
   Future<void> _initializePos() async {
@@ -136,7 +132,8 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
   Future<void> _cargarProductosFromSharedPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final productosJson = prefs.getString('productos_pos') ?? '[]';
+      // El módulo de Inventario guarda en 'productos', no en 'productos_pos'
+      final productosJson = prefs.getString('productos') ?? prefs.getString('productos_pos') ?? '[]';
       final List<dynamic> productosData = jsonDecode(productosJson);
       
       // Convertir a formato Producto
@@ -150,15 +147,15 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
             nombre: p['nombre']?.toString() ?? '',
             descripcion: p['descripcion']?.toString(),
             categoria: p['categoria']?.toString(),
-            unidadMedida: p['unidadMedida']?.toString() ?? 'Unidad',
-            precioCompra: (p['precioCompra'] as num?)?.toDouble() ?? 0.0,
-            precioVenta: (p['precioVenta'] as num?)?.toDouble() ?? 0.0,
-            stockMinimo: (p['stockMinimo'] as num?)?.toInt() ?? 0,
-            stockActual: (p['stockActual'] as num?)?.toInt() ?? 0,
+            unidadMedida: p['unidad_medida']?.toString() ?? p['unidadMedida']?.toString() ?? 'Unidad',
+            precioCompra: (p['precio_compra'] as num?)?.toDouble() ?? (p['precioCompra'] as num?)?.toDouble() ?? 0.0,
+            precioVenta: (p['precio_venta'] as num?)?.toDouble() ?? (p['precioVenta'] as num?)?.toDouble() ?? 0.0,
+            stockMinimo: (p['stock_minimo'] as num?)?.toInt() ?? (p['stockMinimo'] as num?)?.toInt() ?? 0,
+            stockActual: (p['stock_actual'] as num?)?.toInt() ?? (p['stockActual'] as num?)?.toInt() ?? 0,
             bodega: p['bodega']?.toString() ?? 'General',
-            isvRate: (p['isvRate'] as num?)?.toDouble() ?? 15.0,
+            isvRate: (p['isv_rate'] as num?)?.toDouble() ?? (p['isvRate'] as num?)?.toDouble() ?? 15.0,
             exento: (p['exento'] as bool?) ?? false,
-            imagenUrl: p['imagenUrl']?.toString(),
+            imagenUrl: p['imagen_url']?.toString() ?? p['imagenUrl']?.toString(),
             activo: true,
             synced: false,
             createdAt: DateTime.now(),
@@ -433,34 +430,94 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
   // ═══════════════════════════════════════════════════════════════
 
   void _toggleScanner() {
-    setState(() {
-      _showScanner = !_showScanner;
-      if (_showScanner) {
-        _scannerController = MobileScannerController(
-          detectionSpeed: DetectionSpeed.normal,
-          facing: CameraFacing.back,
-          torchEnabled: false,
-        );
-        // Iniciar el escáner inmediatamente
-        _scannerController?.start().catchError((error) {
-          debugPrint('Error iniciando escáner: $error');
-          _mostrarSnackBar('Error iniciando cámara: $error', isError: true);
-          setState(() => _showScanner = false);
-        });
-      } else {
-        _scannerController?.stop();
-        _scannerController?.dispose();
-        _scannerController = null;
-      }
-    });
+    // En Android/iOS usar el escáner de cámara real.
+    // En Windows/Web no hay implementación nativa, usar diálogo manual.
+    final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    if (isMobile) {
+      setState(() => _showScanner = !_showScanner);
+    } else {
+      _mostrarDialogoCodigoManual();
+    }
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
-    final String? code = capture.barcodes.firstOrNull?.rawValue;
-    if (code != null && code.isNotEmpty) {
-      _agregarPorCodigo(code);
-      if (_showScanner) _toggleScanner();
+    final Object? raw = capture.raw;
+    if (raw is String && raw.isNotEmpty) {
+      _agregarPorCodigo(raw);
+      if (mounted) {
+        setState(() => _showScanner = false);
+        _mostrarSnackBar('Código escaneado: $raw', isError: false);
+      }
     }
+  }
+
+  void _mostrarDialogoCodigoManual() {
+    final codigoController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141414),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFF97316), size: 22),
+            const SizedBox(width: 10),
+            Text('Ingresar Código', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'El escáner de cámara no está disponible en Windows.\nIngrese el código de barras manualmente:',
+              style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373)),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: codigoController,
+              autofocus: true,
+              style: GoogleFonts.dmSans(color: Colors.white, fontSize: 16),
+              decoration: InputDecoration(
+                hintText: 'Ej: 7501234567890',
+                hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
+                filled: true,
+                fillColor: const Color(0xFF0F0F0F),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316))),
+                prefixIcon: const Icon(Icons.qr_code_rounded, color: Color(0xFF525252)),
+              ),
+              onSubmitted: (v) {
+                if (v.trim().isNotEmpty) {
+                  _agregarPorCodigo(v.trim());
+                  Navigator.of(ctx).pop();
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFF737373))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (codigoController.text.trim().isNotEmpty) {
+                _agregarPorCodigo(codigoController.text.trim());
+                Navigator.of(ctx).pop();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF97316),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text('Agregar', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -468,13 +525,108 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
   // ═══════════════════════════════════════════════════════════════
 
   void _mostrarSnackBar(String msg, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: GoogleFonts.dmSans()),
-        backgroundColor: isError ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
+    final snackBar = SnackBar(
+      content: Container(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                isError ? Icons.error_rounded : Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isError ? 'ERROR' : 'ÉXITO',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withValues(alpha: 0.8),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    msg,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (isError) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: msg));
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.copy_rounded, color: Colors.white, size: 18),
+                          const SizedBox(width: 10),
+                          Text('Error copiado al portapapeles', style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13)),
+                        ],
+                      ),
+                      backgroundColor: const Color(0xFF6366F1),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.copy_rounded, color: Colors.white, size: 14),
+                      const SizedBox(width: 6),
+                      Text('Copiar', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
+      backgroundColor: isError
+          ? const Color(0xFFDC2626)
+          : const Color(0xFF059669),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 8,
+      duration: Duration(seconds: isError ? 6 : 3),
     );
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(snackBar);
   }
 
   double get _subtotal => _carrito.fold<double>(0, (s, i) => s + i.precioUnitario * i.cantidad);
@@ -503,6 +655,68 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
       backgroundColor: const Color(0xFF0A0A0A),
       appBar: _buildAppBar(),
       body: _showScanner ? _buildScannerView() : (isWide ? _buildWideLayout() : _buildMobileLayout()),
+    );
+  }
+
+  Widget _buildScannerView() {
+    return Stack(
+      children: [
+        MobileScanner(
+          onDetect: _onBarcodeDetected,
+          errorBuilder: (context, error, child) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error de cámara: $error',
+                    style: GoogleFonts.dmSans(color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => setState(() => _showScanner = false),
+                    child: Text('Cerrar', style: GoogleFonts.dmSans()),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        Positioned(
+          top: 20,
+          left: 20,
+          right: 20,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Apunte al código de barras del producto',
+              style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 40,
+          left: 20,
+          right: 20,
+          child: ElevatedButton.icon(
+            onPressed: () => setState(() => _showScanner = false),
+            icon: const Icon(Icons.close_rounded),
+            label: Text('Cerrar Escáner', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -536,12 +750,11 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
           onTap: () => showDialog(context: context, builder: (_) => const SyncStatusDialog()),
         ),
         const SizedBox(width: 8),
-        // Scanner toggle
+        // Escáner: en Windows abre diálogo de código manual
         IconButton(
-          icon: Icon(_showScanner ? Icons.close_rounded : Icons.qr_code_scanner_rounded, 
-            color: _showScanner ? const Color(0xFFEF4444) : const Color(0xFFF97316), size: 22),
+          icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFF97316), size: 22),
           onPressed: _toggleScanner,
-          tooltip: _showScanner ? 'Cerrar escáner' : 'Escanear código',
+          tooltip: 'Escanear código',
         ),
         if (_carrito.isNotEmpty)
           TextButton.icon(
@@ -550,79 +763,6 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
             label: Text('Limpiar', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFFEF4444))),
           ),
         const SizedBox(width: 8),
-      ],
-    );
-  }
-
-  Widget _buildScannerView() {
-    return Stack(
-      children: [
-        MobileScanner(
-          controller: _scannerController,
-          onDetect: _onBarcodeDetected,
-          errorBuilder: (context, error, child) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error de cámara: $error',
-                    style: GoogleFonts.dmSans(color: Colors.white),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      _toggleScanner();
-                    },
-                    child: Text('Reintentar', style: GoogleFonts.dmSans()),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        Positioned(
-          top: 20,
-          left: 20,
-          right: 20,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'Apunte al código de barras del producto',
-              style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 100,
-          left: 20,
-          right: 20,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  final ctrl = _scannerController;
-                  ctrl?.toggleTorch();
-                },
-                icon: const Icon(Icons.flashlight_on_rounded),
-                label: Text('Linterna', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF97316),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -636,6 +776,360 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
         ),
         if (_carrito.isNotEmpty) _buildCobrarBar(),
       ],
+    );
+  }
+
+  Widget _buildProductList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)));
+    }
+
+    if (_productos.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inventory_2_outlined, color: const Color(0xFF404040), size: 64),
+            const SizedBox(height: 16),
+            Text(
+              'No hay productos disponibles',
+              style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Agrega productos desde el módulo de Inventario',
+              style: GoogleFonts.dmSans(color: const Color(0xFF525252), fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final productosFiltrados = _searchQuery.isEmpty
+        ? _productos
+        : _productos.where((p) =>
+            (p.nombre?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+            (p.codigo?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
+          ).toList();
+
+    if (productosFiltrados.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, color: const Color(0xFF404040), size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'No se encontraron productos',
+              style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _cargarProductos,
+      color: const Color(0xFFF97316),
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.75,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        itemCount: productosFiltrados.length,
+        itemBuilder: (context, index) {
+          final producto = productosFiltrados[index];
+          return _buildProductCard(producto);
+        },
+      ),
+    );
+  }
+
+  Widget _buildProductCard(Producto producto) {
+    final tieneImagen = producto.imagenUrl != null && producto.imagenUrl!.isNotEmpty;
+    final imagenUrl = tieneImagen && !producto.imagenUrl!.startsWith('data:')
+        ? producto.imagenUrl
+        : null;
+
+    return GestureDetector(
+      onTap: () => _agregarAlCarrito(producto),
+      onLongPress: () => _mostrarOpcionesProducto(producto),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF1A1A1A),
+              const Color(0xFF0F0F0F),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF262626)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Imagen o placeholder
+            Expanded(
+              flex: 3,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF141414),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                  image: imagenUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(imagenUrl),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildImagePlaceholder(producto);
+                          },
+                        )
+                      : null,
+                ),
+                child: imagenUrl == null ? _buildImagePlaceholder(producto) : null,
+              ),
+            ),
+            // Información del producto
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          producto.nombre ?? 'Sin nombre',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          producto.codigo ?? 'S/C',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            color: const Color(0xFF737373),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _posService.formatCurrency(producto.precioVenta),
+                          style: GoogleFonts.syne(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFFF97316),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: producto.stockActual != null && producto.stockActual! > 0
+                                ? const Color(0xFF10B981).withValues(alpha: 0.2)
+                                : const Color(0xFFEF4444).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: producto.stockActual != null && producto.stockActual! > 0
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFEF4444),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            'Stock: ${producto.stockActual ?? 0}',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: producto.stockActual != null && producto.stockActual! > 0
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFEF4444),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder(Producto producto) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.inventory_2_outlined,
+            color: const Color(0xFF404040),
+            size: 32,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            (producto.nombre ?? '')[0].toUpperCase(),
+            style: GoogleFonts.syne(
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFF262626),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarOpcionesProducto(Producto producto) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF262626),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      (producto.nombre ?? '')[0].toUpperCase(),
+                      style: GoogleFonts.syne(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFFF97316),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        producto.nombre ?? 'Sin nombre',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        producto.codigo ?? 'S/C',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: const Color(0xFF737373),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildOpcionButton(
+                    icon: Icons.add_shopping_cart,
+                    label: 'Agregar al carrito',
+                    color: const Color(0xFF10B981),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _agregarAlCarrito(producto);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildOpcionButton(
+                    icon: Icons.add_circle_outline,
+                    label: 'Agregar cantidad',
+                    color: const Color(0xFFF97316),
+                    onTap: () {
+                      Navigator.pop(context);
+                      for (int i = 0; i < 3; i++) {
+                        _agregarAlCarrito(producto);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOpcionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -676,14 +1170,9 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
         style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
         onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
         decoration: InputDecoration(
-          hintText: 'Buscar producto... (o presione 📷 para escanear)',
+          hintText: 'Buscar producto por nombre, código o descripción...',
           hintStyle: GoogleFonts.dmSans(color: const Color(0xFF525252)),
           prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF525252), size: 20),
-          suffixIcon: IconButton(
-            icon: Icon(_showScanner ? Icons.close_rounded : Icons.qr_code_scanner_rounded, 
-              color: _showScanner ? const Color(0xFFEF4444) : const Color(0xFFF97316), size: 20),
-            onPressed: _toggleScanner,
-          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
@@ -692,32 +1181,82 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
   }
 
   Widget _buildProductList() {
-    final filtrados = _searchQuery.isEmpty
-        ? _productos
-        : _productos.where((p) => 
-            (p.nombre ?? '').toLowerCase().contains(_searchQuery) || 
-            (p.codigo ?? '').toLowerCase().contains(_searchQuery) ||
-            (p.descripcion ?? '').toLowerCase().contains(_searchQuery)
-          ).toList();
-
+    // Estilo cajero: pantalla limpia al inicio.
+    // Solo se muestran productos al buscar por código, nombre o descripción.
+    final queryTrim = _searchQuery.trim();
+    
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)));
     }
+
+    // Sin búsqueda: mostrar pantalla de bienvenida (limpia, como cajero listo)
+    if (queryTrim.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 56),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Listo para escanear',
+              style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Escanee un código de barras o escriba\nel nombre / código del producto',
+              style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF737373)),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141414),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF262626)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.keyboard_rounded, color: Color(0xFFF97316), size: 18),
+                  const SizedBox(width: 8),
+                  Text('Use el campo de búsqueda', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Con búsqueda: filtrar productos
+    final filtrados = _productos.where((p) => 
+      (p.nombre ?? '').toLowerCase().contains(queryTrim) || 
+      (p.codigo ?? '').toLowerCase().contains(queryTrim) ||
+      (p.descripcion ?? '').toLowerCase().contains(queryTrim)
+    ).toList();
 
     if (filtrados.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inventory_2_rounded, color: const Color(0xFF262626), size: 60),
+            Icon(Icons.search_off_rounded, color: const Color(0xFF262626), size: 60),
             const SizedBox(height: 12),
             Text(
-              _searchQuery.isEmpty ? 'Sin productos' : 'No se encontraron productos',
+              'No se encontraron productos',
               style: GoogleFonts.dmSans(fontSize: 16, color: const Color(0xFF525252)),
             ),
             const SizedBox(height: 6),
             Text(
-              _searchQuery.isEmpty ? 'Agrega productos desde Inventario' : 'Intenta con otra búsqueda',
+              'Intenta con otro código o nombre',
               style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF404040)),
             ),
           ],
@@ -728,7 +1267,7 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
     return GridView.builder(
       padding: const EdgeInsets.all(12),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
+        crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
         crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.25,
       ),
       itemCount: filtrados.length,
@@ -963,14 +1502,13 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
             const SizedBox(height: 8),
           ],
           // Método de pago
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _buildMetodoChip('efectivo', 'Efectivo', Icons.payments_rounded),
-              const SizedBox(width: 8),
               _buildMetodoChip('tarjeta', 'Tarjeta', Icons.credit_card_rounded),
-              const SizedBox(width: 8),
               _buildMetodoChip('transferencia', 'Transferencia', Icons.account_balance_rounded),
-              const SizedBox(width: 8),
               _buildMetodoChip('mixto', 'Mixto', Icons.account_balance_wallet_rounded),
             ],
           ),

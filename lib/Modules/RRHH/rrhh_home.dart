@@ -25,14 +25,16 @@ class _RrhhHomeState extends State<RrhhHome> {
   void initState() {
     super.initState();
     _cargarDatos();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -73,7 +75,11 @@ class _RrhhHomeState extends State<RrhhHome> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFEC4899), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFEC4899),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -87,11 +93,15 @@ class _RrhhHomeState extends State<RrhhHome> {
                 ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.people_rounded, color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.people_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
             const SizedBox(width: 12),
             Text(
-              'RRHH / NÓMINA',
+              'RRHH / NÃ“MINA',
               style: GoogleFonts.syne(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
@@ -104,7 +114,9 @@ class _RrhhHomeState extends State<RrhhHome> {
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFFEC4899),
               size: 20,
             ),
@@ -116,14 +128,24 @@ class _RrhhHomeState extends State<RrhhHome> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const EmpleadoForm()));
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const EmpleadoForm()),
+          );
           _cargarDatos();
         },
         backgroundColor: const Color(0xFFEC4899),
-        icon: const Icon(Icons.person_add_rounded, color: Colors.white, size: 22),
+        icon: const Icon(
+          Icons.person_add_rounded,
+          color: Colors.white,
+          size: 22,
+        ),
         label: Text(
           'Nuevo Empleado',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white),
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
       ),
       body: RefreshIndicator(
@@ -135,11 +157,11 @@ class _RrhhHomeState extends State<RrhhHome> {
           children: [
             _buildStatsGrid(),
             const SizedBox(height: 16),
-            _buildSectionTitle('Acciones Rápidas'),
+            _buildSectionTitle('Acciones RÃ¡pidas'),
             const SizedBox(height: 10),
             _buildActions(),
             const SizedBox(height: 20),
-            _buildSectionTitle('Últimos Empleados'),
+            _buildSectionTitle('Ãšltimos Empleados'),
             const SizedBox(height: 10),
             _buildRecentEmpleados(),
             const SizedBox(height: 30),
@@ -156,36 +178,88 @@ class _RrhhHomeState extends State<RrhhHome> {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 1.5,
+      childAspectRatio: 6.5,
       children: [
-        _buildStatCard('Empleados', '$_totalEmpleados', Icons.people_rounded, const Color(0xFFEC4899)),
-        _buildStatCard('Activos', '$_activos', Icons.check_circle_rounded, const Color(0xFF10B981)),
-        _buildStatCard('Inactivos', '$_inactivos', Icons.person_off_rounded, const Color(0xFFEF4444)),
-        _buildStatCard('Nómina/Mes', 'L.${_formatNumber(_nominaMensual)}', Icons.payments_rounded, const Color(0xFFF59E0B)),
+        _buildStatCard(
+          'Empleados',
+          '$_totalEmpleados',
+          Icons.people_rounded,
+          const Color(0xFFEC4899),
+        ),
+        _buildStatCard(
+          'Activos',
+          '$_activos',
+          Icons.check_circle_rounded,
+          const Color(0xFF10B981),
+        ),
+        _buildStatCard(
+          'Inactivos',
+          '$_inactivos',
+          Icons.person_off_rounded,
+          const Color(0xFFEF4444),
+        ),
+        _buildStatCard(
+          'NÃ³mina/Mes',
+          'L.${_formatNumber(_nominaMensual)}',
+          Icons.payments_rounded,
+          const Color(0xFFF59E0B),
+        ),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
-          Icon(icon, color: color, size: 20),
-          const Spacer(),
-          Text(
-            value,
-            style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 18),
           ),
-          const SizedBox(height: 2),
-          Text(label, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: GoogleFonts.syne(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  label,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    color: const Color(0xFF737373),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -206,28 +280,70 @@ class _RrhhHomeState extends State<RrhhHome> {
   Widget _buildActions() {
     return Column(
       children: [
-        _buildActionRow(Icons.person_add_rounded, 'Nuevo Empleado', 'Registrar trabajador en el sistema', const Color(0xFFEC4899), () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const EmpleadoForm()));
-          _cargarDatos();
-        }),
+        _buildActionRow(
+          Icons.person_add_rounded,
+          'Nuevo Empleado',
+          'Registrar trabajador en el sistema',
+          const Color(0xFFEC4899),
+          () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const EmpleadoForm()),
+            );
+            _cargarDatos();
+          },
+        ),
         const SizedBox(height: 8),
-        _buildActionRow(Icons.list_alt_rounded, 'Ver Empleados', 'Lista completa de trabajadores', const Color(0xFF3B82F6), () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const EmpleadoList()));
-          _cargarDatos();
-        }),
+        _buildActionRow(
+          Icons.list_alt_rounded,
+          'Ver Empleados',
+          'Lista completa de trabajadores',
+          const Color(0xFF3B82F6),
+          () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const EmpleadoList()),
+            );
+            _cargarDatos();
+          },
+        ),
         const SizedBox(height: 8),
-        _buildActionRow(Icons.payments_rounded, 'Calcular Nómina', 'Generar planilla del mes', const Color(0xFFF59E0B), () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const NominaHome()));
-        }),
+        _buildActionRow(
+          Icons.payments_rounded,
+          'Calcular NÃ³mina',
+          'Generar planilla del mes',
+          const Color(0xFFF59E0B),
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NominaHome()),
+            );
+          },
+        ),
         const SizedBox(height: 8),
-        _buildActionRow(Icons.receipt_long_rounded, 'Recibos de Pago', 'Historial de recibos generados', const Color(0xFF10B981), () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const NominaHome()));
-        }),
+        _buildActionRow(
+          Icons.receipt_long_rounded,
+          'Recibos de Pago',
+          'Historial de recibos generados',
+          const Color(0xFF10B981),
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NominaHome()),
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildActionRow(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
+  Widget _buildActionRow(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -241,7 +357,10 @@ class _RrhhHomeState extends State<RrhhHome> {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(width: 14),
@@ -249,13 +368,30 @@ class _RrhhHomeState extends State<RrhhHome> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                  Text(
+                    title,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: const Color(0xFF737373),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF404040), size: 20),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF404040),
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -263,8 +399,9 @@ class _RrhhHomeState extends State<RrhhHome> {
   }
 
   Widget _buildRecentEmpleados() {
-    final recientes = List<Map<String, dynamic>>.from(_empleados)
-      ..sort((a, b) => (b['created_at'] ?? '').compareTo(a['created_at'] ?? ''));
+    final recientes = List<Map<String, dynamic>>.from(
+      _empleados,
+    )..sort((a, b) => (b['created_at'] ?? '').compareTo(a['created_at'] ?? ''));
 
     if (recientes.isEmpty) {
       return Container(
@@ -275,7 +412,10 @@ class _RrhhHomeState extends State<RrhhHome> {
           border: Border.all(color: const Color(0xFF262626)),
         ),
         child: Center(
-          child: Text('No hay empleados registrados', style: GoogleFonts.dmSans(color: const Color(0xFF525252))),
+          child: Text(
+            'No hay empleados registrados',
+            style: GoogleFonts.dmSans(color: const Color(0xFF525252)),
+          ),
         ),
       );
     }
@@ -293,19 +433,29 @@ class _RrhhHomeState extends State<RrhhHome> {
           decoration: BoxDecoration(
             color: const Color(0xFF141414),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: activo ? const Color(0xFF262626) : const Color(0xFFEF4444).withValues(alpha: 0.3)),
+            border: Border.all(
+              color: activo
+                  ? const Color(0xFF262626)
+                  : const Color(0xFFEF4444).withValues(alpha: 0.3),
+            ),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: (activo ? const Color(0xFFEC4899) : const Color(0xFFEF4444)).withValues(alpha: 0.1),
+                  color:
+                      (activo
+                              ? const Color(0xFFEC4899)
+                              : const Color(0xFFEF4444))
+                          .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   activo ? Icons.person_rounded : Icons.person_off_rounded,
-                  color: activo ? const Color(0xFFEC4899) : const Color(0xFFEF4444),
+                  color: activo
+                      ? const Color(0xFFEC4899)
+                      : const Color(0xFFEF4444),
                   size: 18,
                 ),
               ),
@@ -314,9 +464,22 @@ class _RrhhHomeState extends State<RrhhHome> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(nombre.isNotEmpty ? nombre : 'Sin nombre', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                    Text(
+                      nombre.isNotEmpty ? nombre : 'Sin nombre',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(cargo, style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373))),
+                    Text(
+                      cargo,
+                      style: GoogleFonts.dmMono(
+                        fontSize: 11,
+                        color: const Color(0xFF737373),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -325,11 +488,20 @@ class _RrhhHomeState extends State<RrhhHome> {
                 children: [
                   Text(
                     'L.${salario.toStringAsFixed(0)}',
-                    style: GoogleFonts.dmMono(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFFF59E0B)),
+                    style: GoogleFonts.dmMono(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFF59E0B),
+                    ),
                   ),
                   Text(
                     activo ? 'Activo' : 'Inactivo',
-                    style: GoogleFonts.dmSans(fontSize: 10, color: activo ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: activo
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444),
+                    ),
                   ),
                 ],
               ),
@@ -341,9 +513,11 @@ class _RrhhHomeState extends State<RrhhHome> {
   }
 
   String _formatNumber(double number) {
-    return number.toStringAsFixed(0).replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    );
+    return number
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},',
+        );
   }
 }

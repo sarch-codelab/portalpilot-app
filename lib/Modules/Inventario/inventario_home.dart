@@ -8,6 +8,8 @@ import 'package:portal_pilot_app/Modules/Inventario/kardex.dart';
 import 'package:portal_pilot_app/Modules/Inventario/bodegas.dart';
 import 'package:portal_pilot_app/Modules/CanalModerno/canal_moderno_home.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 
 class InventarioHome extends StatefulWidget {
   const InventarioHome({super.key});
@@ -27,14 +29,16 @@ class _InventarioHomeState extends State<InventarioHome> {
   void initState() {
     super.initState();
     _cargarDatos();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -44,6 +48,23 @@ class _InventarioHomeState extends State<InventarioHome> {
     final bodegasJson = prefs.getString('bodegas') ?? '["General"]';
     final List<dynamic> productos = jsonDecode(productosJson);
     final List<dynamic> bodegas = jsonDecode(bodegasJson);
+
+    final legacySynced = prefs.getBool('productos_legacy_synced') ?? false;
+    if (!legacySynced) {
+      final empresa = PortalPilotDB.empresaCodigo ?? 'ROOT';
+      if (productos.isNotEmpty) {
+        await SyncService.instance.enqueueSync(
+          tabla: 'productos',
+          operacion: SyncOperation.insert,
+          datos: {
+            'empresa_codigo': empresa,
+            'productos': productos.cast<Map<String, dynamic>>(),
+          },
+          empresaId: empresa,
+        );
+      }
+      await prefs.setBool('productos_legacy_synced', true);
+    }
 
     int stockBajo = 0;
     double valor = 0.0;
@@ -80,7 +101,11 @@ class _InventarioHomeState extends State<InventarioHome> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFF59E0B), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFF59E0B),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -94,7 +119,11 @@ class _InventarioHomeState extends State<InventarioHome> {
                 ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.inventory_2_rounded, color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.inventory_2_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
             const SizedBox(width: 12),
             Text(
@@ -111,7 +140,9 @@ class _InventarioHomeState extends State<InventarioHome> {
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFFF59E0B),
               size: 20,
             ),
@@ -123,14 +154,20 @@ class _InventarioHomeState extends State<InventarioHome> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductoForm()));
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProductoForm()),
+          );
           _cargarDatos();
         },
         backgroundColor: const Color(0xFFF59E0B),
         icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
         label: Text(
           'Nuevo Producto',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white),
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
       ),
       body: RefreshIndicator(
@@ -146,11 +183,11 @@ class _InventarioHomeState extends State<InventarioHome> {
               _buildAlertBanner(productosBajo.length),
               const SizedBox(height: 16),
             ],
-            _buildSectionTitle('Acciones Rápidas'),
+            _buildSectionTitle('Acciones RÃ¡pidas'),
             const SizedBox(height: 10),
             _buildActions(),
             const SizedBox(height: 20),
-            _buildSectionTitle('Últimos Productos'),
+            _buildSectionTitle('Ãšltimos Productos'),
             const SizedBox(height: 10),
             _buildRecentProducts(),
             const SizedBox(height: 30),
@@ -161,23 +198,103 @@ class _InventarioHomeState extends State<InventarioHome> {
   }
 
   Widget _buildStatsGrid() {
+    final wide = MediaQuery.of(context).size.width >= 600;
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: wide ? 4 : 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 1.5,
+      childAspectRatio: wide ? 2.6 : 1.5,
       children: [
-        _buildStatCard('Productos', '$_totalProductos', Icons.inventory_2_rounded, const Color(0xFFF59E0B)),
-        _buildStatCard('Stock Bajo', '$_stockBajo', Icons.warning_amber_rounded, const Color(0xFFEF4444)),
-        _buildStatCard('Bodegas', '${_bodegas.length}', Icons.warehouse_rounded, const Color(0xFF3B82F6)),
-        _buildStatCard('Valor', 'L.${_formatNumber(_valorInventario)}', Icons.attach_money_rounded, const Color(0xFF10B981)),
+        _buildStatCard(
+          'Productos',
+          '$_totalProductos',
+          Icons.inventory_2_rounded,
+          const Color(0xFFF59E0B),
+        ),
+        _buildStatCard(
+          'Stock Bajo',
+          '$_stockBajo',
+          Icons.warning_amber_rounded,
+          const Color(0xFFEF4444),
+        ),
+        _buildStatCard(
+          'Bodegas',
+          '${_bodegas.length}',
+          Icons.warehouse_rounded,
+          const Color(0xFF3B82F6),
+        ),
+        _buildStatCard(
+          'Valor',
+          'L.${_formatNumber(_valorInventario)}',
+          Icons.attach_money_rounded,
+          const Color(0xFF10B981),
+        ),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    final wide = MediaQuery.of(context).size.width >= 600;
+
+    if (wide) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    style: GoogleFonts.syne(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    label,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: const Color(0xFF737373),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -193,10 +310,20 @@ class _InventarioHomeState extends State<InventarioHome> {
           const Spacer(),
           Text(
             value,
-            style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+            style: GoogleFonts.syne(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 2),
-          Text(label, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: const Color(0xFF737373),
+            ),
+          ),
         ],
       ),
     );
@@ -208,11 +335,17 @@ class _InventarioHomeState extends State<InventarioHome> {
       decoration: BoxDecoration(
         color: const Color(0xFF7F1D1D).withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Color(0xFFEF4444),
+            size: 24,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -220,11 +353,18 @@ class _InventarioHomeState extends State<InventarioHome> {
               children: [
                 Text(
                   '$count producto${count > 1 ? 's' : ''} con stock bajo',
-                  style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
                 Text(
                   'Revisa el inventario para reabastecer',
-                  style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFA3A3A3)),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: const Color(0xFFA3A3A3),
+                  ),
                 ),
               ],
             ),
@@ -249,33 +389,84 @@ class _InventarioHomeState extends State<InventarioHome> {
   Widget _buildActions() {
     return Column(
       children: [
-        _buildActionRow(Icons.add_circle_outline_rounded, 'Nuevo Producto', 'Agregar producto al catálogo', const Color(0xFFF59E0B), () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductoForm()));
-          _cargarDatos();
-        }),
+        _buildActionRow(
+          Icons.add_circle_outline_rounded,
+          'Nuevo Producto',
+          'Agregar producto al catÃ¡logo',
+          const Color(0xFFF59E0B),
+          () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProductoForm()),
+            );
+            _cargarDatos();
+          },
+        ),
         const SizedBox(height: 8),
-        _buildActionRow(Icons.list_alt_rounded, 'Ver Catálogo', 'Lista completa de productos', const Color(0xFF3B82F6), () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductoList()));
-          _cargarDatos();
-        }),
+        _buildActionRow(
+          Icons.list_alt_rounded,
+          'Ver CatÃ¡logo',
+          'Lista completa de productos',
+          const Color(0xFF3B82F6),
+          () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProductoList()),
+            );
+            _cargarDatos();
+          },
+        ),
         const SizedBox(height: 8),
-        _buildActionRow(Icons.swap_horiz_rounded, 'Kardex', 'Historial de movimientos de stock', const Color(0xFF10B981), () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const KardexScreen()));
-        }),
+        _buildActionRow(
+          Icons.swap_horiz_rounded,
+          'Kardex',
+          'Historial de movimientos de stock',
+          const Color(0xFF10B981),
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const KardexScreen()),
+            );
+          },
+        ),
         const SizedBox(height: 8),
-        _buildActionRow(Icons.warehouse_rounded, 'Bodegas', 'Gestionar almacenes', const Color(0xFF8B5CF6), () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const BodegasScreen()));
-          _cargarDatos();
-        }),
+        _buildActionRow(
+          Icons.warehouse_rounded,
+          'Bodegas',
+          'Gestionar almacenes',
+          const Color(0xFF8B5CF6),
+          () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BodegasScreen()),
+            );
+            _cargarDatos();
+          },
+        ),
         const SizedBox(height: 8),
-        _buildActionRow(Icons.account_balance_rounded, 'Canal Moderno', 'Multi-sucursal, transferencias y consolidado', const Color(0xFF0EA5E9), () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const CanalModernoHome()));
-        }),
+        _buildActionRow(
+          Icons.account_balance_rounded,
+          'Canal Moderno',
+          'Multi-sucursal, transferencias y consolidado',
+          const Color(0xFF0EA5E9),
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CanalModernoHome()),
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildActionRow(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
+  Widget _buildActionRow(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -289,7 +480,10 @@ class _InventarioHomeState extends State<InventarioHome> {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(width: 14),
@@ -297,13 +491,30 @@ class _InventarioHomeState extends State<InventarioHome> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                  Text(
+                    title,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: const Color(0xFF737373),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF404040), size: 20),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF404040),
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -311,8 +522,9 @@ class _InventarioHomeState extends State<InventarioHome> {
   }
 
   Widget _buildRecentProducts() {
-    final recientes = List<Map<String, dynamic>>.from(_productos)
-      ..sort((a, b) => (b['created_at'] ?? '').compareTo(a['created_at'] ?? ''));
+    final recientes = List<Map<String, dynamic>>.from(
+      _productos,
+    )..sort((a, b) => (b['created_at'] ?? '').compareTo(a['created_at'] ?? ''));
 
     if (recientes.isEmpty) {
       return Container(
@@ -323,7 +535,10 @@ class _InventarioHomeState extends State<InventarioHome> {
           border: Border.all(color: const Color(0xFF262626)),
         ),
         child: Center(
-          child: Text('No hay productos registrados', style: GoogleFonts.dmSans(color: const Color(0xFF525252))),
+          child: Text(
+            'No hay productos registrados',
+            style: GoogleFonts.dmSans(color: const Color(0xFF525252)),
+          ),
         ),
       );
     }
@@ -341,19 +556,29 @@ class _InventarioHomeState extends State<InventarioHome> {
           decoration: BoxDecoration(
             color: const Color(0xFF141414),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: bajo ? const Color(0xFFEF4444).withValues(alpha: 0.3) : const Color(0xFF262626)),
+            border: Border.all(
+              color: bajo
+                  ? const Color(0xFFEF4444).withValues(alpha: 0.3)
+                  : const Color(0xFF262626),
+            ),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: (bajo ? const Color(0xFFEF4444) : const Color(0xFFF59E0B)).withValues(alpha: 0.1),
+                  color:
+                      (bajo ? const Color(0xFFEF4444) : const Color(0xFFF59E0B))
+                          .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  bajo ? Icons.warning_amber_rounded : Icons.inventory_2_rounded,
-                  color: bajo ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
+                  bajo
+                      ? Icons.warning_amber_rounded
+                      : Icons.inventory_2_rounded,
+                  color: bajo
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFFF59E0B),
                   size: 18,
                 ),
               ),
@@ -362,11 +587,21 @@ class _InventarioHomeState extends State<InventarioHome> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(p['nombre'] ?? '', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                    Text(
+                      p['nombre'] ?? '',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                      '${p['codigo'] ?? 'S/C'}  •  ${p['categoria'] ?? 'Sin categoría'}',
-                      style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
+                      '${p['codigo'] ?? 'S/C'}  â€¢  ${p['categoria'] ?? 'Sin categorÃ­a'}',
+                      style: GoogleFonts.dmMono(
+                        fontSize: 11,
+                        color: const Color(0xFF737373),
+                      ),
                     ),
                   ],
                 ),
@@ -379,12 +614,17 @@ class _InventarioHomeState extends State<InventarioHome> {
                     style: GoogleFonts.dmMono(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: bajo ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                      color: bajo
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFF10B981),
                     ),
                   ),
                   Text(
                     'L.${precio.toStringAsFixed(2)}',
-                    style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
+                    style: GoogleFonts.dmMono(
+                      fontSize: 11,
+                      color: const Color(0xFF737373),
+                    ),
                   ),
                 ],
               ),
@@ -396,9 +636,11 @@ class _InventarioHomeState extends State<InventarioHome> {
   }
 
   String _formatNumber(double number) {
-    return number.toStringAsFixed(0).replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
-    );
+    return number
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},',
+        );
   }
 }

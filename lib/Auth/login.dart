@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
@@ -185,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     await Future.delayed(const Duration(milliseconds: 800));
 
-    final uri = Uri.parse('https://portalpilot-app.vercel.app/login.html');
+    final uri = Uri.parse(String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portalpilot-app.vercel.app') + '/login.html');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
@@ -221,7 +222,8 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           Positioned(
             top: MediaQuery.of(context).padding.top + 20,
-            right: 24,
+            left: 16,
+            right: 16,
             child: NotificationStack(manager: _notificationManager),
           ),
           SafeArea(
@@ -329,40 +331,25 @@ class _LoginScreenState extends State<LoginScreen>
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: IntrinsicHeight(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                    child: Column(
-                      children: [
-                        _buildBrandLogo(),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Portal Pilot',
-                          style: GoogleFonts.syne(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: textPrimary,
-                            letterSpacing: -0.8,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _buildAuthCard(),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildBrandLogo(),
+              const SizedBox(height: 16),
+              Text(
+                'Portal Pilot',
+                style: GoogleFonts.syne(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: textPrimary,
+                  letterSpacing: -0.8,
+                ),
               ),
-            ),
+              const SizedBox(height: 28),
+              _buildAuthCard(),
+            ],
           ),
         );
       },
@@ -641,10 +628,14 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           Padding(
             padding: const EdgeInsets.only(top: 14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 8,
               children: [
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
                       width: 18,
@@ -662,7 +653,8 @@ class _LoginScreenState extends State<LoginScreen>
                     const SizedBox(width: 8),
                     Text(
                       'Recordarme',
-                      style: GoogleFonts.dmSans(fontSize: 12, color: textMuted),
+                      style:
+                          GoogleFonts.dmSans(fontSize: 12, color: textMuted),
                     ),
                   ],
                 ),
@@ -1003,7 +995,7 @@ class _NotificationStackState extends State<NotificationStack> {
         final notifications = widget.manager.notifications.take(5).toList();
 
         return SizedBox(
-          width: 360,
+          width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: notifications.asMap().entries.map((entry) {

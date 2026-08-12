@@ -11,22 +11,45 @@ class ConsolidadoFinanciero extends StatefulWidget {
 
 class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
   List<Map<String, dynamic>> _reportes = [
-    {'id': '1', 'empresa': 'Holding Principal', 'ingresos': 1250000.00, 'gastos': 850000.00, 'utilidad': 400000.00, 'periodo': 'Agosto 2026'},
-    {'id': '2', 'empresa': 'Supermercados Norte S.A.', 'ingresos': 750000.00, 'gastos': 520000.00, 'utilidad': 230000.00, 'periodo': 'Agosto 2026'},
-    {'id': '3', 'empresa': 'Distribuidora Centro', 'ingresos': 500000.00, 'gastos': 330000.00, 'utilidad': 170000.00, 'periodo': 'Agosto 2026'},
+    {
+      'id': '1',
+      'empresa': 'Holding Principal',
+      'ingresos': 1250000.00,
+      'gastos': 850000.00,
+      'utilidad': 400000.00,
+      'periodo': 'Agosto 2026',
+    },
+    {
+      'id': '2',
+      'empresa': 'Supermercados Norte S.A.',
+      'ingresos': 750000.00,
+      'gastos': 520000.00,
+      'utilidad': 230000.00,
+      'periodo': 'Agosto 2026',
+    },
+    {
+      'id': '3',
+      'empresa': 'Distribuidora Centro',
+      'ingresos': 500000.00,
+      'gastos': 330000.00,
+      'utilidad': 170000.00,
+      'periodo': 'Agosto 2026',
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -39,14 +62,28 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF8B5CF6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF8B5CF6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Consolidado Financiero', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Consolidado Financiero',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF8B5CF6),
               size: 20,
             ),
@@ -68,21 +105,33 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
         onPressed: () => _showAddReporteDialog(),
         backgroundColor: const Color(0xFF8B5CF6),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Nuevo Reporte', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text(
+          'Nuevo Reporte',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildReporteCard(Map<String, dynamic> reporte, ThemePalette palette) {
-    final utilidadColor = reporte['utilidad'] >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-    
+    final utilidadColor = reporte['utilidad'] >= 0
+        ? const Color(0xFF10B981)
+        : const Color(0xFFEF4444);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,7 +151,9 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
                 reporte['periodo'],
                 style: GoogleFonts.dmSans(
                   fontSize: 11,
-                  color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
                 ),
               ),
             ],
@@ -111,16 +162,28 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
           Row(
             children: [
               Expanded(
-                child: _buildInfoRow('Ingresos', 'L.${reporte['ingresos'].toStringAsFixed(0)}', const Color(0xFF10B981)),
+                child: _buildInfoRow(
+                  'Ingresos',
+                  'L.${reporte['ingresos'].toStringAsFixed(0)}',
+                  const Color(0xFF10B981),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildInfoRow('Gastos', 'L.${reporte['gastos'].toStringAsFixed(0)}', const Color(0xFFEF4444)),
+                child: _buildInfoRow(
+                  'Gastos',
+                  'L.${reporte['gastos'].toStringAsFixed(0)}',
+                  const Color(0xFFEF4444),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          _buildInfoRow('Utilidad', 'L.${reporte['utilidad'].toStringAsFixed(0)}', utilidadColor),
+          _buildInfoRow(
+            'Utilidad',
+            'L.${reporte['utilidad'].toStringAsFixed(0)}',
+            utilidadColor,
+          ),
         ],
       ),
     );
@@ -134,7 +197,9 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
           label,
           style: GoogleFonts.dmSans(
             fontSize: 11,
-            color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
           ),
         ),
         const SizedBox(height: 4),
@@ -158,8 +223,16 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Nuevo Reporte', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Nuevo Reporte',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -167,8 +240,18 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
               controller: empresaController,
               decoration: InputDecoration(
                 labelText: 'Empresa',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -177,8 +260,18 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Ingresos (L.)',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -187,8 +280,18 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Gastos (L.)',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
           ],
@@ -196,7 +299,10 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -214,8 +320,13 @@ class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
               });
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
-            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B5CF6),
+            ),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

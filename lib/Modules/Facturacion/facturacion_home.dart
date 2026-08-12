@@ -34,14 +34,16 @@ class _FacturacionHomeState extends State<FacturacionHome> {
   void initState() {
     super.initState();
     _cargarDatos();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -134,7 +136,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             ),
             const SizedBox(width: 12),
             Text(
-              'FACTURACIÓN SAR',
+              'FACTURACIÃ“N SAR',
               style: GoogleFonts.syne(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
@@ -147,7 +149,9 @@ class _FacturacionHomeState extends State<FacturacionHome> {
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF10B981),
               size: 20,
             ),
@@ -176,7 +180,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             const SizedBox(height: 16),
             _buildStatsGrid(),
             const SizedBox(height: 20),
-            _buildSectionTitle('Acciones Rápidas'),
+            _buildSectionTitle('Acciones RÃ¡pidas'),
             const SizedBox(height: 10),
             _buildActionButtons(),
             const SizedBox(height: 20),
@@ -249,7 +253,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Configurá tu CAI para empezar a facturar',
+                      'ConfigurÃ¡ tu CAI para empezar a facturar',
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
                         color: const Color(0xFFD4D4D4),
@@ -328,7 +332,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
           const SizedBox(height: 10),
           if (_empresaNombre.isNotEmpty) ...[
             Text(
-              '$_empresaNombre  •  RTN: $_rtn',
+              '$_empresaNombre  â€¢  RTN: $_rtn',
               style: GoogleFonts.dmSans(
                 fontSize: 11,
                 color: const Color(0xFFA3A3A3),
@@ -346,7 +350,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Rango: $_rangoInicio  →  $_rangoFin',
+            'Rango: $_rangoInicio  â†’  $_rangoFin',
             style: GoogleFonts.dmMono(
               fontSize: 12,
               color: const Color(0xFFA3A3A3),
@@ -370,13 +374,14 @@ class _FacturacionHomeState extends State<FacturacionHome> {
   }
 
   Widget _buildStatsGrid() {
+    final wide = MediaQuery.of(context).size.width >= 600;
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: wide ? 4 : 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 1.5,
+      childAspectRatio: wide ? 2.6 : 1.5,
       children: [
         _buildStatCard(
           'Facturas Hoy',
@@ -412,6 +417,60 @@ class _FacturacionHomeState extends State<FacturacionHome> {
     IconData icon,
     Color color,
   ) {
+    final wide = MediaQuery.of(context).size.width >= 600;
+
+    if (wide) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    style: GoogleFonts.syne(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    label,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: const Color(0xFF737373),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -464,7 +523,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
         _buildActionRow(
           icon: Icons.add_circle_outline_rounded,
           title: 'Nueva Factura',
-          subtitle: 'Crear factura con CAI y correlativo automático',
+          subtitle: 'Crear factura con CAI y correlativo automÃ¡tico',
           color: const Color(0xFF10B981),
           onTap: () async {
             await Navigator.push(
@@ -597,21 +656,21 @@ class _FacturacionHomeState extends State<FacturacionHome> {
           ),
           const Divider(color: Color(0xFF262626), height: 16),
           _buildDocTypeRow(
-            'Nota de Crédito',
+            'Nota de CrÃ©dito',
             'Devoluciones y anulaciones',
             Icons.undo_rounded,
             const Color(0xFF3B82F6),
           ),
           const Divider(color: Color(0xFF262626), height: 16),
           _buildDocTypeRow(
-            'Nota de Débito',
+            'Nota de DÃ©bito',
             'Ajustes al alza',
             Icons.redo_rounded,
             const Color(0xFFF59E0B),
           ),
           const Divider(color: Color(0xFF262626), height: 16),
           _buildDocTypeRow(
-            'Factura Exportación',
+            'Factura ExportaciÃ³n',
             'Ventas al exterior',
             Icons.public_rounded,
             const Color(0xFF8B5CF6),
@@ -691,15 +750,19 @@ class _FacturacionHomeState extends State<FacturacionHome> {
 
   Widget _buildISVRow(String label, String value, Color color) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.dmSans(
-            fontSize: 13,
-            color: const Color(0xFFA3A3A3),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              color: const Color(0xFFA3A3A3),
+            ),
           ),
         ),
+        const SizedBox(width: 8),
         Text(
           value,
           style: GoogleFonts.dmMono(

@@ -334,26 +334,32 @@ class _EducacionScreenState extends State<EducacionScreen>
             margin: const EdgeInsets.symmetric(horizontal: 16),
             color: p.borderLight,
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _getGreeting(),
-                style: GoogleFonts.dmSans(
-                  fontSize: 11,
-                  color: p.textMuted,
-                  fontWeight: FontWeight.w500,
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getGreeting(),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11,
+                    color: p.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Text(
-                _formatDate(),
-                style: GoogleFonts.dmSans(
-                  fontSize: 12,
-                  color: p.textPrimary,
-                  fontWeight: FontWeight.w600,
+                Text(
+                  _formatDate(),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: p.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -408,13 +414,36 @@ class _EducacionScreenState extends State<EducacionScreen>
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildInfoItem('ROL',  _userRol.isNotEmpty  ? _userRol  : '—', Icons.badge_rounded,              p.accentPurple,      p),
+          Expanded(
+            child: _buildInfoItem(
+              'ROL',
+              _userRol.isNotEmpty ? _userRol : '—',
+              Icons.badge_rounded,
+              p.accentPurple,
+              p,
+            ),
+          ),
           _buildDivider(p),
-          _buildInfoItem('ÁREA', _userArea.isNotEmpty ? _userArea : '—', Icons.school_rounded,              p.accentPurpleLight, p),
+          Expanded(
+            child: _buildInfoItem(
+              'ÁREA',
+              _userArea.isNotEmpty ? _userArea : '—',
+              Icons.school_rounded,
+              p.accentPurpleLight,
+              p,
+            ),
+          ),
           _buildDivider(p),
-          _buildInfoItem('RANGO',_userRango.isNotEmpty? _userRango: '—', Icons.workspace_premium_rounded, p.successGreen,      p),
+          Expanded(
+            child: _buildInfoItem(
+              'RANGO',
+              _userRango.isNotEmpty ? _userRango : '—',
+              Icons.workspace_premium_rounded,
+              p.successGreen,
+              p,
+            ),
+          ),
         ],
       ),
     );
@@ -454,6 +483,9 @@ class _EducacionScreenState extends State<EducacionScreen>
             fontWeight: FontWeight.bold,
             color: p.textPrimary,
           ),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );

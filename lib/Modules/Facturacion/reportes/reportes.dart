@@ -218,13 +218,14 @@ class _ReportesScreenState extends State<ReportesScreen> {
   }
 
   Widget _buildStatsCards(int emitidas, int anuladas, double totalVentas, double totalIsv) {
+    final wide = MediaQuery.of(context).size.width >= 600;
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: wide ? 4 : 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 1.5,
+      childAspectRatio: wide ? 2.6 : 1.5,
       children: [
         _buildMiniStat('Facturas', '$emitidas', const Color(0xFF10B981)),
         _buildMiniStat('Anuladas', '$anuladas', const Color(0xFFEF4444)),

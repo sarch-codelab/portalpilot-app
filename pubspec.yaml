@@ -27,14 +27,16 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.0
   path: ^1.9.0
   json_annotation: ^4.9.0
+  uuid: ^4.0.0
   # POS Hardware dependencies
   mobile_scanner: ^5.1.1          # Escáner códigos de barras (cámara)
   permission_handler: ^11.3.0     # Permisos cámara/bluetooth
-  bluetooth_print: any            # Impresión Bluetooth alternativa
+  # bluetooth_print: any            # Impresión Bluetooth alternativa (roto con Flutter actual)
   # POS Features
   pdf: ^3.10.7                    # Generar PDF tickets
   printing: ^5.11.0               # Imprimir PDF
   image: ^4.1.7                   # Procesar logo para ticket
+  image_picker: ^1.1.2            # Seleccionar imagen de producto
   # flutter_sound: ^9.2.13          # Sonido confirmación venta
 
 dev_dependencies:

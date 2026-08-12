@@ -20,15 +20,17 @@ class _SettingsHomeState extends State<SettingsHome> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
     FiscalCompliance().loadConfig();
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -41,14 +43,28 @@ class _SettingsHomeState extends State<SettingsHome> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF6B7280), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF6B7280),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('CONFIGURACIÓN', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'CONFIGURACIÃ“N',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF6B7280),
               size: 20,
             ),
@@ -65,34 +81,43 @@ class _SettingsHomeState extends State<SettingsHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.settings_rounded,
-            'Configuración Fiscal',
+            'ConfiguraciÃ³n Fiscal',
             'RTN, CAI, tasas de impuestos SAR',
             const Color(0xFF10B981),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FiscalSettings())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FiscalSettings()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.backup_rounded,
-            'Backup y Restauración',
-            'Gestión de backups de datos',
+            'Backup y RestauraciÃ³n',
+            'GestiÃ³n de backups de datos',
             const Color(0xFF3B82F6),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BackupSettings())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BackupSettings()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.bug_report_rounded,
             'Logs del Sistema',
-            'Visualización de logs y auditoría',
+            'VisualizaciÃ³n de logs y auditorÃ­a',
             const Color(0xFFF59E0B),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SystemLogs())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SystemLogs()),
+            ),
           ),
           const SizedBox(height: 24),
           _buildSectionHeader('RENDIMIENTO'),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.speed_rounded,
-            'Optimización de Caché',
-            'Gestión de caché local',
+            'OptimizaciÃ³n de CachÃ©',
+            'GestiÃ³n de cachÃ© local',
             const Color(0xFF8B5CF6),
             () => _showCacheOptions(),
           ),
@@ -115,21 +140,35 @@ class _SettingsHomeState extends State<SettingsHome> {
       style: GoogleFonts.syne(
         fontSize: 12,
         fontWeight: FontWeight.w800,
-        color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+        color: appThemeNotifier.isDark
+            ? const Color(0xFFA3A3A3)
+            : const Color(0xFF6B7280),
         letterSpacing: 1.5,
       ),
     );
   }
 
-  Widget _buildActionCard(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
+  Widget _buildActionCard(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF111111)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+          border: Border.all(
+            color: appThemeNotifier.isDark
+                ? const Color(0xFF262626)
+                : const Color(0xFFE5E7EB),
+          ),
         ),
         child: Row(
           children: [
@@ -151,7 +190,9 @@ class _SettingsHomeState extends State<SettingsHome> {
                     style: GoogleFonts.syne(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                      color: appThemeNotifier.isDark
+                          ? Colors.white
+                          : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -159,7 +200,9 @@ class _SettingsHomeState extends State<SettingsHome> {
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
-                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
                     ),
                   ),
                 ],
@@ -167,7 +210,9 @@ class _SettingsHomeState extends State<SettingsHome> {
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: appThemeNotifier.isDark ? const Color(0xFF525252) : const Color(0xFF9CA3AF),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFF525252)
+                  : const Color(0xFF9CA3AF),
               size: 16,
             ),
           ],
@@ -180,30 +225,60 @@ class _SettingsHomeState extends State<SettingsHome> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Opciones de Caché', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Opciones de CachÃ©',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.delete_rounded, color: Color(0xFFEF4444)),
-              title: Text('Limpiar caché expirado', style: GoogleFonts.dmSans(color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+              leading: const Icon(
+                Icons.delete_rounded,
+                color: Color(0xFFEF4444),
+              ),
+              title: Text(
+                'Limpiar cachÃ© expirado',
+                style: GoogleFonts.dmSans(
+                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                ),
+              ),
               onTap: () async {
                 await CacheManager().clearExpired();
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Caché expirado limpiado'), backgroundColor: Color(0xFF10B981)),
+                  const SnackBar(
+                    content: Text('CachÃ© expirado limpiado'),
+                    backgroundColor: Color(0xFF10B981),
+                  ),
                 );
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFEF4444)),
-              title: Text('Limpiar todo el caché', style: GoogleFonts.dmSans(color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+              leading: const Icon(
+                Icons.delete_sweep_rounded,
+                color: Color(0xFFEF4444),
+              ),
+              title: Text(
+                'Limpiar todo el cachÃ©',
+                style: GoogleFonts.dmSans(
+                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                ),
+              ),
               onTap: () async {
                 await CacheManager().clearAll();
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Caché limpiado completamente'), backgroundColor: Color(0xFF10B981)),
+                  const SnackBar(
+                    content: Text('CachÃ© limpiado completamente'),
+                    backgroundColor: Color(0xFF10B981),
+                  ),
                 );
               },
             ),
@@ -212,7 +287,10 @@ class _SettingsHomeState extends State<SettingsHome> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cerrar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cerrar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
         ],
       ),
@@ -223,31 +301,61 @@ class _SettingsHomeState extends State<SettingsHome> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Limpieza de Datos', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Limpieza de Datos',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.cleaning_services_rounded, color: Color(0xFFF59E0B)),
-              title: Text('Limpiar logs antiguos (7 días)', style: GoogleFonts.dmSans(color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+              leading: const Icon(
+                Icons.cleaning_services_rounded,
+                color: Color(0xFFF59E0B),
+              ),
+              title: Text(
+                'Limpiar logs antiguos (7 dÃ­as)',
+                style: GoogleFonts.dmSans(
+                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                ),
+              ),
               onTap: () async {
                 await Logger().cleanOldLogs(daysToKeep: 7);
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Logs antiguos limpiados'), backgroundColor: Color(0xFF10B981)),
+                  const SnackBar(
+                    content: Text('Logs antiguos limpiados'),
+                    backgroundColor: Color(0xFF10B981),
+                  ),
                 );
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_forever_rounded, color: Color(0xFFEF4444)),
-              title: Text('Limpiar todos los logs', style: GoogleFonts.dmSans(color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+              leading: const Icon(
+                Icons.delete_forever_rounded,
+                color: Color(0xFFEF4444),
+              ),
+              title: Text(
+                'Limpiar todos los logs',
+                style: GoogleFonts.dmSans(
+                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                ),
+              ),
               onTap: () async {
                 final logger = Logger();
                 await logger.cleanOldLogs(daysToKeep: 0);
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Todos los logs limpiados'), backgroundColor: Color(0xFF10B981)),
+                  const SnackBar(
+                    content: Text('Todos los logs limpiados'),
+                    backgroundColor: Color(0xFF10B981),
+                  ),
                 );
               },
             ),
@@ -256,7 +364,10 @@ class _SettingsHomeState extends State<SettingsHome> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cerrar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cerrar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
         ],
       ),

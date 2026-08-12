@@ -13,14 +13,16 @@ class _DevolucionesProveedorState extends State<DevolucionesProveedor> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -33,14 +35,28 @@ class _DevolucionesProveedorState extends State<DevolucionesProveedor> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFEF4444), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFEF4444),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Devoluciones a Proveedor', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Devoluciones a Proveedor',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFFEF4444),
               size: 20,
             ),
@@ -57,7 +73,9 @@ class _DevolucionesProveedorState extends State<DevolucionesProveedor> {
             Icon(
               Icons.assignment_return_rounded,
               size: 64,
-              color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFF262626)
+                  : const Color(0xFFE5E7EB),
             ),
             const SizedBox(height: 16),
             Text(
@@ -72,7 +90,9 @@ class _DevolucionesProveedorState extends State<DevolucionesProveedor> {
             Text(
               'Funcionalidad en desarrollo',
               style: GoogleFonts.dmSans(
-                color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                color: appThemeNotifier.isDark
+                    ? const Color(0xFFA3A3A3)
+                    : const Color(0xFF6B7280),
               ),
             ),
           ],

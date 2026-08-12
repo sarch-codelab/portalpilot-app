@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  file_selector_linux
   gtk
   printing
   screen_retriever_linux

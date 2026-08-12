@@ -30,14 +30,16 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
   void initState() {
     super.initState();
     _cargar();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -82,8 +84,11 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
                 ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.account_balance_rounded,
-                  color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.account_balance_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
             const SizedBox(width: 12),
             Text(
@@ -100,7 +105,9 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF3B82F6),
               size: 20,
             ),
@@ -120,7 +127,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             _buildResumen(),
             const SizedBox(height: 16),
             Text(
-              'GESTIÓN',
+              'GESTIÃ“N',
               style: GoogleFonts.syne(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
@@ -132,7 +139,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             _buildAccion(
               Icons.storefront_rounded,
               'Sucursales',
-              'Multi-sucursal: creá y gestioná puntos de venta',
+              'Multi-sucursal: creÃ¡ y gestionÃ¡ puntos de venta',
               const Color(0xFF3B82F6),
               () => Navigator.push(
                 context,
@@ -176,7 +183,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             _buildAccion(
               Icons.business_rounded,
               'Cadenas y Franquicias',
-              'Gestión de cadenas y franquicias',
+              'GestiÃ³n de cadenas y franquicias',
               const Color(0xFFEC4899),
               () => Navigator.push(
                 context,
@@ -187,7 +194,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             _buildAccion(
               Icons.price_check_rounded,
               'Precios Centralizados',
-              'Centralización de precios',
+              'CentralizaciÃ³n de precios',
               const Color(0xFF6366F1),
               () => Navigator.push(
                 context,
@@ -222,7 +229,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
         ),
         const SizedBox(width: 10),
         _buildResumenCard(
-          'En tránsito',
+          'En trÃ¡nsito',
           '$_enTransito',
           Icons.local_shipping_rounded,
           const Color(0xFFF97316),
@@ -238,7 +245,12 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
     );
   }
 
-  Widget _buildResumenCard(String label, String value, IconData icon, Color color) {
+  Widget _buildResumenCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -263,7 +275,10 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             const SizedBox(height: 2),
             Text(
               label,
-              style: GoogleFonts.dmSans(fontSize: 10, color: const Color(0xFF737373)),
+              style: GoogleFonts.dmSans(
+                fontSize: 10,
+                color: const Color(0xFF737373),
+              ),
             ),
           ],
         ),
@@ -321,7 +336,11 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF404040), size: 20),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF404040),
+              size: 20,
+            ),
           ],
         ),
       ),

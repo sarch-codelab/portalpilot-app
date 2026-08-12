@@ -11,22 +11,45 @@ class Recepcion extends StatefulWidget {
 
 class _RecepcionState extends State<Recepcion> {
   List<Map<String, dynamic>> _recepciones = [
-    {'id': '1', 'proveedor': 'Distribuidora Nacional', 'producto': 'Arroz Premium 5kg', 'cantidad': 100, 'fecha': '2026-08-10', 'estado': 'Completado'},
-    {'id': '2', 'proveedor': 'Importadora Centro', 'producto': 'Aceite Vegetal 1L', 'cantidad': 50, 'fecha': '2026-08-09', 'estado': 'Pendiente'},
-    {'id': '3', 'proveedor': 'Fabrica Lacteos', 'producto': 'Leche Entera 1L', 'cantidad': 200, 'fecha': '2026-08-08', 'estado': 'Completado'},
+    {
+      'id': '1',
+      'proveedor': 'Distribuidora Nacional',
+      'producto': 'Arroz Premium 5kg',
+      'cantidad': 100,
+      'fecha': '2026-08-10',
+      'estado': 'Completado',
+    },
+    {
+      'id': '2',
+      'proveedor': 'Importadora Centro',
+      'producto': 'Aceite Vegetal 1L',
+      'cantidad': 50,
+      'fecha': '2026-08-09',
+      'estado': 'Pendiente',
+    },
+    {
+      'id': '3',
+      'proveedor': 'Fabrica Lacteos',
+      'producto': 'Leche Entera 1L',
+      'cantidad': 200,
+      'fecha': '2026-08-08',
+      'estado': 'Completado',
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -39,14 +62,28 @@ class _RecepcionState extends State<Recepcion> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF14B8A6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF14B8A6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Recepcion de Mercancia', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Recepcion de Mercancia',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF14B8A6),
               size: 20,
             ),
@@ -68,21 +105,36 @@ class _RecepcionState extends State<Recepcion> {
         onPressed: () => _showAddRecepcionDialog(),
         backgroundColor: const Color(0xFF14B8A6),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Nueva Recepcion', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text(
+          'Nueva Recepcion',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildRecepcionCard(Map<String, dynamic> recepcion, ThemePalette palette) {
-    final estadoColor = recepcion['estado'] == 'Completado' ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
-    
+  Widget _buildRecepcionCard(
+    Map<String, dynamic> recepcion,
+    ThemePalette palette,
+  ) {
+    final estadoColor = recepcion['estado'] == 'Completado'
+        ? const Color(0xFF10B981)
+        : const Color(0xFFF59E0B);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,7 +175,10 @@ class _RecepcionState extends State<Recepcion> {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildInfoRow('Cantidad', '${recepcion['cantidad']} unidades'),
+                child: _buildInfoRow(
+                  'Cantidad',
+                  '${recepcion['cantidad']} unidades',
+                ),
               ),
             ],
           ),
@@ -142,7 +197,9 @@ class _RecepcionState extends State<Recepcion> {
           label,
           style: GoogleFonts.dmSans(
             fontSize: 11,
-            color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
           ),
         ),
         const SizedBox(height: 4),
@@ -166,8 +223,16 @@ class _RecepcionState extends State<Recepcion> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Nueva Recepcion', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Nueva Recepcion',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -175,8 +240,18 @@ class _RecepcionState extends State<Recepcion> {
               controller: proveedorController,
               decoration: InputDecoration(
                 labelText: 'Proveedor',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -184,8 +259,18 @@ class _RecepcionState extends State<Recepcion> {
               controller: productoController,
               decoration: InputDecoration(
                 labelText: 'Producto',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -194,8 +279,18 @@ class _RecepcionState extends State<Recepcion> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Cantidad',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
           ],
@@ -203,7 +298,10 @@ class _RecepcionState extends State<Recepcion> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -219,8 +317,13 @@ class _RecepcionState extends State<Recepcion> {
               });
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF14B8A6)),
-            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF14B8A6),
+            ),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

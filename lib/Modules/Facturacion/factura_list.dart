@@ -513,12 +513,16 @@ class _FacturaListState extends State<FacturaList> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            factura['correlativo'] ?? '',
-                            style: GoogleFonts.dmMono(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                          Flexible(
+                            child: Text(
+                              factura['correlativo'] ?? '',
+                              style: GoogleFonts.dmMono(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 8),

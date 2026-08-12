@@ -11,22 +11,45 @@ class CampanasMarketing extends StatefulWidget {
 
 class _CampanasMarketingState extends State<CampanasMarketing> {
   List<Map<String, dynamic>> _campanas = [
-    {'id': '1', 'nombre': 'Promo Verano 2026', 'tipo': 'Descuento', 'estado': 'Activa', 'fecha_inicio': '2026-08-01', 'fecha_fin': '2026-08-31'},
-    {'id': '2', 'nombre': 'Fidelizacion Clientes', 'tipo': 'Puntos Dobles', 'estado': 'Programada', 'fecha_inicio': '2026-09-01', 'fecha_fin': '2026-09-30'},
-    {'id': '3', 'nombre': 'Lanzamiento Producto', 'tipo': 'Email Marketing', 'estado': 'Completada', 'fecha_inicio': '2026-07-15', 'fecha_fin': '2026-07-31'},
+    {
+      'id': '1',
+      'nombre': 'Promo Verano 2026',
+      'tipo': 'Descuento',
+      'estado': 'Activa',
+      'fecha_inicio': '2026-08-01',
+      'fecha_fin': '2026-08-31',
+    },
+    {
+      'id': '2',
+      'nombre': 'Fidelizacion Clientes',
+      'tipo': 'Puntos Dobles',
+      'estado': 'Programada',
+      'fecha_inicio': '2026-09-01',
+      'fecha_fin': '2026-09-30',
+    },
+    {
+      'id': '3',
+      'nombre': 'Lanzamiento Producto',
+      'tipo': 'Email Marketing',
+      'estado': 'Completada',
+      'fecha_inicio': '2026-07-15',
+      'fecha_fin': '2026-07-31',
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -39,14 +62,28 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF10B981), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF10B981),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Campanas de Marketing', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Campanas de Marketing',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF10B981),
               size: 20,
             ),
@@ -68,23 +105,35 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
         onPressed: () => _showAddCampanaDialog(),
         backgroundColor: const Color(0xFF10B981),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Nueva Campana', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text(
+          'Nueva Campana',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildCampanaCard(Map<String, dynamic> campana, ThemePalette palette) {
-    final estadoColor = campana['estado'] == 'Activa' ? const Color(0xFF10B981) : 
-                     campana['estado'] == 'Programada' ? const Color(0xFFF59E0B) : 
-                     const Color(0xFF6366F1);
-    
+    final estadoColor = campana['estado'] == 'Activa'
+        ? const Color(0xFF10B981)
+        : campana['estado'] == 'Programada'
+        ? const Color(0xFFF59E0B)
+        : const Color(0xFF6366F1);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,13 +169,9 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(
-                child: _buildInfoRow('Tipo', campana['tipo']),
-              ),
+              Expanded(child: _buildInfoRow('Tipo', campana['tipo'])),
               const SizedBox(width: 16),
-              Expanded(
-                child: _buildInfoRow('Inicio', campana['fecha_inicio']),
-              ),
+              Expanded(child: _buildInfoRow('Inicio', campana['fecha_inicio'])),
             ],
           ),
           const SizedBox(height: 8),
@@ -144,7 +189,9 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
           label,
           style: GoogleFonts.dmSans(
             fontSize: 11,
-            color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
           ),
         ),
         const SizedBox(height: 4),
@@ -169,8 +216,16 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Nueva Campana', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Nueva Campana',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -178,8 +233,18 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
               controller: nombreController,
               decoration: InputDecoration(
                 labelText: 'Nombre de la campana',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -187,8 +252,18 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
               controller: tipoController,
               decoration: InputDecoration(
                 labelText: 'Tipo (Descuento/Puntos/Email)',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -196,8 +271,18 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
               controller: fechaInicioController,
               decoration: InputDecoration(
                 labelText: 'Fecha inicio (YYYY-MM-DD)',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -205,8 +290,18 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
               controller: fechaFinController,
               decoration: InputDecoration(
                 labelText: 'Fecha fin (YYYY-MM-DD)',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
           ],
@@ -214,7 +309,10 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -230,8 +328,13 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
               });
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+            ),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

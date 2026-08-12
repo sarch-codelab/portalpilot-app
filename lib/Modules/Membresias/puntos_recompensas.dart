@@ -11,22 +11,42 @@ class PuntosRecompensas extends StatefulWidget {
 
 class _PuntosRecompensasState extends State<PuntosRecompensas> {
   List<Map<String, dynamic>> _socios = [
-    {'id': '1', 'nombre': 'Juan Pérez', 'puntos': 2450, 'nivel': 'Oro', 'beneficios': ['5% descuento', 'Acceso prioritario']},
-    {'id': '2', 'nombre': 'María García', 'puntos': 1200, 'nivel': 'Plata', 'beneficios': ['3% descuento', 'Promociones exclusivas']},
-    {'id': '3', 'nombre': 'Carlos López', 'puntos': 850, 'nivel': 'Bronce', 'beneficios': ['2% descuento']},
+    {
+      'id': '1',
+      'nombre': 'Juan PÃ©rez',
+      'puntos': 2450,
+      'nivel': 'Oro',
+      'beneficios': ['5% descuento', 'Acceso prioritario'],
+    },
+    {
+      'id': '2',
+      'nombre': 'MarÃ­a GarcÃ­a',
+      'puntos': 1200,
+      'nivel': 'Plata',
+      'beneficios': ['3% descuento', 'Promociones exclusivas'],
+    },
+    {
+      'id': '3',
+      'nombre': 'Carlos LÃ³pez',
+      'puntos': 850,
+      'nivel': 'Bronce',
+      'beneficios': ['2% descuento'],
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -39,14 +59,28 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF8B5CF6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF8B5CF6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Puntos y Recompensas', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Puntos y Recompensas',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF8B5CF6),
               size: 20,
             ),
@@ -70,23 +104,35 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
         },
         backgroundColor: const Color(0xFF8B5CF6),
         icon: const Icon(Icons.card_giftcard_rounded, color: Colors.white),
-        label: Text('Agregar Puntos', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text(
+          'Agregar Puntos',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildSocioCard(Map<String, dynamic> socio, ThemePalette palette) {
-    final nivelColor = socio['nivel'] == 'Oro' ? const Color(0xFFF59E0B) : 
-                    socio['nivel'] == 'Plata' ? const Color(0xFF9CA3AF) : 
-                    const Color(0xFFCD7F32);
-    
+    final nivelColor = socio['nivel'] == 'Oro'
+        ? const Color(0xFFF59E0B)
+        : socio['nivel'] == 'Plata'
+        ? const Color(0xFF9CA3AF)
+        : const Color(0xFFCD7F32);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,7 +186,10 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF8B5CF6),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
               ),
             ],
@@ -154,26 +203,36 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                 style: GoogleFonts.dmSans(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
                 ),
               ),
               const SizedBox(height: 4),
-              ...(socio['beneficios'] as List<String>).map((beneficio) => Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF10B981)),
-                    const SizedBox(width: 6),
-                    Text(
-                      beneficio,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+              ...(socio['beneficios'] as List<String>).map(
+                (beneficio) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        size: 12,
+                        color: Color(0xFF10B981),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Text(
+                        beneficio,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: appThemeNotifier.isDark
+                              ? const Color(0xFFA3A3A3)
+                              : const Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              )),
+              ),
             ],
           ),
         ],
@@ -187,8 +246,16 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Agregar Puntos', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Agregar Puntos',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -197,8 +264,18 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Cantidad de puntos',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
           ],
@@ -206,7 +283,10 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -218,8 +298,13 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
-            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B5CF6),
+            ),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -230,16 +315,31 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Canjear Puntos', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Canjear Puntos',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Text(
-          'Tienes ${socio['puntos']} puntos disponibles. ¿Cuántos deseas canjear?',
-          style: GoogleFonts.dmSans(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
+          'Tienes ${socio['puntos']} puntos disponibles. Â¿CuÃ¡ntos deseas canjear?',
+          style: GoogleFonts.dmSans(
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -251,8 +351,13 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
-            child: Text('Canjear', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B5CF6),
+            ),
+            child: Text(
+              'Canjear',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

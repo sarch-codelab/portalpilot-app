@@ -1764,10 +1764,11 @@ class _NotasScreenState extends State<NotasScreen> with TickerProviderStateMixin
                       Text(nombreAlumno,
                           style: GoogleFonts.syne(fontSize: 22, fontWeight: FontWeight.w900, color: p.textPrimary)),
                       const SizedBox(height: 4),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           _buildInfoChip('$grado · $seccion', Icons.school_rounded, p.accentPurple, p),
-                          const SizedBox(width: 8),
                           _buildInfoChip(periodo, Icons.calendar_today_rounded, p.infoBlue, p),
                         ],
                       ),

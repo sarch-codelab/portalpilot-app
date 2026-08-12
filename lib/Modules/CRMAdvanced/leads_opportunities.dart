@@ -11,22 +11,42 @@ class LeadsOpportunities extends StatefulWidget {
 
 class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
   List<Map<String, dynamic>> _leads = [
-    {'id': '1', 'nombre': 'Supermercado Norte', 'contacto': 'Juan Pérez', 'estado': 'nuevo', 'valor': 0},
-    {'id': '2', 'nombre': 'Pulpería Centro', 'contacto': 'María García', 'estado': 'calificado', 'valor': 25000},
-    {'id': '3', 'nombre': 'Tienda Express', 'contacto': 'Carlos López', 'estado': 'negociacion', 'valor': 15000},
+    {
+      'id': '1',
+      'nombre': 'Supermercado Norte',
+      'contacto': 'Juan PÃ©rez',
+      'estado': 'nuevo',
+      'valor': 0,
+    },
+    {
+      'id': '2',
+      'nombre': 'PulperÃ­a Centro',
+      'contacto': 'MarÃ­a GarcÃ­a',
+      'estado': 'calificado',
+      'valor': 25000,
+    },
+    {
+      'id': '3',
+      'nombre': 'Tienda Express',
+      'contacto': 'Carlos LÃ³pez',
+      'estado': 'negociacion',
+      'valor': 15000,
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -39,14 +59,28 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF8B5CF6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF8B5CF6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Leads y Oportunidades', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Leads y Oportunidades',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF8B5CF6),
               size: 20,
             ),
@@ -68,23 +102,35 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
         onPressed: () => _showAddLeadDialog(),
         backgroundColor: const Color(0xFF8B5CF6),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Nuevo Lead', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text(
+          'Nuevo Lead',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildLeadCard(Map<String, dynamic> lead, ThemePalette palette) {
-    final estadoColor = lead['estado'] == 'nuevo' ? const Color(0xFF10B981) : 
-                     lead['estado'] == 'calificado' ? const Color(0xFFF59E0B) : 
-                     const Color(0xFF6366F1);
-    
+    final estadoColor = lead['estado'] == 'nuevo'
+        ? const Color(0xFF10B981)
+        : lead['estado'] == 'calificado'
+        ? const Color(0xFFF59E0B)
+        : const Color(0xFF6366F1);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,12 +166,13 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(
-                child: _buildInfoRow('Contacto', lead['contacto']),
-              ),
+              Expanded(child: _buildInfoRow('Contacto', lead['contacto'])),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildInfoRow('Valor Potencial', 'L.${lead['valor'].toStringAsFixed(0)}'),
+                child: _buildInfoRow(
+                  'Valor Potencial',
+                  'L.${lead['valor'].toStringAsFixed(0)}',
+                ),
               ),
             ],
           ),
@@ -142,7 +189,9 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
           label,
           style: GoogleFonts.dmSans(
             fontSize: 11,
-            color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
           ),
         ),
         const SizedBox(height: 4),
@@ -166,8 +215,16 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Nuevo Lead', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Nuevo Lead',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -175,8 +232,18 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
               controller: nombreController,
               decoration: InputDecoration(
                 labelText: 'Nombre de la empresa',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -184,8 +251,18 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
               controller: contactoController,
               decoration: InputDecoration(
                 labelText: 'Contacto',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -194,8 +271,18 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Valor potencial (L.)',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
           ],
@@ -203,7 +290,10 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -218,8 +308,13 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
               });
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
-            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B5CF6),
+            ),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

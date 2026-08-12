@@ -18,14 +18,16 @@ class _SystemLogsState extends State<SystemLogs> {
   void initState() {
     super.initState();
     _loadLogs();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -47,14 +49,28 @@ class _SystemLogsState extends State<SystemLogs> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFF59E0B), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFF59E0B),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Logs del Sistema', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Logs del Sistema',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFFF59E0B),
               size: 20,
             ),
@@ -68,36 +84,40 @@ class _SystemLogsState extends State<SystemLogs> {
           ),
         ],
       ),
-      body: _isLoading 
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _logs.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.bug_report_rounded,
-                        size: 64,
-                        color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No hay logs disponibles',
-                        style: GoogleFonts.dmSans(
-                          color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
-                        ),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.bug_report_rounded,
+                    size: 64,
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _logs.length,
-                  itemBuilder: (context, index) {
-                    final log = _logs[index];
-                    return _buildLogCard(log, palette);
-                  },
-                ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No hay logs disponibles',
+                    style: GoogleFonts.dmSans(
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _logs.length,
+              itemBuilder: (context, index) {
+                final log = _logs[index];
+                return _buildLogCard(log, palette);
+              },
+            ),
     );
   }
 
@@ -105,23 +125,35 @@ class _SystemLogsState extends State<SystemLogs> {
     try {
       final logData = log.contains('{') ? log : '{}';
       final logMap = logData.startsWith('{') ? null : null;
-      
-      final level = log.contains('ERROR') ? 'ERROR' : 
-                   log.contains('WARNING') ? 'WARNING' : 
-                   log.contains('DEBUG') ? 'DEBUG' : 'INFO';
-      
-      final levelColor = level == 'ERROR' ? const Color(0xFFEF4444) : 
-                       level == 'WARNING' ? const Color(0xFFF59E0B) : 
-                       level == 'DEBUG' ? const Color(0xFF8B5CF6) : 
-                       const Color(0xFF10B981);
-      
+
+      final level = log.contains('ERROR')
+          ? 'ERROR'
+          : log.contains('WARNING')
+          ? 'WARNING'
+          : log.contains('DEBUG')
+          ? 'DEBUG'
+          : 'INFO';
+
+      final levelColor = level == 'ERROR'
+          ? const Color(0xFFEF4444)
+          : level == 'WARNING'
+          ? const Color(0xFFF59E0B)
+          : level == 'DEBUG'
+          ? const Color(0xFF8B5CF6)
+          : const Color(0xFF10B981);
+
       return Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF111111)
+              : Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: levelColor.withValues(alpha: 0.3), width: 1),
+          border: Border.all(
+            color: levelColor.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +161,10 @@ class _SystemLogsState extends State<SystemLogs> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: levelColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
@@ -149,7 +184,9 @@ class _SystemLogsState extends State<SystemLogs> {
                     log.substring(0, log.length > 100 ? 100 : log.length),
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -165,15 +202,23 @@ class _SystemLogsState extends State<SystemLogs> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF111111)
+              : Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+          border: Border.all(
+            color: appThemeNotifier.isDark
+                ? const Color(0xFF262626)
+                : const Color(0xFFE5E7EB),
+          ),
         ),
         child: Text(
           log,
           style: GoogleFonts.dmSans(
             fontSize: 11,
-            color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
           ),
         ),
       );

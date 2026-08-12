@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
-/// Pantalla principal del módulo de Cotizaciones
+/// Pantalla principal del mÃ³dulo de Cotizaciones
 class CotizacionesHome extends StatefulWidget {
   const CotizacionesHome({super.key});
 
@@ -14,14 +14,16 @@ class _CotizacionesHomeState extends State<CotizacionesHome> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -34,7 +36,11 @@ class _CotizacionesHomeState extends State<CotizacionesHome> {
         backgroundColor: const Color(0xFFF43F5E),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -43,19 +49,35 @@ class _CotizacionesHomeState extends State<CotizacionesHome> {
             Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFF43F5E), Color(0xFFE11D48)]),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF43F5E), Color(0xFFE11D48)],
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.request_quote_rounded, color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.request_quote_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
             const SizedBox(width: 12),
-            Text('COTIZACIONES', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+            Text(
+              'COTIZACIONES',
+              style: GoogleFonts.syne(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 1.5,
+              ),
+            ),
           ],
         ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: Colors.white,
               size: 20,
             ),
@@ -83,7 +105,7 @@ class _CotizacionesHomeState extends State<CotizacionesHome> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Módulo de Cotizaciones',
+              'MÃ³dulo de Cotizaciones',
               style: GoogleFonts.syne(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -92,10 +114,12 @@ class _CotizacionesHomeState extends State<CotizacionesHome> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Cotizaciones a clientes, conversión a ventas',
+              'Cotizaciones a clientes, conversiÃ³n a ventas',
               style: GoogleFonts.dmSans(
                 fontSize: 16,
-                color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                color: appThemeNotifier.isDark
+                    ? const Color(0xFFA3A3A3)
+                    : const Color(0xFF6B7280),
               ),
             ),
             const SizedBox(height: 32),
@@ -109,11 +133,14 @@ class _CotizacionesHomeState extends State<CotizacionesHome> {
                 );
               },
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Nueva Cotización'),
+              label: const Text('Nueva CotizaciÃ³n'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF43F5E),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ],

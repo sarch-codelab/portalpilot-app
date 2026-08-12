@@ -352,6 +352,27 @@ class PortalPilotDB {
     }
   }
 
+  /// Productos - borrar en backend (por empresa_codigo + codigo)
+  static Future<bool> deleteProducto({required String codigo, required String empresaCodigo}) async {
+    try {
+      final response = await http
+          .delete(
+            _uri('/api/productos'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'empresa_codigo': empresaCodigo, 'codigo': codigo}),
+          )
+          .timeout(_timeout);
+      if (response.statusCode >= 400) {
+        debugPrint('⚠️ DELETE /api/productos -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      debugPrint('❌ deleteProducto sync: $e');
+      return false;
+    }
+  }
+
   /// Proveedores - sync to backend
   static Future<bool> insertProveedor({required Map<String, dynamic> proveedor, required String empresaCodigo}) async {
     try {

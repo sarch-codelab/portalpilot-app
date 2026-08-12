@@ -17,14 +17,16 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -37,7 +39,11 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF6366F1), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF6366F1),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -46,19 +52,35 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
             Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF4F46E5)]),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.analytics_rounded, color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.analytics_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
             const SizedBox(width: 12),
-            Text('ANALYTICS & BI', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+            Text(
+              'ANALYTICS & BI',
+              style: GoogleFonts.syne(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 1.5,
+              ),
+            ),
           ],
         ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF6366F1),
               size: 20,
             ),
@@ -76,7 +98,10 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
             'Dashboard Gerencial',
             'Vista ejecutiva del negocio',
             const Color(0xFF6366F1),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardGerencial())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DashboardGerencial()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
@@ -84,38 +109,59 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
             'KPIs Dashboard',
             'Indicadores clave de rendimiento',
             const Color(0xFF10B981),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KPIsDashboard())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const KPIsDashboard()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.trending_up_rounded,
-            'Análisis de Márgenes',
-            'Márgenes por canal y producto',
+            'AnÃ¡lisis de MÃ¡rgenes',
+            'MÃ¡rgenes por canal y producto',
             const Color(0xFFF59E0B),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MargenesAnalisis())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MargenesAnalisis()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.show_chart_rounded,
             'Forecasting',
-            'Pronósticos y proyecciones',
+            'PronÃ³sticos y proyecciones',
             const Color(0xFFEC4899),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForecastingDashboard())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ForecastingDashboard()),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionCard(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
+  Widget _buildActionCard(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF111111)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+          border: Border.all(
+            color: appThemeNotifier.isDark
+                ? const Color(0xFF262626)
+                : const Color(0xFFE5E7EB),
+          ),
         ),
         child: Row(
           children: [
@@ -137,7 +183,9 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
                     style: GoogleFonts.syne(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                      color: appThemeNotifier.isDark
+                          ? Colors.white
+                          : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -145,7 +193,9 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
-                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
                     ),
                   ),
                 ],
@@ -153,7 +203,9 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: appThemeNotifier.isDark ? const Color(0xFF525252) : const Color(0xFF9CA3AF),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFF525252)
+                  : const Color(0xFF9CA3AF),
               size: 16,
             ),
           ],

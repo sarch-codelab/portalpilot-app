@@ -145,13 +145,14 @@ class _PosReportesState extends State<PosReportes> {
   }
 
   Widget _buildKpis() {
+    final wide = MediaQuery.of(context).size.width >= 600;
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: wide ? 4 : 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 1.5,
+      childAspectRatio: wide ? 2.6 : 1.5,
       children: [
         _buildKpi('Ventas Totales', '${_ventas.length}', Icons.receipt_long_rounded, const Color(0xFFF97316)),
         _buildKpi('Ingresos Hoy', 'L.${_formatNumber(_totalHoy)}', Icons.today_rounded, const Color(0xFF10B981)),

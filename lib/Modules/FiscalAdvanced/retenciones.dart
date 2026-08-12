@@ -11,22 +11,42 @@ class Retenciones extends StatefulWidget {
 
 class _RetencionesState extends State<Retenciones> {
   List<Map<String, dynamic>> _retenciones = [
-    {'id': '1', 'tipo': 'ISR', 'proveedor': 'Distribuidora Nacional', 'monto': 2500.00, 'fecha': '2026-08-01'},
-    {'id': '2', 'tipo': 'IVA', 'proveedor': 'Importadora Centro', 'monto': 1250.00, 'fecha': '2026-08-02'},
-    {'id': '3', 'tipo': 'ISR', 'proveedor': 'Servicios Técnicos', 'monto': 800.00, 'fecha': '2026-08-03'},
+    {
+      'id': '1',
+      'tipo': 'ISR',
+      'proveedor': 'Distribuidora Nacional',
+      'monto': 2500.00,
+      'fecha': '2026-08-01',
+    },
+    {
+      'id': '2',
+      'tipo': 'IVA',
+      'proveedor': 'Importadora Centro',
+      'monto': 1250.00,
+      'fecha': '2026-08-02',
+    },
+    {
+      'id': '3',
+      'tipo': 'ISR',
+      'proveedor': 'Servicios TÃ©cnicos',
+      'monto': 800.00,
+      'fecha': '2026-08-03',
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -39,14 +59,28 @@ class _RetencionesState extends State<Retenciones> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFDC2626), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFDC2626),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Retenciones de Impuestos', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Retenciones de Impuestos',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFFDC2626),
               size: 20,
             ),
@@ -68,21 +102,36 @@ class _RetencionesState extends State<Retenciones> {
         onPressed: () => _showAddRetencionDialog(),
         backgroundColor: const Color(0xFFDC2626),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Nueva Retención', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text(
+          'Nueva RetenciÃ³n',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildRetencionCard(Map<String, dynamic> retencion, ThemePalette palette) {
-    final tipoColor = retencion['tipo'] == 'ISR' ? const Color(0xFFDC2626) : const Color(0xFF8B5CF6);
-    
+  Widget _buildRetencionCard(
+    Map<String, dynamic> retencion,
+    ThemePalette palette,
+  ) {
+    final tipoColor = retencion['tipo'] == 'ISR'
+        ? const Color(0xFFDC2626)
+        : const Color(0xFF8B5CF6);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,12 +168,13 @@ class _RetencionesState extends State<Retenciones> {
           Row(
             children: [
               Expanded(
-                child: _buildInfoRow('Monto Retenido', 'L.${retencion['monto'].toStringAsFixed(2)}'),
+                child: _buildInfoRow(
+                  'Monto Retenido',
+                  'L.${retencion['monto'].toStringAsFixed(2)}',
+                ),
               ),
               const SizedBox(width: 16),
-              Expanded(
-                child: _buildInfoRow('Fecha', retencion['fecha']),
-              ),
+              Expanded(child: _buildInfoRow('Fecha', retencion['fecha'])),
             ],
           ),
         ],
@@ -140,7 +190,9 @@ class _RetencionesState extends State<Retenciones> {
           label,
           style: GoogleFonts.dmSans(
             fontSize: 11,
-            color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
           ),
         ),
         const SizedBox(height: 4),
@@ -164,8 +216,16 @@ class _RetencionesState extends State<Retenciones> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Nueva Retención', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Nueva RetenciÃ³n',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -173,8 +233,18 @@ class _RetencionesState extends State<Retenciones> {
               controller: tipoController,
               decoration: InputDecoration(
                 labelText: 'Tipo (ISR/IVA)',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -182,8 +252,18 @@ class _RetencionesState extends State<Retenciones> {
               controller: proveedorController,
               decoration: InputDecoration(
                 labelText: 'Proveedor',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -192,8 +272,18 @@ class _RetencionesState extends State<Retenciones> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Monto (L.)',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
           ],
@@ -201,7 +291,10 @@ class _RetencionesState extends State<Retenciones> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -216,8 +309,13 @@ class _RetencionesState extends State<Retenciones> {
               });
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
-            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+            ),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

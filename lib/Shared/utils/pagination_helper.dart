@@ -43,63 +43,63 @@ class PaginationHelper {
   static bool hasPreviousPage(int currentPage) {
     return currentPage > 0;
   }
+}
 
-  /// Clase para manejar estado de paginación
-  static class PaginationState<T> {
-    final List<T> items;
-    final int currentPage;
-    final int pageSize;
-    final int totalItems;
-    final bool isLoading;
-    final bool hasMore;
+/// Clase para manejar estado de paginación
+class PaginationState<T> {
+  final List<T> items;
+  final int currentPage;
+  final int pageSize;
+  final int totalItems;
+  final bool isLoading;
+  final bool hasMore;
 
-    const PaginationState({
-      required this.items,
-      required this.currentPage,
-      required this.pageSize,
-      required this.totalItems,
-      this.isLoading = false,
-      this.hasMore = true,
-    });
+  const PaginationState({
+    required this.items,
+    required this.currentPage,
+    required this.pageSize,
+    required this.totalItems,
+    this.isLoading = false,
+    this.hasMore = true,
+  });
 
-    int get totalPages => getTotalPages(totalItems, pageSize);
-    int get currentStartIndex => getPageStartIndex(currentPage, pageSize);
-    int get currentEndIndex => getPageEndIndex(currentPage, pageSize, totalItems);
+  int get totalPages => PaginationHelper.getTotalPages(totalItems, pageSize);
+  int get currentStartIndex => PaginationHelper.getPageStartIndex(currentPage, pageSize);
+  int get currentEndIndex => PaginationHelper.getPageEndIndex(currentPage, pageSize, totalItems);
 
-    PaginationState<T> copyWith({
-      List<T>? items,
-      int? currentPage,
-      int? pageSize,
-      int? totalItems,
-      bool? isLoading,
-      bool? hasMore,
-    }) {
-      return PaginationState<T>(
-        items: items ?? this.items,
-        currentPage: currentPage ?? this.currentPage,
-        pageSize: pageSize ?? this.pageSize,
-        totalItems: totalItems ?? this.totalItems,
-        isLoading: isLoading ?? this.isLoading,
-        hasMore: hasMore ?? this.hasMore,
-      );
+  PaginationState<T> copyWith({
+    List<T>? items,
+    int? currentPage,
+    int? pageSize,
+    int? totalItems,
+    bool? isLoading,
+    bool? hasMore,
+  }) {
+    return PaginationState<T>(
+      items: items ?? this.items,
+      currentPage: currentPage ?? this.currentPage,
+      pageSize: pageSize ?? this.pageSize,
+      totalItems: totalItems ?? this.totalItems,
+      isLoading: isLoading ?? this.isLoading,
+      hasMore: hasMore ?? this.hasMore,
+    );
+  }
+
+  PaginationState<T> withLoading(bool loading) {
+    return copyWith(isLoading: loading);
+  }
+
+  PaginationState<T> nextPage() {
+    if (!PaginationHelper.hasNextPage(currentPage, totalItems, pageSize)) {
+      return this;
     }
+    return copyWith(currentPage: currentPage + 1);
+  }
 
-    PaginationState<T> withLoading(bool loading) {
-      return copyWith(isLoading: loading);
+  PaginationState<T> previousPage() {
+    if (!PaginationHelper.hasPreviousPage(currentPage)) {
+      return this;
     }
-
-    PaginationState<T> nextPage() {
-      if (!hasNextPage(currentPage, totalItems, pageSize)) {
-        return this;
-      }
-      return copyWith(currentPage: currentPage + 1);
-    }
-
-    PaginationState<T> previousPage() {
-      if (!hasPreviousPage(currentPage)) {
-        return this;
-      }
-      return copyWith(currentPage: currentPage - 1);
-    }
+    return copyWith(currentPage: currentPage - 1);
   }
 }

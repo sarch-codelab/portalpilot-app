@@ -137,165 +137,199 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
-          // Contenido centrado
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // ── LOGO ──
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _logoScale.value,
-                      child: Opacity(
-                        opacity: _logoFade.value,
-                        child: Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [accentPurple, accentPurpleDark],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: accentPurple.withValues(alpha: 
-                                  0.5 * _logoFade.value,
-                                ),
-                                blurRadius: 40,
-                                spreadRadius: 3,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.blur_on_rounded,
-                            color: textPrimary,
-                            size: 34,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+          // Contenido centrado y responsive
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxHeight < 640 ||
+                    constraints.maxWidth < 380;
+                final titleSize = compact ? 32.0 : 42.0;
+                final logoPadding = compact ? 14.0 : 18.0;
+                final logoIcon = compact ? 28.0 : 34.0;
+                final spacingMid = compact ? 8.0 : 12.0;
+                final spacingLarge = compact ? 28.0 : 60.0;
 
-                const SizedBox(height: 36),
-
-                // ── TÍTULO: PORTAL PILOT ──
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Transform.translate(
-                      offset: Offset(0, _titleSlide.value),
-                      child: Opacity(
-                        opacity: _titleFade.value,
-                        child: Text(
-                          'Portal Pilot',
-                          style: GoogleFonts.syne(
-                            fontSize: 42,
-                            fontWeight: FontWeight.w900,
-                            color: textPrimary,
-                            letterSpacing: -1.2,
-                            height: 1.0,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 12),
-
-                // ── SUBTÍTULO ──
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _subtitleFade.value,
-                      child: Text(
-                        'WORKSPACE CLIENT',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: textMuted,
-                          letterSpacing: 3.5,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 60),
-
-                // ── LÍNEA DE PROGRESO MINIMALISTA ──
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return SizedBox(
-                      width: 180,
-                      child: Opacity(
-                        opacity: _subtitleFade.value,
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Container(
-                              height: 1.5,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1A1A1A),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Container(
-                                  width: constraints.maxWidth *
-                                      _lineProgress.value,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        accentPurple,
-                                        accentPurpleDark,
+                return SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ── LOGO ──
+                          AnimatedBuilder(
+                            animation: _controller,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _logoScale.value,
+                                child: Opacity(
+                                  opacity: _logoFade.value,
+                                  child: Container(
+                                    padding: EdgeInsets.all(logoPadding),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          accentPurple,
+                                          accentPurpleDark,
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: accentPurple.withValues(
+                                            alpha: 0.5 * _logoFade.value,
+                                          ),
+                                          blurRadius: 40,
+                                          spreadRadius: 3,
+                                        ),
                                       ],
                                     ),
-                                    borderRadius: BorderRadius.circular(2),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: accentPurple.withValues(alpha: 0.6),
-                                        blurRadius: 8,
-                                        spreadRadius: 0.5,
-                                      ),
-                                    ],
+                                    child: Icon(
+                                      Icons.blur_on_rounded,
+                                      color: textPrimary,
+                                      size: logoIcon,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                              );
+                            },
+                          ),
 
-                const SizedBox(height: 24),
+                          SizedBox(height: compact ? 24 : 36),
 
-                // ── VERSIÓN ──
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _versionFade.value,
-                      child: Text(
-                        'v1.0.0',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: textDark,
-                          letterSpacing: 1.2,
-                        ),
+                          // ── TÍTULO: PORTAL PILOT ──
+                          AnimatedBuilder(
+                            animation: _controller,
+                            builder: (context, child) {
+                              return Transform.translate(
+                                offset: Offset(0, _titleSlide.value),
+                                child: Opacity(
+                                  opacity: _titleFade.value,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      'Portal Pilot',
+                                      style: GoogleFonts.syne(
+                                        fontSize: titleSize,
+                                        fontWeight: FontWeight.w900,
+                                        color: textPrimary,
+                                        letterSpacing: -1.2,
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                          SizedBox(height: spacingMid),
+
+                          // ── SUBTÍTULO ──
+                          AnimatedBuilder(
+                            animation: _controller,
+                            builder: (context, child) {
+                              return Opacity(
+                                opacity: _subtitleFade.value,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'WORKSPACE CLIENT',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: textMuted,
+                                      letterSpacing: 3.5,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                          SizedBox(height: spacingLarge),
+
+                          // ── LÍNEA DE PROGRESO MINIMALISTA ──
+                          AnimatedBuilder(
+                            animation: _controller,
+                            builder: (context, child) {
+                              return SizedBox(
+                                width: compact ? 140 : 180,
+                                child: Opacity(
+                                  opacity: _subtitleFade.value,
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      return Container(
+                                        height: 1.5,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1A1A1A),
+                                          borderRadius:
+                                              BorderRadius.circular(2),
+                                        ),
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Container(
+                                            width: constraints.maxWidth *
+                                                _lineProgress.value,
+                                            decoration: BoxDecoration(
+                                              gradient: const LinearGradient(
+                                                colors: [
+                                                  accentPurple,
+                                                  accentPurpleDark,
+                                                ],
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(2),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: accentPurple
+                                                      .withValues(alpha: 0.6),
+                                                  blurRadius: 8,
+                                                  spreadRadius: 0.5,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                          SizedBox(height: compact ? 16 : 24),
+
+                          // ── VERSIÓN ──
+                          AnimatedBuilder(
+                            animation: _controller,
+                            builder: (context, child) {
+                              return Opacity(
+                                opacity: _versionFade.value,
+                                child: Text(
+                                  'v1.0.0',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: textDark,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                ),
-              ],
+                    ),
+                  ),
+                );
+              },
             ),
           ),
 

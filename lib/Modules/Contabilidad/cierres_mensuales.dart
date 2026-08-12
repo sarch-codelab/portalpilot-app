@@ -13,14 +13,16 @@ class _CierresMensualesState extends State<CierresMensuales> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -33,14 +35,28 @@ class _CierresMensualesState extends State<CierresMensuales> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF8B5CF6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF8B5CF6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Cierres Mensuales', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Cierres Mensuales',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF8B5CF6),
               size: 20,
             ),
@@ -93,7 +109,9 @@ class _CierresMensualesState extends State<CierresMensuales> {
               Row(
                 children: [
                   Icon(
-                    cerrado ? Icons.check_circle_rounded : Icons.pending_rounded,
+                    cerrado
+                        ? Icons.check_circle_rounded
+                        : Icons.pending_rounded,
                     size: 16,
                     color: color,
                   ),
@@ -131,8 +149,16 @@ class _CierresMensualesState extends State<CierresMensuales> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Detalle: $mes', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Detalle: $mes',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -146,17 +172,28 @@ class _CierresMensualesState extends State<CierresMensuales> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cerrar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cerrar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Reporte generado'), backgroundColor: Color(0xFF10B981)),
+                const SnackBar(
+                  content: Text('Reporte generado'),
+                  backgroundColor: Color(0xFF10B981),
+                ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
-            child: Text('Generar Reporte', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B5CF6),
+            ),
+            child: Text(
+              'Generar Reporte',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -172,7 +209,9 @@ class _CierresMensualesState extends State<CierresMensuales> {
           Text(
             label,
             style: GoogleFonts.dmSans(
-              color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFFA3A3A3)
+                  : const Color(0xFF6B7280),
             ),
           ),
           Text(

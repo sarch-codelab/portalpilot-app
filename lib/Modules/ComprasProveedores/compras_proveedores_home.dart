@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
-/// Pantalla principal del módulo de Compras y Proveedores
+/// Pantalla principal del mÃ³dulo de Compras y Proveedores
 class ComprasProveedoresHome extends StatefulWidget {
   const ComprasProveedoresHome({super.key});
 
@@ -14,14 +14,16 @@ class _ComprasProveedoresHomeState extends State<ComprasProveedoresHome> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -34,7 +36,11 @@ class _ComprasProveedoresHomeState extends State<ComprasProveedoresHome> {
         backgroundColor: const Color(0xFF14B8A6),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -43,19 +49,35 @@ class _ComprasProveedoresHomeState extends State<ComprasProveedoresHome> {
             Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF14B8A6), Color(0xFF0D9488)]),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.shopping_cart_rounded, color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.shopping_cart_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
             const SizedBox(width: 12),
-            Text('COMPRAS Y PROVEEDORES', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+            Text(
+              'COMPRAS Y PROVEEDORES',
+              style: GoogleFonts.syne(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 1.5,
+              ),
+            ),
           ],
         ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: Colors.white,
               size: 20,
             ),
@@ -83,7 +105,7 @@ class _ComprasProveedoresHomeState extends State<ComprasProveedoresHome> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Módulo de Compras y Proveedores',
+              'MÃ³dulo de Compras y Proveedores',
               style: GoogleFonts.syne(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -92,10 +114,12 @@ class _ComprasProveedoresHomeState extends State<ComprasProveedoresHome> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Órdenes de compra, recepción, costeo',
+              'Ã“rdenes de compra, recepciÃ³n, costeo',
               style: GoogleFonts.dmSans(
                 fontSize: 16,
-                color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                color: appThemeNotifier.isDark
+                    ? const Color(0xFFA3A3A3)
+                    : const Color(0xFF6B7280),
               ),
             ),
             const SizedBox(height: 32),
@@ -113,7 +137,10 @@ class _ComprasProveedoresHomeState extends State<ComprasProveedoresHome> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF14B8A6),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ],

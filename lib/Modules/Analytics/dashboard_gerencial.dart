@@ -13,14 +13,16 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -33,14 +35,28 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF6366F1), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF6366F1),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Dashboard Gerencial', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Dashboard Gerencial',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF6366F1),
               size: 20,
             ),
@@ -110,9 +126,24 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSummaryItem('Ventas Totales', 'L.1,250,000', '+15.3%', const Color(0xFF10B981)),
-              _buildSummaryItem('Ganancia Neta', 'L.187,500', '+12.8%', const Color(0xFF10B981)),
-              _buildSummaryItem('Transacciones', '8,450', '+8.2%', const Color(0xFF10B981)),
+              _buildSummaryItem(
+                'Ventas Totales',
+                'L.1,250,000',
+                '+15.3%',
+                const Color(0xFF10B981),
+              ),
+              _buildSummaryItem(
+                'Ganancia Neta',
+                'L.187,500',
+                '+12.8%',
+                const Color(0xFF10B981),
+              ),
+              _buildSummaryItem(
+                'Transacciones',
+                '8,450',
+                '+8.2%',
+                const Color(0xFF10B981),
+              ),
             ],
           ),
         ],
@@ -120,7 +151,12 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
     );
   }
 
-  Widget _buildSummaryItem(String label, String value, String change, Color color) {
+  Widget _buildSummaryItem(
+    String label,
+    String value,
+    String change,
+    Color color,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -165,7 +201,11 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,11 +219,15 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildRevenueBar('Canal Tradicional', 450000, const Color(0xFFF59E0B)),
+          _buildRevenueBar(
+            'Canal Tradicional',
+            450000,
+            const Color(0xFFF59E0B),
+          ),
           const SizedBox(height: 12),
           _buildRevenueBar('Canal Moderno', 620000, const Color(0xFF10B981)),
           const SizedBox(height: 12),
-          _buildRevenueBar('Membresías', 180000, const Color(0xFF8B5CF6)),
+          _buildRevenueBar('MembresÃ­as', 180000, const Color(0xFF8B5CF6)),
         ],
       ),
     );
@@ -192,7 +236,7 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
   Widget _buildRevenueBar(String canal, double valor, Color color) {
     final maxValor = 620000.0;
     final porcentaje = valor / maxValor;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -221,7 +265,9 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
         Container(
           height: 8,
           decoration: BoxDecoration(
-            color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFF262626)
+                : const Color(0xFFE5E7EB),
             borderRadius: BorderRadius.circular(4),
           ),
           child: FractionallySizedBox(
@@ -245,7 +291,11 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,15 +312,33 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
           Row(
             children: [
               Expanded(
-                child: _buildPerformanceCard('Tradicional', 'L.450K', '12.5%', '2,340', const Color(0xFFF59E0B)),
+                child: _buildPerformanceCard(
+                  'Tradicional',
+                  'L.450K',
+                  '12.5%',
+                  '2,340',
+                  const Color(0xFFF59E0B),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildPerformanceCard('Moderno', 'L.620K', '15.2%', '4,560', const Color(0xFF10B981)),
+                child: _buildPerformanceCard(
+                  'Moderno',
+                  'L.620K',
+                  '15.2%',
+                  '4,560',
+                  const Color(0xFF10B981),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildPerformanceCard('Membresías', 'L.180K', '18.7%', '1,550', const Color(0xFF8B5CF6)),
+                child: _buildPerformanceCard(
+                  'MembresÃ­as',
+                  'L.180K',
+                  '18.7%',
+                  '1,550',
+                  const Color(0xFF8B5CF6),
+                ),
               ),
             ],
           ),
@@ -279,7 +347,13 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
     );
   }
 
-  Widget _buildPerformanceCard(String canal, String ventas, String margen, String transacciones, Color color) {
+  Widget _buildPerformanceCard(
+    String canal,
+    String ventas,
+    String margen,
+    String transacciones,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -310,7 +384,9 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
             'Margen: $margen',
             style: GoogleFonts.dmSans(
               fontSize: 10,
-              color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFFA3A3A3)
+                  : const Color(0xFF6B7280),
             ),
           ),
           const SizedBox(height: 2),
@@ -318,7 +394,9 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
             '$transacciones ops',
             style: GoogleFonts.dmSans(
               fontSize: 10,
-              color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFFA3A3A3)
+                  : const Color(0xFF6B7280),
             ),
           ),
         ],
@@ -332,13 +410,17 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'MÉTRICAS CLAVE',
+            'MÃ‰TRICAS CLAVE',
             style: GoogleFonts.syne(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -349,15 +431,27 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
           Row(
             children: [
               Expanded(
-                child: _buildMetricItem('Ticket Promedio', 'L.148', const Color(0xFF6366F1)),
+                child: _buildMetricItem(
+                  'Ticket Promedio',
+                  'L.148',
+                  const Color(0xFF6366F1),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildMetricItem('Valor por Cliente', 'L.2,340', const Color(0xFF10B981)),
+                child: _buildMetricItem(
+                  'Valor por Cliente',
+                  'L.2,340',
+                  const Color(0xFF10B981),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildMetricItem('Índice de Rotación', '4.2x', const Color(0xFFF59E0B)),
+                child: _buildMetricItem(
+                  'Ãndice de RotaciÃ³n',
+                  '4.2x',
+                  const Color(0xFFF59E0B),
+                ),
               ),
             ],
           ),
@@ -379,7 +473,9 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
             label,
             style: GoogleFonts.dmSans(
               fontSize: 10,
-              color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFFA3A3A3)
+                  : const Color(0xFF6B7280),
             ),
           ),
           const SizedBox(height: 4),

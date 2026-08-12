@@ -17,14 +17,16 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -37,7 +39,11 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF8B5CF6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF8B5CF6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -46,19 +52,35 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
             Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)]),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.route_rounded, color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.route_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
             const SizedBox(width: 12),
-            Text('CANAL TRADICIONAL', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+            Text(
+              'CANAL TRADICIONAL',
+              style: GoogleFonts.syne(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 1.5,
+              ),
+            ),
           ],
         ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF8B5CF6),
               size: 20,
             ),
@@ -74,17 +96,23 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
           _buildActionCard(
             Icons.route_rounded,
             'Rutas Optimizadas',
-            'Gestión de rutas de reparto y visita',
+            'GestiÃ³n de rutas de reparto y visita',
             const Color(0xFF8B5CF6),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RutaScreen())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const RutaScreen()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.account_balance_wallet_rounded,
-            'Control de Crédito',
-            'Límites, uso y disponibilidad por cliente',
+            'Control de CrÃ©dito',
+            'LÃ­mites, uso y disponibilidad por cliente',
             const Color(0xFFEC4899),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreditoAvanzado())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CreditoAvanzado()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
@@ -92,30 +120,48 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
             'Cobros en Efectivo',
             'Registro de cobros y reportes',
             const Color(0xFF10B981),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CobrosEfectivo())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CobrosEfectivo()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.receipt_long_rounded,
             'Fiado',
-            'Gestión de ventas a crédito',
+            'GestiÃ³n de ventas a crÃ©dito',
             const Color(0xFFF59E0B),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FiadoScreen())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FiadoScreen()),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionCard(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
+  Widget _buildActionCard(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF111111)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+          border: Border.all(
+            color: appThemeNotifier.isDark
+                ? const Color(0xFF262626)
+                : const Color(0xFFE5E7EB),
+          ),
         ),
         child: Row(
           children: [
@@ -137,7 +183,9 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
                     style: GoogleFonts.syne(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                      color: appThemeNotifier.isDark
+                          ? Colors.white
+                          : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -145,7 +193,9 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
-                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
                     ),
                   ),
                 ],
@@ -153,7 +203,9 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: appThemeNotifier.isDark ? const Color(0xFF525252) : const Color(0xFF9CA3AF),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFF525252)
+                  : const Color(0xFF9CA3AF),
               size: 16,
             ),
           ],

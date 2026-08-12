@@ -1,4 +1,4 @@
-const { configured, supabaseRequest, resolverEmpresaId, parseBody, ok, fail } = require('../_lib/supabase');
+const { configured, supabaseRequest, resolverEmpresaId, parseBody, ok, fail } = require('./_lib/supabase');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
       if (!empresaCodigo) return ok(res, []);
 
       const result = await supabaseRequest(
-        `/cotizaciones?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=500`
+        `/compras?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=500`
       );
       if (result.status >= 400) return fail(res, { message: result.body });
       return ok(res, JSON.parse(result.body || '[]'));
@@ -23,28 +23,30 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST') {
       const body = parseBody(req);
       const empresaCodigo = body.empresa_codigo || '';
-      const cotizacion = body.cotizacion || null;
-      if (!empresaCodigo || !cotizacion) return fail(res, { message: 'Falta empresa_codigo o cotizacion.', status: 400 });
+      const compra = body.compra || null;
+      if (!empresaCodigo || !compra) return fail(res, { message: 'Falta empresa_codigo o compra.', status: 400 });
       const empresaId = await resolverEmpresaId(empresaCodigo);
 
       const payload = {
         empresa_codigo: empresaCodigo,
-        correlativo: (cotizacion.correlativo || null),
-        proveedor_id: (cotizacion.proveedor_id || cotizacion.proveedorId || null),
-        proveedor_nombre: (cotizacion.proveedor_nombre || cotizacion.proveedorNombre || null),
-        fecha: cotizacion.fecha || new Date().toISOString(),
-        validez_dias: Number(cotizacion.validez_dias || cotizacion.validezDias || 30),
-        estado: (cotizacion.estado || 'borrador'),
-        subtotal: Number(cotizacion.subtotal || 0),
-        isv15: Number(cotizacion.isv15 || 0),
-        isv18: Number(cotizacion.isv18 || 0),
-        descuento: Number(cotizacion.descuento || 0),
-        total: Number(cotizacion.total || 0),
-        notas: cotizacion.notas || null,
+        correlativo: (compra.correlativo || null),
+        proveedor_id: (compra.proveedor_id || compra.proveedorId || null),
+        proveedor_nombre: (compra.proveedor_nombre || compra.proveedorNombre || null),
+        orden_compra_id: (compra.orden_compra_id || compra.ordenCompraId || null),
+        numero_factura: (compra.numero_factura || compra.numeroFactura || null),
+        fecha: compra.fecha || new Date().toISOString(),
+        fecha_vencimiento: compra.fecha_vencimiento || compra.fechaVencimiento || null,
+        estado: (compra.estado || 'pendiente'),
+        subtotal: Number(compra.subtotal || 0),
+        isv15: Number(compra.isv15 || 0),
+        isv18: Number(compra.isv18 || 0),
+        descuento: Number(compra.descuento || 0),
+        total: Number(compra.total || 0),
+        notas: compra.notas || null,
       };
       if (empresaId) payload.empresa_id = empresaId;
 
-      const result = await supabaseRequest('/cotizaciones', { method: 'POST', body: JSON.stringify([payload]) });
+      const result = await supabaseRequest('/compras', { method: 'POST', body: JSON.stringify([payload]) });
       if (result.status >= 400) return fail(res, { message: result.body });
       return ok(res, { success: true, data: JSON.parse(result.body) }, 201);
     }

@@ -17,7 +17,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
   final _establecimientoController = TextEditingController();
   final _puntoEmisionController = TextEditingController();
   final _caiController = TextEditingController();
-  
+
   FiscalConfig _config = FiscalConfig.defaultConfig();
   bool _isLoading = true;
 
@@ -25,14 +25,16 @@ class _FiscalSettingsState extends State<FiscalSettings> {
   void initState() {
     super.initState();
     _loadConfig();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     _rtnController.dispose();
     _nombreEmpresaController.dispose();
     _establecimientoController.dispose();
@@ -63,14 +65,28 @@ class _FiscalSettingsState extends State<FiscalSettings> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF10B981), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF10B981),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Configuración Fiscal', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'ConfiguraciÃ³n Fiscal',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF10B981),
               size: 20,
             ),
@@ -80,53 +96,107 @@ class _FiscalSettingsState extends State<FiscalSettings> {
           ),
         ],
       ),
-      body: _isLoading 
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 _buildSectionHeader('DATOS DE LA EMPRESA'),
                 const SizedBox(height: 12),
-                _buildTextField('RTN', _rtnController, hintText: '14 dígitos', validator: ValidationHelper.validateRTN),
+                _buildTextField(
+                  'RTN',
+                  _rtnController,
+                  hintText: '14 dÃ­gitos',
+                  validator: ValidationHelper.validateRTN,
+                ),
                 const SizedBox(height: 12),
-                _buildTextField('Nombre de la Empresa', _nombreEmpresaController, validator: (value) => ValidationHelper.validateRequired(value, fieldName: 'Nombre')),
+                _buildTextField(
+                  'Nombre de la Empresa',
+                  _nombreEmpresaController,
+                  validator: (value) => ValidationHelper.validateRequired(
+                    value,
+                    fieldName: 'Nombre',
+                  ),
+                ),
                 const SizedBox(height: 12),
-                _buildSectionHeader('PUNTOS DE EMISIÓN'),
+                _buildSectionHeader('PUNTOS DE EMISIÃ“N'),
                 const SizedBox(height: 12),
-                _buildTextField('Establecimiento', _establecimientoController, hintText: '0000', maxLength: 4),
+                _buildTextField(
+                  'Establecimiento',
+                  _establecimientoController,
+                  hintText: '0000',
+                  maxLength: 4,
+                ),
                 const SizedBox(height: 12),
-                _buildTextField('Punto de Emisión', _puntoEmisionController, hintText: '0000', maxLength: 4),
+                _buildTextField(
+                  'Punto de EmisiÃ³n',
+                  _puntoEmisionController,
+                  hintText: '0000',
+                  maxLength: 4,
+                ),
                 const SizedBox(height: 12),
-                _buildSectionHeader('CONFIGURACIÓN SAR'),
+                _buildSectionHeader('CONFIGURACIÃ“N SAR'),
                 const SizedBox(height: 12),
-                _buildTextField('CAI', _caiController, hintText: '37 caracteres alfanuméricos', validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    return FiscalCompliance().validateCAI(value) ? null : 'CAI inválido';
-                  }
-                  return null;
-                }),
+                _buildTextField(
+                  'CAI',
+                  _caiController,
+                  hintText: '37 caracteres alfanumÃ©ricos',
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty) {
+                      return FiscalCompliance().validateCAI(value)
+                          ? null
+                          : 'CAI invÃ¡lido';
+                    }
+                    return null;
+                  },
+                ),
                 const SizedBox(height: 12),
                 _buildSwitch(
-                  'Emitir Factura Electrónica',
-                  'Activar facturación electrónica SAR',
+                  'Emitir Factura ElectrÃ³nica',
+                  'Activar facturaciÃ³n electrÃ³nica SAR',
                   _config.emitirFacturaElectronica,
-                  (value) => setState(() => _config = _config.copyWith(emitirFacturaElectronica: value)),
+                  (value) => setState(
+                    () => _config = _config.copyWith(
+                      emitirFacturaElectronica: value,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 _buildSectionHeader('TASAS DE IMPUESTOS'),
                 const SizedBox(height: 12),
-                _buildNumberField('Tasa ISV (%)', _config.tasaISV, (value) => setState(() => _config = _config.copyWith(tasaISV: value))),
+                _buildNumberField(
+                  'Tasa ISV (%)',
+                  _config.tasaISV,
+                  (value) => setState(
+                    () => _config = _config.copyWith(tasaISV: value),
+                  ),
+                ),
                 const SizedBox(height: 12),
-                _buildNumberField('Límite Exento ISV (L.)', _config.limiteExentoISV, (value) => setState(() => _config = _config.copyWith(limiteExentoISV: value))),
+                _buildNumberField(
+                  'LÃ­mite Exento ISV (L.)',
+                  _config.limiteExentoISV,
+                  (value) => setState(
+                    () => _config = _config.copyWith(limiteExentoISV: value),
+                  ),
+                ),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _saveConfig,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: Text('Guardar Configuración', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 16)),
+                  child: Text(
+                    'Guardar ConfiguraciÃ³n',
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -139,52 +209,100 @@ class _FiscalSettingsState extends State<FiscalSettings> {
       style: GoogleFonts.syne(
         fontSize: 12,
         fontWeight: FontWeight.w800,
-        color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+        color: appThemeNotifier.isDark
+            ? const Color(0xFFA3A3A3)
+            : const Color(0xFF6B7280),
         letterSpacing: 1.5,
       ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {String? hintText, int? maxLength, String? Function(String?)? validator}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    String? hintText,
+    int? maxLength,
+    String? Function(String?)? validator,
+  }) {
     return TextField(
       controller: controller,
       maxLength: maxLength,
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
-        labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-        border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+        labelStyle: TextStyle(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFFA3A3A3)
+              : const Color(0xFF6B7280),
+        ),
+        border: OutlineInputBorder(
+          borderSide: BorderSide(
+            color: appThemeNotifier.isDark
+                ? const Color(0xFF262626)
+                : const Color(0xFFE5E7EB),
+          ),
+        ),
         counterText: '',
       ),
-      style: GoogleFonts.dmSans(color: appThemeNotifier.isDark ? Colors.white : Colors.black),
+      style: GoogleFonts.dmSans(
+        color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+      ),
     );
   }
 
-  Widget _buildNumberField(String label, double value, Function(double) onChanged) {
+  Widget _buildNumberField(
+    String label,
+    double value,
+    Function(double) onChanged,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: GoogleFonts.dmSans(color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
-          Text(value.toStringAsFixed(2), style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: const Color(0xFF10B981))),
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            ),
+          ),
+          Text(
+            value.toStringAsFixed(2),
+            style: GoogleFonts.syne(
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF10B981),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSwitch(String title, String subtitle, bool value, Function(bool) onChanged) {
+  Widget _buildSwitch(
+    String title,
+    String subtitle,
+    bool value,
+    Function(bool) onChanged,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -193,9 +311,25 @@ class _FiscalSettingsState extends State<FiscalSettings> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+                Text(
+                  title,
+                  style: GoogleFonts.syne(
+                    fontWeight: FontWeight.w700,
+                    color: appThemeNotifier.isDark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280))),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFFA3A3A3)
+                        : const Color(0xFF6B7280),
+                  ),
+                ),
               ],
             ),
           ),
@@ -219,14 +353,20 @@ class _FiscalSettingsState extends State<FiscalSettings> {
     );
 
     final saved = await FiscalCompliance().saveConfig(updatedConfig);
-    
+
     if (saved) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Configuración fiscal guardada'), backgroundColor: Color(0xFF10B981)),
+        const SnackBar(
+          content: Text('ConfiguraciÃ³n fiscal guardada'),
+          backgroundColor: Color(0xFF10B981),
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al guardar configuración'), backgroundColor: Color(0xFFEF4444)),
+        const SnackBar(
+          content: Text('Error al guardar configuraciÃ³n'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
       );
     }
   }

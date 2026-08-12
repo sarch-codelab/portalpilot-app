@@ -1,0 +1,850 @@
+// Despachador único de la API móvil (plan Hobby: máx 12 funciones).
+// El handler de login está integrado directamente para evitar problemas de despliegue.
+
+const routes = {
+  'login': loginHandler,
+  'ai/groq': aiGroqHandler,
+  'clientes': clientesHandler,
+  'compras': comprasHandler,
+  'cotizaciones': cotizacionesHandler,
+  'facturas': facturasHandler,
+  'matriculas': matriculasHandler,
+  'matriculas/stats': matriculasStatsHandler,
+  'notas': notasHandler,
+  'ordenes-compra': ordenesCompraHandler,
+  'productos': productosHandler,
+  'proveedores': proveedoresHandler,
+  'transacciones': transaccionesHandler,
+  'ventas': ventasHandler,
+};
+
+module.exports = async function handler(req, res) {
+  const pathname = req.url
+    .split('?')[0]
+    .replace(/^\/api\//, '')
+    .replace(/\/+$/, '');
+
+  const route = routes[pathname];
+  if (!route) {
+    return res.status(404).json({ error: `Ruta no encontrada: /api/${pathname}` });
+  }
+  return route(req, res);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// Handler de Login (integrado para evitar problemas de despliegue)
+// ═══════════════════════════════════════════════════════════════
+
+function loginHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Método no permitido' });
+    return;
+  }
+
+  // ── Parsear body ──────────────────────────────────────────────────────────
+  const parseBody = (value) => {
+    if (!value) return {};
+    if (Buffer.isBuffer(value)) {
+      try { return JSON.parse(value.toString('utf-8')); } catch { return {}; }
+    }
+    if (typeof value === 'string') {
+      try { return JSON.parse(value); } catch { return {}; }
+    }
+    if (typeof value === 'object') return value;
+    return {};
+  };
+
+  const body = parseBody(req.body);
+  const email = (body.email || '').trim().toLowerCase();
+  const password = (body.password || '').toString().trim();
+
+  if (!email || !password) {
+    res.status(400).json({ error: 'Email y contraseña son requeridos.' });
+    return;
+  }
+
+  // ── Configuración NocoDB ──────────────────────────────────────────────────
+  const rawAuth = (process.env.AUTH_BACKEND_URL || '').trim();
+  const tokenEnv = (process.env.AUTH_BACKEND_TOKEN || '').trim();
+  const nocodbBaseId = (process.env.NOCODB_BASE_ID || '').trim();
+  const nocodbTableName = (process.env.NOCODB_TABLE_NAME || 'usuarios').trim();
+  const nocodbApiUrl = (process.env.NOCODB_API_URL || 'https://app.nocodb.com').trim().replace(/\/$/, '');
+
+  // El token puede estar en AUTH_BACKEND_URL (como nc_pat_...) o en AUTH_BACKEND_TOKEN
+  const isToken = rawAuth.startsWith('nc_pat_') || rawAuth.startsWith('nc_');
+  const nocodbToken = isToken ? rawAuth : tokenEnv;
+
+  // ── Intento 1: Consultar tabla 'usuarios' en NocoDB ───────────────────────
+  if (nocodbToken && nocodbBaseId) {
+    loginWithNocoDB({
+      apiUrl: nocodbApiUrl,
+      token: nocodbToken,
+      baseId: nocodbBaseId,
+      tableName: nocodbTableName,
+      email,
+      password,
+    })
+      .then(result => {
+        if (result) {
+          res.status(200).json(result);
+        } else {
+          throw new Error('No se pudo autenticar');
+        }
+      })
+      .catch(err => {
+        console.error('[login] Error consultando NocoDB:', err.message);
+        // Si hay un error claro de autenticación, devolver error
+        if (err.message && err.message.startsWith('AUTH_')) {
+          const msg = err.message.replace('AUTH_', '');
+          res.status(401).json({ error: msg });
+          return;
+        }
+        // Otros errores: continuar al fallback
+        attemptFallback();
+      });
+    return;
+  }
+
+  // ── Intento 2: Fallback de emergencia ─────────────────────────────────────
+  function attemptFallback() {
+    const fallbackEnabled = (process.env.AUTH_BACKEND_LOGIN_FALLBACK || '').trim().toLowerCase() === 'true';
+    const fallbackEmails = (process.env.AUTH_BACKEND_FALLBACK_EMAILS || '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const fallbackPassword = (process.env.AUTH_BACKEND_FALLBACK_PASSWORD || '').trim();
+    const fallbackToken = (process.env.AUTH_BACKEND_FALLBACK_TOKEN || '').trim();
+
+    if (fallbackEnabled && fallbackEmails.length > 0 && fallbackToken && fallbackPassword && fallbackEmails.includes(email) && password === fallbackPassword) {
+      res.status(200).json({
+        user: {
+          id: 'fallback-user',
+          nombre: 'PortalPilot',
+          apellido: 'Admin',
+          email: email,
+          rol: 'Administrador',
+          area: 'Educacion',
+          rango: 'Admin',
+          status: 'active',
+          empresa_codigo: 'ROOT',
+          empresa_nombre: 'Portal Pilot',
+        },
+        token: fallbackToken,
+      });
+      return;
+    }
+
+    // ── Error final ───────────────────────────────────────────────────────────
+    const missingConfig = !nocodbToken
+      ? 'AUTH_BACKEND_URL (token PAT de NocoDB) no está configurado en Vercel.'
+      : !nocodbBaseId
+      ? 'NOCODB_BASE_ID no está configurado en Vercel. Ve a NocoDB → tu proyecto → copia el ID de la URL.'
+      : 'No se pudo autenticar. Verifica las credenciales.';
+
+    res.status(500).json({
+      error: missingConfig,
+      debug: {
+        hasToken: Boolean(nocodbToken),
+        hasBaseId: Boolean(nocodbBaseId),
+        tableName: nocodbTableName,
+        fallbackEnabled,
+        hint: 'Configura NOCODB_BASE_ID en Vercel con el ID de tu proyecto NocoDB (ej: p69dy4zcqfhddyp)',
+      },
+    });
+  }
+
+  attemptFallback();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Función: loginWithNocoDB
+// Consulta la tabla de usuarios en NocoDB y valida las credenciales
+// ─────────────────────────────────────────────────────────────────────────────
+async function loginWithNocoDB({ apiUrl, token, baseId, tableName, email, password }) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'xc-token': token,
+  };
+
+  // Paso 1: Obtener las tablas de la base de datos para encontrar el tableId
+  let tableId = null;
+  
+  try {
+    const tablesUrl = `${apiUrl}/api/v2/meta/bases/${baseId}/tables`;
+    const tablesRes = await fetch(tablesUrl, { headers });
+    
+    if (tablesRes.ok) {
+      const tablesData = await tablesRes.json();
+      const tables = tablesData.list || tablesData.tables || tablesData || [];
+      const found = tables.find(
+        (t) => t.title?.toLowerCase() === tableName.toLowerCase() ||
+               t.table_name?.toLowerCase() === tableName.toLowerCase()
+      );
+      if (found) {
+        tableId = found.id;
+      }
+    }
+  } catch (err) {
+    console.error('[NocoDB] Error obteniendo tablas:', err.message);
+  }
+
+  // Paso 2: Buscar el usuario por email
+  let userRecord = null;
+  
+  if (tableId) {
+    // Usar el tableId encontrado con API v2
+    const where = encodeURIComponent(`(email,eq,${email})`);
+    const recordsUrl = `${apiUrl}/api/v2/tables/${tableId}/records?where=${where}&limit=1`;
+    const recordsRes = await fetch(recordsUrl, { headers });
+    
+    if (recordsRes.ok) {
+      const data = await recordsRes.json();
+      const records = data.list || data.data?.list || data.records || [];
+      if (records.length > 0) {
+        userRecord = records[0];
+      }
+    }
+  } else {
+    // Fallback: intentar con el nombre de tabla directamente (API v1)
+    const where = encodeURIComponent(`(email,eq,${email})`);
+    const recordsUrl = `${apiUrl}/api/v1/db/data/noco/${baseId}/${tableName}?where=${where}&limit=1`;
+    const recordsRes = await fetch(recordsUrl, { headers });
+    
+    if (recordsRes.ok) {
+      const data = await recordsRes.json();
+      const records = data.list || data.data?.list || data.records || [];
+      if (records.length > 0) {
+        userRecord = records[0];
+      }
+    }
+  }
+
+  if (!userRecord) {
+    throw new Error('AUTH_Credenciales inválidas. Usuario no encontrado.');
+  }
+
+  // Paso 3: Validar la contraseña
+  const storedPassword = userRecord.password || userRecord.contrasena || userRecord.contraseña || '';
+  const passwordMatch = await comparePassword(password, storedPassword);
+  
+  if (!passwordMatch) {
+    throw new Error('AUTH_Credenciales inválidas. Contraseña incorrecta.');
+  }
+
+  // Paso 4: Verificar que el usuario esté activo
+  const userStatus = (userRecord.status || userRecord.estado || 'active').toLowerCase();
+  if (userStatus !== 'active' && userStatus !== 'activo') {
+    throw new Error('AUTH_Tu cuenta está pendiente de activación por el Owner.');
+  }
+
+  // Paso 5: Construir respuesta en el formato que espera Flutter
+  const userId = (userRecord.Id || userRecord.id || userRecord.ID || '').toString();
+  const simpleToken = `pp_token_${userId}_${Date.now()}`;
+
+  return {
+    user: {
+      id: userId,
+      nombre: userRecord.nombre || userRecord.name || userRecord.first_name || '',
+      apellido: userRecord.apellido || userRecord.last_name || userRecord.apellidos || '',
+      email: userRecord.email || email,
+      rol: userRecord.rol || userRecord.role || userRecord.cargo || 'Empleado',
+      area: userRecord.area || userRecord.department || '',
+      rango: userRecord.rango || userRecord.rank || '',
+      status: userStatus,
+      empresa_codigo: (userRecord.empresa_codigo || userRecord.company_code || '').toUpperCase(),
+      empresa_nombre: userRecord.empresa_nombre || userRecord.company_name || '',
+    },
+    token: simpleToken,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Comparación de contraseñas: soporta bcrypt y texto plano
+// ─────────────────────────────────────────────────────────────────────────────
+async function comparePassword(inputPassword, storedPassword) {
+  if (!storedPassword) return false;
+  
+  // Verificar si la contraseña almacenada es un hash bcrypt
+  if (storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2y$')) {
+    try {
+      // bcrypt está disponible en Node.js serverless de Vercel
+      const bcrypt = require('bcryptjs');
+      return await bcrypt.compare(inputPassword, storedPassword);
+    } catch {
+      // Si bcryptjs no está disponible, comparar como texto plano
+      console.warn('[login] bcryptjs no disponible, comparando texto plano');
+      return inputPassword === storedPassword;
+    }
+  }
+  
+  // Comparación de texto plano (sin hashing)
+  return inputPassword === storedPassword;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Helper functions para Supabase
+// ═══════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+
+function configured() {
+  return Boolean(SUPABASE_URL && SUPABASE_KEY);
+}
+
+async function supabaseRequest(path, options = {}) {
+  const url = `${SUPABASE_URL}/rest/v1${path}`;
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+      ...(options.headers || {}),
+    },
+  });
+  const text = await response.text();
+  return { status: response.status, body: text };
+}
+
+async function resolverEmpresaId(empresaCodigo) {
+  if (!empresaCodigo) return null;
+  try {
+    const result = await supabaseRequest(
+      `/empresas?codigo=eq.${encodeURIComponent(empresaCodigo)}&select=id&limit=1`
+    );
+    if (result.status >= 400) return null;
+    const rows = JSON.parse(result.body || '[]');
+    return rows[0]?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+function parseBody(req) {
+  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+  return body;
+}
+
+function ok(res, data, status = 200) {
+  res.status(status).json(data);
+}
+
+function fail(res, err) {
+  const code = Number.isInteger(err?.status) ? err.status : 500;
+  res.status(code).json({ error: err?.message || 'Error interno del servidor.' });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AI Groq Handler
+// ═══════════════════════════════════════════════════════════════
+
+function aiGroqHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Método no permitido' });
+    return;
+  }
+
+  const key = process.env.GROQ_API_KEY;
+  if (!key) {
+    res.status(500).json({
+      error: 'Falta GROQ_API_KEY en Vercel. Configúralo en Project Settings → Environment Variables.',
+    });
+    return;
+  }
+
+  const body = parseBody(req);
+  fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: body.modelId || 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: body.systemPrompt || 'Eres un asistente útil.' },
+        { role: 'user', content: body.prompt || '' },
+      ],
+      max_tokens: body.maxTokens || 1500,
+      temperature: body.temperature || 0.7,
+    }),
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (!data.ok) {
+        res.status(data.status).json({
+          success: false,
+          error: data.error?.message || 'Error al consultar Groq',
+        });
+        return;
+      }
+
+      const content = data.choices?.[0]?.message?.content || '';
+      res.status(200).json({
+        success: true,
+        text: content,
+        modelId: body.modelId || 'llama-3.3-70b-versatile',
+        provider: 'groq',
+        tokensUsed: data.usage?.total_tokens || 0,
+      });
+    })
+    .catch(err => {
+      res.status(500).json({ error: err.message });
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Placeholder handlers para otros endpoints
+// ═══════════════════════════════════════════════════════════════
+
+async function clientesHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+
+  try {
+    if (req.method === 'GET') {
+      const empresaCodigo = req.query?.empresaCodigo || '';
+      if (!empresaCodigo) return ok(res, []);
+
+      const result = await supabaseRequest(
+        `/clientes?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=200`
+      );
+      if (result.status >= 400) {
+        const all = await supabaseRequest('/clientes?select=id,empresa_id,nombre,rtn,direccion,telefono,email&limit=500');
+        if (all.status >= 400) return fail(res, { message: all.body });
+        const rows = JSON.parse(all.body || '[]');
+        const empresas = await supabaseRequest('/empresas?select=id,codigo');
+        let mapa = {};
+        try {
+          const empRows = JSON.parse(empresas.body || '[]');
+          empRows.forEach((e) => (mapa[e.id] = e.codigo));
+        } catch {}
+        return ok(res, rows.filter((r) => mapa[r.empresa_id] === empresaCodigo));
+      }
+      return ok(res, JSON.parse(result.body || '[]'));
+    }
+
+    if (req.method === 'POST') {
+      const body = parseBody(req);
+      const empresaCodigo = body.empresa_codigo || '';
+      const c = body.cliente || body;
+      if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
+      const empresaId = await resolverEmpresaId(empresaCodigo);
+
+      const payload = {
+        empresa_codigo: empresaCodigo,
+        nombre: c.nombre || '',
+        rtn: c.rtn || null,
+        direccion: c.direccion || null,
+        telefono: c.telefono || null,
+        email: c.email || null,
+      };
+      if (empresaId) payload.empresa_id = empresaId;
+
+      const result = await supabaseRequest('/clientes', { method: 'POST', body: JSON.stringify(payload) });
+      if (result.status >= 400) return fail(res, { message: result.body });
+      return ok(res, { success: true, data: JSON.parse(result.body) }, 201);
+    }
+
+    if (req.method === 'DELETE') {
+      const id = req.query?.id || '';
+      if (!id) return fail(res, { message: 'Falta id.', status: 400 });
+      const result = await supabaseRequest(`/clientes?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (result.status >= 400) return fail(res, { message: result.body });
+      return ok(res, { success: true });
+    }
+
+    return res.status(405).json({ error: 'Método no permitido' });
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+function comprasHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  
+  res.status(501).json({ error: 'Endpoint en desarrollo' });
+}
+
+function cotizacionesHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  
+  res.status(501).json({ error: 'Endpoint en desarrollo' });
+}
+
+async function facturasHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+
+  try {
+    if (req.method === 'GET') {
+      const empresaCodigo = req.query?.empresaCodigo || '';
+      if (!empresaCodigo) return ok(res, []);
+
+      const result = await supabaseRequest(
+        `/facturas?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=200`
+      );
+      if (result.status >= 400) {
+        const all = await supabaseRequest('/facturas?select=id,empresa_id,correlativo,tipo_documento,cliente_nombre,cliente_rtn,cliente_direccion,condicion_pago,tipo_venta,items,subtotal,isv_15,isv_18,descuento,total,estado,cai,created_at&limit=500');
+        if (all.status >= 400) return fail(res, { message: all.body });
+        const rows = JSON.parse(all.body || '[]');
+        const empresas = await supabaseRequest('/empresas?select=id,codigo');
+        let mapa = {};
+        try {
+          const empRows = JSON.parse(empresas.body || '[]');
+          empRows.forEach((e) => (mapa[e.id] = e.codigo));
+        } catch {}
+        return ok(res, rows.filter((r) => mapa[r.empresa_id] === empresaCodigo));
+      }
+      return ok(res, JSON.parse(result.body || '[]'));
+    }
+
+    if (req.method === 'POST') {
+      const body = parseBody(req);
+      const empresaCodigo = body.empresa_codigo || '';
+      const f = body.factura || body;
+      if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
+      const empresaId = await resolverEmpresaId(empresaCodigo);
+
+      const payload = {
+        empresa_codigo: empresaCodigo,
+        correlativo: f.correlativo || '',
+        tipo_documento: f.tipo_documento || 'Factura',
+        cai: f.cai || '',
+        cliente_nombre: f.cliente_nombre || null,
+        cliente_rtn: f.cliente_rtn || null,
+        cliente_direccion: f.cliente_direccion || null,
+        condicion_pago: f.condicion_pago || 'Contado',
+        tipo_venta: f.tipo_venta || 'Gravada',
+        items: f.items || [],
+        subtotal: f.subtotal || 0,
+        isv_15: f.isv_15 || 0,
+        isv_18: f.isv_18 || 0,
+        descuento: f.descuento || 0,
+        total: f.total || 0,
+        estado: f.estado || 'emitida',
+        notas: f.notas || null,
+      };
+      if (empresaId) payload.empresa_id = empresaId;
+
+      const result = await supabaseRequest('/facturas', { method: 'POST', body: JSON.stringify(payload) });
+      if (result.status >= 400) return fail(res, { message: result.body });
+      return ok(res, { success: true, data: JSON.parse(result.body) }, 201);
+    }
+
+    if (req.method === 'PATCH') {
+      const id = (req.query?.id || req.params?.id || '').toString();
+      const body = parseBody(req);
+      const update = { updated_at: new Date().toISOString() };
+      if (body.estado !== undefined) update.estado = body.estado;
+      if (body.motivo_anulacion !== undefined) update.motivo_anulacion = body.motivo_anulacion;
+      if (body.fecha_anulacion !== undefined) update.fecha_anulacion = body.fecha_anulacion;
+
+      const result = await supabaseRequest(`/facturas?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(update),
+      });
+      if (result.status >= 400) return fail(res, { message: result.body });
+      return ok(res, { success: true, data: JSON.parse(result.body) });
+    }
+
+    return res.status(405).json({ error: 'Método no permitido' });
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+function matriculasHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  
+  res.status(501).json({ error: 'Endpoint en desarrollo' });
+}
+
+function matriculasStatsHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  
+  res.status(501).json({ error: 'Endpoint en desarrollo' });
+}
+
+function notasHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  
+  res.status(501).json({ error: 'Endpoint en desarrollo' });
+}
+
+function ordenesCompraHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  
+  res.status(501).json({ error: 'Endpoint en desarrollo' });
+}
+
+async function productosHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+
+  try {
+    if (req.method === 'GET') {
+      const empresaCodigo = req.query?.empresaCodigo || '';
+      if (!empresaCodigo) return ok(res, []);
+
+      const result = await supabaseRequest(
+        `/productos?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=500&select=*`
+      );
+      if (result.status >= 400) {
+        const all = await supabaseRequest('/productos?select=*&limit=500');
+        if (all.status >= 400) return fail(res, { message: all.body });
+        const rows = JSON.parse(all.body || '[]');
+        const empresas = await supabaseRequest('/empresas?select=id,codigo');
+        let mapa = {};
+        try {
+          const empRows = JSON.parse(empresas.body || '[]');
+          empRows.forEach((e) => (mapa[e.id] = e.codigo));
+        } catch {}
+        return ok(res, rows.filter((r) => mapa[r.empresa_id] === empresaCodigo));
+      }
+      return ok(res, JSON.parse(result.body || '[]'));
+    }
+
+    if (req.method === 'POST') {
+      const body = parseBody(req);
+      const empresaCodigo = body.empresa_codigo || '';
+      const productos = Array.isArray(body.productos) ? body.productos : [];
+      if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
+      const empresaId = await resolverEmpresaId(empresaCodigo);
+
+      const payloads = productos.map((p) => {
+        const cant = Number(p.cantidad);
+        const stock = Number(p.stock_actual);
+        const stockActual = Number.isFinite(cant) ? cant : (Number.isFinite(stock) ? stock : 0);
+        return {
+          empresa_codigo: empresaCodigo,
+          codigo: (p.codigo || '').toString().slice(0, 40),
+          nombre: (p.nombre || '').toString().slice(0, 120),
+          descripcion: (p.descripcion || null)?.toString().slice(0, 200) || null,
+          categoria: (p.categoria || null)?.toString().slice(0, 60) || null,
+          precio_compra: Number(p.precio_compra) || 0,
+          precio_venta: Number(p.precio) || Number(p.precio_venta) || 0,
+          stock_minimo: Number(p.stock_minimo) || 0,
+          stock_actual: stockActual,
+          bodega: (p.bodega || 'General').toString().slice(0, 60),
+          isv_rate: Number(p.isv_rate) || 15,
+          imagen_url: p.imagen_url || p.imagenUrl || null,
+        };
+      });
+      payloads.forEach((p) => {
+        if (empresaId) p.empresa_id = empresaId;
+      });
+
+      let result;
+      try {
+        result = await supabaseRequest(
+          '/productos?on_conflict=empresa_codigo,codigo',
+          {
+            method: 'POST',
+            body: JSON.stringify(payloads),
+            headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+          }
+        );
+      } catch (e) {
+        result = { status: 0, body: '' };
+      }
+      if (result.status >= 400) {
+        result = await supabaseRequest('/productos', { method: 'POST', body: JSON.stringify(payloads) });
+      }
+      if (result.status >= 400) return fail(res, { message: result.body });
+      return ok(res, { success: true, data: JSON.parse(result.body) }, 201);
+    }
+
+    if (req.method === 'DELETE') {
+      const body = parseBody(req);
+      const empresaCodigo = body.empresa_codigo || '';
+      const codigo = (body.codigo || '').toString();
+      if (!empresaCodigo || !codigo) {
+        return fail(res, { message: 'Faltan empresa_codigo y codigo.', status: 400 });
+      }
+      
+      // Primero intentar buscar por empresa_codigo y codigo
+      let result = await supabaseRequest(
+        `/productos?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&codigo=eq.${encodeURIComponent(codigo)}`,
+        { method: 'DELETE' }
+      );
+      
+      // Si falla, intentar por empresa_id
+      if (result.status >= 400) {
+        const empresaId = await resolverEmpresaId(empresaCodigo);
+        if (empresaId) {
+          result = await supabaseRequest(
+            `/productos?empresa_id=eq.${empresaId}&codigo=eq.${encodeURIComponent(codigo)}`,
+            { method: 'DELETE' }
+          );
+        }
+      }
+      
+      if (result.status >= 400) return fail(res, { message: result.body });
+      return ok(res, { success: true }, 200);
+    }
+
+    return res.status(405).json({ error: 'Método no permitido' });
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+function proveedoresHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  
+  res.status(501).json({ error: 'Endpoint en desarrollo' });
+}
+
+function transaccionesHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  
+  res.status(501).json({ error: 'Endpoint en desarrollo' });
+}
+
+async function ventasHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+
+  try {
+    const body = parseBody(req);
+    const empresaCodigo = body.empresa_codigo || '';
+    const venta = body.venta || {};
+    const items = Array.isArray(venta.items) ? venta.items : [];
+    if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
+    if (items.length === 0) return fail(res, { message: 'La venta no tiene items.', status: 400 });
+
+    const empresaId = await resolverEmpresaId(empresaCodigo);
+
+    const decrementados = [];
+    const errores = [];
+
+    // 1. Descuento de stock por item
+    for (const item of items) {
+      const codigo = (item.codigo || '').toString();
+      const nombre = (item.nombre || '').toString();
+      const cantidad = Number(item.cantidad) || 1;
+
+      const filtroTenant = empresaId
+        ? `empresa_id=eq.${empresaId}`
+        : `empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}`;
+      const match = await supabaseRequest(
+        `/productos?${filtroTenant}&or=(codigo.eq.${encodeURIComponent(codigo)},nombre.eq.${encodeURIComponent(nombre)})&select=id,stock_actual,codigo,nombre`
+      );
+      if (match.status >= 400) { errores.push(nombre); continue; }
+      let rows = [];
+      try { rows = JSON.parse(match.body || '[]'); } catch {}
+      const prod = rows[0];
+      if (!prod) { errores.push(nombre); continue; }
+
+      const nuevoStock = Math.max(0, (Number(prod.stock_actual) || 0) - cantidad);
+      await supabaseRequest(`/productos?id=eq.${prod.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ stock_actual: nuevoStock, updated_at: new Date().toISOString() }),
+      });
+      decrementados.push({ id: prod.id, codigo: prod.codigo, nombre: prod.nombre, nuevoStock });
+    }
+
+    // 2. Registrar factura de venta
+    const ahora = new Date();
+    const correlativo = `POS-${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}${String(ahora.getDate()).padStart(2, '0')}-${String(ahora.getHours()).padStart(2, '0')}${String(ahora.getMinutes()).padStart(2, '0')}${String(ahora.getSeconds()).padStart(2, '0')}`;
+
+    const facturaPayload = {
+      empresa_codigo: empresaCodigo,
+      correlativo,
+      tipo_documento: 'Factura',
+      cai: 'POS-DIRECTO',
+      cliente_nombre: venta.cliente_nombre || 'Consumidor Final',
+      cliente_rtn: venta.cliente_rtn || 'CF',
+      condicion_pago: 'Contado',
+      tipo_venta: 'Gravada',
+      items,
+      subtotal: Number(venta.subtotal) || 0,
+      isv_15: Number(venta.isv_15) || 0,
+      isv_18: Number(venta.isv_18) || 0,
+      descuento: Number(venta.descuento) || 0,
+      total: Number(venta.total) || items.reduce((s, i) => s + (Number(i.precio) || 0) * (Number(i.cantidad) || 1), 0),
+      estado: 'pagada',
+      notas: `Pago: ${venta.metodo_pago || 'efectivo'}`,
+    };
+    if (empresaId) facturaPayload.empresa_id = empresaId;
+
+    const facturaRes = await supabaseRequest('/facturas', { method: 'POST', body: JSON.stringify(facturaPayload) });
+    if (facturaRes.status >= 400) return fail(res, { message: facturaRes.body });
+
+    return ok(res, {
+      success: true,
+      correlativo,
+      decrementados,
+      errores,
+      factura: JSON.parse(facturaRes.body),
+    }, 201);
+  } catch (err) {
+    return fail(res, err);
+  }
+}

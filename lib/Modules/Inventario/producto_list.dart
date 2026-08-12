@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
+import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/services/sync_service.dart';
+import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 
 class ProductoList extends StatefulWidget {
   const ProductoList({super.key});
@@ -25,12 +28,60 @@ class _ProductoListState extends State<ProductoList> {
   }
 
   Future<void> _cargarProductos() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('productos') ?? '[]';
-    setState(() {
-      _productos = List<Map<String, dynamic>>.from(jsonDecode(json));
-      _aplicarFiltros();
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final empresaCodigo = prefs.getString('empresa_codigo') ?? 'ROOT';
+      
+      // Primero intentar cargar desde la base de datos local Drift
+      final localDb = LocalDatabaseService.instance;
+      final productosDb = await localDb.getProductos(empresaCodigo);
+      
+      // Convertir al formato esperado
+      final productosFromDb = productosDb.map((p) => {
+        'id': p.id,
+        'codigo': p.codigo,
+        'nombre': p.nombre,
+        'descripcion': p.descripcion,
+        'categoria': p.categoria,
+        'unidad_medida': p.unidadMedida,
+        'precio_compra': p.precioCompra,
+        'precio_venta': p.precioVenta,
+        'stock_actual': p.stockActual,
+        'stock_minimo': p.stockMinimo,
+        'bodega': p.bodega,
+        'isv_rate': p.isvRate,
+        'exento': p.exento,
+        'imagen_url': p.imagenUrl,
+        'created_at': p.createdAt?.toIso8601String(),
+      }).toList();
+      
+      // Si hay productos en SharedPreferences, mezclarlos (para migración)
+      final json = prefs.getString('productos') ?? '[]';
+      final productosFromPrefs = List<Map<String, dynamic>>.from(jsonDecode(json));
+      
+      // Usar productos de DB como prioridad, agregar los de prefs que no estén en DB
+      final idsEnDb = productosFromDb.map((p) => p['id'] as String).toSet();
+      final productosFinales = [...productosFromDb];
+      for (final p in productosFromPrefs) {
+        if (!idsEnDb.contains(p['id'])) {
+          productosFinales.add(p);
+        }
+      }
+      
+      setState(() {
+        _productos = productosFinales;
+        _aplicarFiltros();
+      });
+    } catch (e) {
+      debugPrint('Error cargando productos: $e');
+      // Fallback a SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString('productos') ?? '[]';
+      setState(() {
+        _productos = List<Map<String, dynamic>>.from(jsonDecode(json));
+        _aplicarFiltros();
+      });
+    }
   }
 
   void _aplicarFiltros() {
@@ -64,12 +115,58 @@ class _ProductoListState extends State<ProductoList> {
     setState(() => _filtrados = r);
   }
 
-  Future<void> _eliminarProducto(String id) async {
+  Future<void> _eliminarProducto(Map<String, dynamic> producto) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: Text('¿Eliminar producto?', style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+        content: Text(
+          '${producto['nombre'] ?? ''} (${producto['codigo'] ?? 'S/C'}) se eliminará también del catálogo.',
+          style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Eliminar', style: GoogleFonts.dmSans(color: const Color(0xFFEF4444), fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true || !mounted) return;
+
+    final id = producto['id'];
+    final codigo = (producto['codigo'] ?? '').toString();
     final prefs = await SharedPreferences.getInstance();
+    final empresaCodigo = prefs.getString('empresa_codigo') ?? 'ROOT';
+    
+    // Eliminar de SharedPreferences
     final json = prefs.getString('productos') ?? '[]';
     final List<dynamic> productos = jsonDecode(json);
     productos.removeWhere((p) => p['id'] == id);
     await prefs.setString('productos', jsonEncode(productos));
+    
+    // Eliminar de productos_pos también
+    final productosPosJson = prefs.getString('productos_pos') ?? '[]';
+    final List<dynamic> productosPos = jsonDecode(productosPosJson);
+    productosPos.removeWhere((p) => p['id'] == id);
+    await prefs.setString('productos_pos', jsonEncode(productosPos));
+    
+    // Sincronizar eliminación con Supabase
+    await SyncService.instance.enqueueSync(
+      tabla: 'productos',
+      operacion: SyncOperation.delete,
+      datos: {
+        'empresa_codigo': empresaCodigo,
+        'codigo': codigo,
+      },
+      empresaId: empresaCodigo,
+    );
+
     _cargarProductos();
   }
 
@@ -240,6 +337,14 @@ class _ProductoListState extends State<ProductoList> {
                                   ),
                                 ],
                               ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                onPressed: () => _eliminarProducto(p),
+                                icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFF525252), size: 20),
+                                splashColor: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                              ),
                             ],
                           ),
                         ),
@@ -302,7 +407,7 @@ class _ProductoListState extends State<ProductoList> {
               title: Text('Eliminar', style: GoogleFonts.dmSans(color: const Color(0xFFEF4444))),
               onTap: () {
                 Navigator.pop(ctx);
-                _eliminarProducto(producto['id']);
+                _eliminarProducto(producto);
               },
             ),
           ],

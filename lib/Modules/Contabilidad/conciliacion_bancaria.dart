@@ -11,22 +11,42 @@ class ConciliacionBancaria extends StatefulWidget {
 
 class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
   List<Map<String, dynamic>> _transacciones = [
-    {'id': '1', 'tipo': 'Ingreso', 'descripcion': 'Venta #1024', 'monto': 2500.00, 'estado': 'Conciliado'},
-    {'id': '2', 'tipo': 'Egreso', 'descripcion': 'Pago Proveedor', 'monto': 1200.00, 'estado': 'Pendiente'},
-    {'id': '3', 'tipo': 'Ingreso', 'descripcion': 'Venta #1025', 'monto': 850.00, 'estado': 'Conciliado'},
+    {
+      'id': '1',
+      'tipo': 'Ingreso',
+      'descripcion': 'Venta #1024',
+      'monto': 2500.00,
+      'estado': 'Conciliado',
+    },
+    {
+      'id': '2',
+      'tipo': 'Egreso',
+      'descripcion': 'Pago Proveedor',
+      'monto': 1200.00,
+      'estado': 'Pendiente',
+    },
+    {
+      'id': '3',
+      'tipo': 'Ingreso',
+      'descripcion': 'Venta #1025',
+      'monto': 850.00,
+      'estado': 'Conciliado',
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -39,14 +59,28 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF3B82F6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF3B82F6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Conciliacion Bancaria', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Conciliacion Bancaria',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF3B82F6),
               size: 20,
             ),
@@ -68,22 +102,39 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
         onPressed: () => _showAddTransaccionDialog(),
         backgroundColor: const Color(0xFF3B82F6),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Nueva Transaccion', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text(
+          'Nueva Transaccion',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildTransaccionCard(Map<String, dynamic> transaccion, ThemePalette palette) {
-    final tipoColor = transaccion['tipo'] == 'Ingreso' ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-    final estadoColor = transaccion['estado'] == 'Conciliado' ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
-    
+  Widget _buildTransaccionCard(
+    Map<String, dynamic> transaccion,
+    ThemePalette palette,
+  ) {
+    final tipoColor = transaccion['tipo'] == 'Ingreso'
+        ? const Color(0xFF10B981)
+        : const Color(0xFFEF4444);
+    final estadoColor = transaccion['estado'] == 'Conciliado'
+        ? const Color(0xFF10B981)
+        : const Color(0xFFF59E0B);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,7 +153,10 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: tipoColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -118,7 +172,10 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: estadoColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -158,8 +215,16 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Nueva Transaccion', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Nueva Transaccion',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -167,8 +232,18 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
               controller: descripcionController,
               decoration: InputDecoration(
                 labelText: 'Descripcion',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -177,8 +252,18 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Monto (L.)',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -186,8 +271,18 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
               value: tipo,
               decoration: InputDecoration(
                 labelText: 'Tipo',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
               items: const [
                 DropdownMenuItem(value: 'Ingreso', child: Text('Ingreso')),
@@ -202,7 +297,10 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -217,8 +315,13 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
               });
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
-            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B82F6),
+            ),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

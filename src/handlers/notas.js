@@ -1,4 +1,4 @@
-const { configured, supabaseRequest, resolverEmpresaId, parseBody, ok, fail } = require('../_lib/supabase');
+const { configured, supabaseRequest, resolverEmpresaId, parseBody, ok, fail } = require('./_lib/supabase');
 
 // GET /api/notas?empresaCodigo=PP-123456&clave=...
 // POST /api/notas  { empresa_codigo, clave, datos: {...} }  -> upsert del estado completo de notas

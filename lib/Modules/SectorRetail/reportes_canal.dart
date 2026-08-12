@@ -13,14 +13,16 @@ class _ReportesCanalState extends State<ReportesCanal> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -33,14 +35,28 @@ class _ReportesCanalState extends State<ReportesCanal> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF3B82F6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF3B82F6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Reportes por Canal', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Reportes por Canal',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF3B82F6),
               size: 20,
             ),
@@ -55,11 +71,26 @@ class _ReportesCanalState extends State<ReportesCanal> {
         children: [
           _buildComparisonCard(),
           const SizedBox(height: 16),
-          _buildChannelStatsCard('Canal Tradicional', const Color(0xFFF59E0B), 45000, 2340),
+          _buildChannelStatsCard(
+            'Canal Tradicional',
+            const Color(0xFFF59E0B),
+            45000,
+            2340,
+          ),
           const SizedBox(height: 12),
-          _buildChannelStatsCard('Canal Moderno', const Color(0xFF10B981), 78000, 4560),
+          _buildChannelStatsCard(
+            'Canal Moderno',
+            const Color(0xFF10B981),
+            78000,
+            4560,
+          ),
           const SizedBox(height: 12),
-          _buildChannelStatsCard('Membresías', const Color(0xFF8B5CF6), 32000, 1890),
+          _buildChannelStatsCard(
+            'MembresÃ­as',
+            const Color(0xFF8B5CF6),
+            32000,
+            1890,
+          ),
         ],
       ),
     );
@@ -71,13 +102,17 @@ class _ReportesCanalState extends State<ReportesCanal> {
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Comparación de Ventas por Canal',
+            'ComparaciÃ³n de Ventas por Canal',
             style: GoogleFonts.syne(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -85,11 +120,15 @@ class _ReportesCanalState extends State<ReportesCanal> {
             ),
           ),
           const SizedBox(height: 20),
-          _buildComparisonBar('Canal Tradicional', 45000, const Color(0xFFF59E0B)),
+          _buildComparisonBar(
+            'Canal Tradicional',
+            45000,
+            const Color(0xFFF59E0B),
+          ),
           const SizedBox(height: 12),
           _buildComparisonBar('Canal Moderno', 78000, const Color(0xFF10B981)),
           const SizedBox(height: 12),
-          _buildComparisonBar('Membresías', 32000, const Color(0xFF8B5CF6)),
+          _buildComparisonBar('MembresÃ­as', 32000, const Color(0xFF8B5CF6)),
         ],
       ),
     );
@@ -126,7 +165,9 @@ class _ReportesCanalState extends State<ReportesCanal> {
         Container(
           height: 8,
           decoration: BoxDecoration(
-            color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFF262626)
+                : const Color(0xFFE5E7EB),
             borderRadius: BorderRadius.circular(4),
           ),
           child: FractionallySizedBox(
@@ -144,13 +185,22 @@ class _ReportesCanalState extends State<ReportesCanal> {
     );
   }
 
-  Widget _buildChannelStatsCard(String titulo, Color color, double ventas, int transacciones) {
+  Widget _buildChannelStatsCard(
+    String titulo,
+    Color color,
+    double ventas,
+    int transacciones,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Row(
         children: [
@@ -161,9 +211,11 @@ class _ReportesCanalState extends State<ReportesCanal> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              titulo.contains('Tradicional') ? Icons.store_rounded : 
-              titulo.contains('Moderno') ? Icons.shopping_cart_rounded : 
-              Icons.card_membership_rounded,
+              titulo.contains('Tradicional')
+                  ? Icons.store_rounded
+                  : titulo.contains('Moderno')
+                  ? Icons.shopping_cart_rounded
+                  : Icons.card_membership_rounded,
               color: color,
               size: 24,
             ),
@@ -178,18 +230,26 @@ class _ReportesCanalState extends State<ReportesCanal> {
                   style: GoogleFonts.syne(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                    color: appThemeNotifier.isDark
+                        ? Colors.white
+                        : Colors.black,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     Expanded(
-                      child: _buildStatItem('Ventas', 'L.${ventas.toStringAsFixed(0)}'),
+                      child: _buildStatItem(
+                        'Ventas',
+                        'L.${ventas.toStringAsFixed(0)}',
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildStatItem('Transacciones', transacciones.toString()),
+                      child: _buildStatItem(
+                        'Transacciones',
+                        transacciones.toString(),
+                      ),
                     ),
                   ],
                 ),
@@ -209,7 +269,9 @@ class _ReportesCanalState extends State<ReportesCanal> {
           label,
           style: GoogleFonts.dmSans(
             fontSize: 10,
-            color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
           ),
         ),
         Text(

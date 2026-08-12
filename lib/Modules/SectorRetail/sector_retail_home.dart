@@ -18,14 +18,16 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -38,7 +40,11 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFEC4899), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFEC4899),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -47,19 +53,35 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
             Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFEC4899), Color(0xFFDB2777)]),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEC4899), Color(0xFFDB2777)],
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.store_rounded, color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.store_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
             const SizedBox(width: 12),
-            Text('SECTOR RETAIL', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+            Text(
+              'SECTOR RETAIL',
+              style: GoogleFonts.syne(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 1.5,
+              ),
+            ),
           ],
         ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFFEC4899),
               size: 20,
             ),
@@ -75,9 +97,12 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
           _buildActionCard(
             Icons.price_change_rounded,
             'Precios por Canal',
-            'Diferentes precios para pulperías vs supermercados',
+            'Diferentes precios para pulperÃ­as vs supermercados',
             const Color(0xFFEC4899),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PreciosPorCanal())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PreciosPorCanal()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
@@ -85,46 +110,70 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
             'Promociones',
             'Ofertas especiales, descuentos por volumen',
             const Color(0xFFF59E0B),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const Promociones())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const Promociones()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.inventory_2_rounded,
             'Inventario por Tienda',
-            'Stock específico por cada punto de venta',
+            'Stock especÃ­fico por cada punto de venta',
             const Color(0xFF10B981),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InventarioTienda())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const InventarioTienda()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.analytics_rounded,
             'Reportes por Canal',
-            'Análisis comparativo Canal Tradicional vs Moderno',
+            'AnÃ¡lisis comparativo Canal Tradicional vs Moderno',
             const Color(0xFF3B82F6),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportesCanal())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ReportesCanal()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.price_check_rounded,
             'Precios Competitivos',
-            'Análisis de precios por zona',
+            'AnÃ¡lisis de precios por zona',
             const Color(0xFF10B981),
-            () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PreciosCompetitivos())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PreciosCompetitivos()),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionCard(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
+  Widget _buildActionCard(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF111111)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+          border: Border.all(
+            color: appThemeNotifier.isDark
+                ? const Color(0xFF262626)
+                : const Color(0xFFE5E7EB),
+          ),
         ),
         child: Row(
           children: [
@@ -146,7 +195,9 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
                     style: GoogleFonts.syne(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                      color: appThemeNotifier.isDark
+                          ? Colors.white
+                          : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -154,7 +205,9 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
-                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
                     ),
                   ),
                 ],
@@ -162,7 +215,9 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: appThemeNotifier.isDark ? const Color(0xFF525252) : const Color(0xFF9CA3AF),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFF525252)
+                  : const Color(0xFF9CA3AF),
               size: 16,
             ),
           ],

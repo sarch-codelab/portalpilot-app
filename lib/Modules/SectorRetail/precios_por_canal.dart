@@ -11,22 +11,42 @@ class PreciosPorCanal extends StatefulWidget {
 
 class _PreciosPorCanalState extends State<PreciosPorCanal> {
   List<Map<String, dynamic>> _productos = [
-    {'id': '1', 'nombre': 'Arroz Premium 5kg', 'precio_pulperia': 45.00, 'precio_super': 42.00, 'precio_membresia': 38.00},
-    {'id': '2', 'nombre': 'Frijol Negro 1kg', 'precio_pulperia': 28.00, 'precio_super': 25.00, 'precio_membresia': 22.00},
-    {'id': '3', 'nombre': 'Azúcar 5kg', 'precio_pulperia': 35.00, 'precio_super': 32.00, 'precio_membresia': 29.00},
+    {
+      'id': '1',
+      'nombre': 'Arroz Premium 5kg',
+      'precio_pulperia': 45.00,
+      'precio_super': 42.00,
+      'precio_membresia': 38.00,
+    },
+    {
+      'id': '2',
+      'nombre': 'Frijol Negro 1kg',
+      'precio_pulperia': 28.00,
+      'precio_super': 25.00,
+      'precio_membresia': 22.00,
+    },
+    {
+      'id': '3',
+      'nombre': 'AzÃºcar 5kg',
+      'precio_pulperia': 35.00,
+      'precio_super': 32.00,
+      'precio_membresia': 29.00,
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -39,14 +59,28 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFEC4899), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFEC4899),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Precios por Canal', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Precios por Canal',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFFEC4899),
               size: 20,
             ),
@@ -70,19 +104,32 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
         },
         backgroundColor: const Color(0xFFEC4899),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Agregar Producto', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text(
+          'Agregar Producto',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> producto, ThemePalette palette) {
+  Widget _buildProductCard(
+    Map<String, dynamic> producto,
+    ThemePalette palette,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,11 +143,23 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildPriceRow('Pulpería', producto['precio_pulperia'], const Color(0xFFF59E0B)),
+          _buildPriceRow(
+            'PulperÃ­a',
+            producto['precio_pulperia'],
+            const Color(0xFFF59E0B),
+          ),
           const SizedBox(height: 8),
-          _buildPriceRow('Supermercado', producto['precio_super'], const Color(0xFF10B981)),
+          _buildPriceRow(
+            'Supermercado',
+            producto['precio_super'],
+            const Color(0xFF10B981),
+          ),
           const SizedBox(height: 8),
-          _buildPriceRow('Membresía', producto['precio_membresia'], const Color(0xFF8B5CF6)),
+          _buildPriceRow(
+            'MembresÃ­a',
+            producto['precio_membresia'],
+            const Color(0xFF8B5CF6),
+          ),
         ],
       ),
     );
@@ -146,8 +205,16 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Agregar Producto', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Agregar Producto',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -155,8 +222,18 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
               controller: nombreController,
               decoration: InputDecoration(
                 labelText: 'Nombre del producto',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -164,9 +241,19 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
               controller: pulperiaController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Precio Pulpería',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelText: 'Precio PulperÃ­a',
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -175,8 +262,18 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Precio Supermercado',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -184,9 +281,19 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
               controller: membresiaController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Precio Membresía',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelText: 'Precio MembresÃ­a',
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
           ],
@@ -194,7 +301,10 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -202,15 +312,22 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
                 _productos.add({
                   'id': DateTime.now().toString(),
                   'nombre': nombreController.text,
-                  'precio_pulperia': double.tryParse(pulperiaController.text) ?? 0.0,
+                  'precio_pulperia':
+                      double.tryParse(pulperiaController.text) ?? 0.0,
                   'precio_super': double.tryParse(superController.text) ?? 0.0,
-                  'precio_membresia': double.tryParse(membresiaController.text) ?? 0.0,
+                  'precio_membresia':
+                      double.tryParse(membresiaController.text) ?? 0.0,
                 });
               });
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEC4899)),
-            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEC4899),
+            ),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

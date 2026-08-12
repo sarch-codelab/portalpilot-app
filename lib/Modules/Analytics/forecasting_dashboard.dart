@@ -13,14 +13,16 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -33,14 +35,28 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFEC4899), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFEC4899),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Forecasting', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Forecasting',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFFEC4899),
               size: 20,
             ),
@@ -53,19 +69,52 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildForecastCard('Ventas Mensuales', 'L.1,450,000', '+16.0%', const Color(0xFF10B981), Icons.trending_up_rounded),
+          _buildForecastCard(
+            'Ventas Mensuales',
+            'L.1,450,000',
+            '+16.0%',
+            const Color(0xFF10B981),
+            Icons.trending_up_rounded,
+          ),
           const SizedBox(height: 12),
-          _buildForecastCard('Inventario Requerido', 'L.420,000', '+8.5%', const Color(0xFF6366F1), Icons.inventory_2_rounded),
+          _buildForecastCard(
+            'Inventario Requerido',
+            'L.420,000',
+            '+8.5%',
+            const Color(0xFF6366F1),
+            Icons.inventory_2_rounded,
+          ),
           const SizedBox(height: 12),
-          _buildForecastCard('Demanda Estimada', '+12.3%', '+2.1%', const Color(0xFFF59E0B), Icons.people_rounded),
+          _buildForecastCard(
+            'Demanda Estimada',
+            '+12.3%',
+            '+2.1%',
+            const Color(0xFFF59E0B),
+            Icons.people_rounded,
+          ),
           const SizedBox(height: 24),
           _buildSectionHeader('PROYECCIONES POR CANAL'),
           const SizedBox(height: 12),
-          _buildChannelForecast('Canal Tradicional', 'L.520,000', '+18.5%', const Color(0xFFF59E0B)),
+          _buildChannelForecast(
+            'Canal Tradicional',
+            'L.520,000',
+            '+18.5%',
+            const Color(0xFFF59E0B),
+          ),
           const SizedBox(height: 12),
-          _buildChannelForecast('Canal Moderno', 'L.720,000', '+14.2%', const Color(0xFF10B981)),
+          _buildChannelForecast(
+            'Canal Moderno',
+            'L.720,000',
+            '+14.2%',
+            const Color(0xFF10B981),
+          ),
           const SizedBox(height: 12),
-          _buildChannelForecast('Membresías', 'L.210,000', '+25.0%', const Color(0xFF8B5CF6)),
+          _buildChannelForecast(
+            'MembresÃ­as',
+            'L.210,000',
+            '+25.0%',
+            const Color(0xFF8B5CF6),
+          ),
         ],
       ),
     );
@@ -77,13 +126,21 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
       style: GoogleFonts.syne(
         fontSize: 12,
         fontWeight: FontWeight.w800,
-        color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+        color: appThemeNotifier.isDark
+            ? const Color(0xFFA3A3A3)
+            : const Color(0xFF6B7280),
         letterSpacing: 1.5,
       ),
     );
   }
 
-  Widget _buildForecastCard(String title, String forecast, String change, Color color, IconData icon) {
+  Widget _buildForecastCard(
+    String title,
+    String forecast,
+    String change,
+    Color color,
+    IconData icon,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -112,7 +169,9 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
                   title,
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
-                    color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFFA3A3A3)
+                        : const Color(0xFF6B7280),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -135,7 +194,11 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.arrow_upward_rounded, size: 16, color: Color(0xFF10B981)),
+                const Icon(
+                  Icons.arrow_upward_rounded,
+                  size: 16,
+                  color: Color(0xFF10B981),
+                ),
                 const SizedBox(width: 4),
                 Text(
                   change,
@@ -153,7 +216,12 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
     );
   }
 
-  Widget _buildChannelForecast(String canal, String forecast, String growth, Color color) {
+  Widget _buildChannelForecast(
+    String canal,
+    String forecast,
+    String growth,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -186,7 +254,11 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.trending_up_rounded, size: 14, color: Color(0xFF10B981)),
+                  const Icon(
+                    Icons.trending_up_rounded,
+                    size: 14,
+                    color: Color(0xFF10B981),
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     growth,

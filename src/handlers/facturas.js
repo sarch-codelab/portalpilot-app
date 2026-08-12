@@ -1,4 +1,4 @@
-const { configured, supabaseRequest, resolverEmpresaId, parseBody, ok, fail } = require('../_lib/supabase');
+const { configured, supabaseRequest, resolverEmpresaId, parseBody, ok, fail } = require('./_lib/supabase');
 
 // GET /api/facturas?empresaCodigo=PP-123456
 // POST /api/facturas  { empresa_codigo, factura: {...} }

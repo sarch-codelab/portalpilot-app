@@ -1,4 +1,4 @@
-const { configured, supabaseRequest, resolverEmpresaId, parseBody, ok, fail } = require('../_lib/supabase');
+const { configured, supabaseRequest, resolverEmpresaId, parseBody, ok, fail } = require('./_lib/supabase');
 
 // POST /api/ventas  { empresa_codigo, venta: { fecha, items:[{nombre,precio,cantidad,codigo}], total, metodo_pago } }
 // Cierra la venta POS: crea la factura y descuenta stock de productos.

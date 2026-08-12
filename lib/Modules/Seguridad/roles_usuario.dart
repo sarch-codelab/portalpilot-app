@@ -11,23 +11,45 @@ class RolesUsuario extends StatefulWidget {
 
 class _RolesUsuarioState extends State<RolesUsuario> {
   List<Map<String, dynamic>> _roles = [
-    {'id': '1', 'nombre': 'Administrador', 'permisos': 'Acceso total a todos los módulos', 'usuarios': 2},
-    {'id': '2', 'nombre': 'Gerente Comercial', 'permisos': 'Ventas, CRM, Inventarios', 'usuarios': 5},
-    {'id': '3', 'nombre': 'Contador', 'permisos': 'Contabilidad, Facturación, Reportes', 'usuarios': 3},
-    {'id': '4', 'nombre': 'Cajero', 'permisos': 'POS, Clientes básicos', 'usuarios': 8},
+    {
+      'id': '1',
+      'nombre': 'Administrador',
+      'permisos': 'Acceso total a todos los mÃ³dulos',
+      'usuarios': 2,
+    },
+    {
+      'id': '2',
+      'nombre': 'Gerente Comercial',
+      'permisos': 'Ventas, CRM, Inventarios',
+      'usuarios': 5,
+    },
+    {
+      'id': '3',
+      'nombre': 'Contador',
+      'permisos': 'Contabilidad, FacturaciÃ³n, Reportes',
+      'usuarios': 3,
+    },
+    {
+      'id': '4',
+      'nombre': 'Cajero',
+      'permisos': 'POS, Clientes bÃ¡sicos',
+      'usuarios': 8,
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -40,14 +62,28 @@ class _RolesUsuarioState extends State<RolesUsuario> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF6366F1), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF6366F1),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Roles de Usuario', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Roles de Usuario',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF6366F1),
               size: 20,
             ),
@@ -69,7 +105,13 @@ class _RolesUsuarioState extends State<RolesUsuario> {
         onPressed: () => _showAddRolDialog(),
         backgroundColor: const Color(0xFF6366F1),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('Nuevo Rol', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),
+        label: Text(
+          'Nuevo Rol',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
@@ -81,7 +123,11 @@ class _RolesUsuarioState extends State<RolesUsuario> {
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,7 +165,9 @@ class _RolesUsuarioState extends State<RolesUsuario> {
             rol['permisos'],
             style: GoogleFonts.dmSans(
               fontSize: 12,
-              color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFFA3A3A3)
+                  : const Color(0xFF6B7280),
             ),
           ),
         ],
@@ -134,8 +182,16 @@ class _RolesUsuarioState extends State<RolesUsuario> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Nuevo Rol', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Nuevo Rol',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -143,8 +199,18 @@ class _RolesUsuarioState extends State<RolesUsuario> {
               controller: nombreController,
               decoration: InputDecoration(
                 labelText: 'Nombre del rol',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -152,8 +218,18 @@ class _RolesUsuarioState extends State<RolesUsuario> {
               controller: permisosController,
               decoration: InputDecoration(
                 labelText: 'Permisos',
-                labelStyle: TextStyle(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280)),
-                border: OutlineInputBorder(borderSide: BorderSide(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB))),
+                labelStyle: TextStyle(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF262626)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
               ),
             ),
           ],
@@ -161,7 +237,10 @@ class _RolesUsuarioState extends State<RolesUsuario> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -175,8 +254,13 @@ class _RolesUsuarioState extends State<RolesUsuario> {
               });
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
-            child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+            ),
+            child: Text(
+              'Guardar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),

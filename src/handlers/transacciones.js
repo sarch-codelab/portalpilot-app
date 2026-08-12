@@ -1,7 +1,7 @@
-const { configured, supabaseRequest, resolverEmpresaId, parseBody, ok, fail } = require('../_lib/supabase');
+const { configured, supabaseRequest, resolverEmpresaId, parseBody, ok, fail } = require('./_lib/supabase');
 
-// GET /api/productos?empresaCodigo=PP-123456
-// POST /api/productos  { empresa_codigo, productos: [...] }  -> upsert masivo (stock/precios)
+// GET /api/transacciones?empresaCodigo=PP-123456
+// POST /api/transacciones  { empresa_codigo, transaccion: {...} }
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -16,10 +16,10 @@ module.exports = async function handler(req, res) {
       if (!empresaCodigo) return ok(res, []);
 
       const result = await supabaseRequest(
-        `/productos?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=500`
+        `/transacciones?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=fecha.desc&limit=200`
       );
       if (result.status >= 400) {
-        const all = await supabaseRequest('/productos?select=id,empresa_id,codigo,nombre,descripcion,categoria,precio_venta,stock_actual,stock_minimo&limit=500');
+        const all = await supabaseRequest('/transacciones?select=id,empresa_id,tipo,categoria,descripcion,monto,metodo_pago,referencia,fecha&limit=500');
         if (all.status >= 400) return fail(res, { message: all.body });
         const rows = JSON.parse(all.body || '[]');
         const empresas = await supabaseRequest('/empresas?select=id,codigo');
@@ -36,28 +36,23 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST') {
       const body = parseBody(req);
       const empresaCodigo = body.empresa_codigo || '';
-      const productos = Array.isArray(body.productos) ? body.productos : [];
+      const t = body.transaccion || body;
       if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
       const empresaId = await resolverEmpresaId(empresaCodigo); // best-effort, puede ser null
 
-      const payloads = productos.map((p) => ({
+      const payload = {
         empresa_codigo: empresaCodigo,
-        codigo: (p.codigo || '').toString().slice(0, 40),
-        nombre: (p.nombre || '').toString().slice(0, 120),
-        descripcion: (p.descripcion || null)?.toString().slice(0, 200) || null,
-        categoria: (p.categoria || null)?.toString().slice(0, 60) || null,
-        precio_compra: Number(p.precio_compra) || 0,
-        precio_venta: Number(p.precio) || Number(p.precio_venta) || 0,
-        stock_minimo: Number(p.stock_minimo) || 0,
-        stock_actual: Number(p.cantidad) ?? Number(p.stock_actual) ?? 0,
-        bodega: (p.bodega || 'General').toString().slice(0, 60),
-        isv_rate: Number(p.isv_rate) || 15,
-      }));
-      payloads.forEach((p) => {
-        if (empresaId) p.empresa_id = empresaId;
-      });
+        tipo: t.tipo || 'ingreso',
+        categoria: t.categoria || null,
+        descripcion: t.descripcion || '',
+        monto: t.monto || 0,
+        metodo_pago: t.metodo_pago || 'otro',
+        referencia: t.referencia || null,
+        fecha: t.fecha || new Date().toISOString(),
+      };
+      if (empresaId) payload.empresa_id = empresaId;
 
-      const result = await supabaseRequest('/productos', { method: 'POST', body: JSON.stringify(payloads) });
+      const result = await supabaseRequest('/transacciones', { method: 'POST', body: JSON.stringify(payload) });
       if (result.status >= 400) return fail(res, { message: result.body });
       return ok(res, { success: true, data: JSON.parse(result.body) }, 201);
     }

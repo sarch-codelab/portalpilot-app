@@ -13,14 +13,16 @@ class _ReportesCadenaState extends State<ReportesCadena> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -33,14 +35,28 @@ class _ReportesCadenaState extends State<ReportesCadena> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF14B8A6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF14B8A6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Reportes por Cadena', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Reportes por Cadena',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF14B8A6),
               size: 20,
             ),
@@ -53,23 +69,47 @@ class _ReportesCadenaState extends State<ReportesCadena> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildChainReportCard('Supermercados del Norte', 12, 450000, const Color(0xFF10B981)),
+          _buildChainReportCard(
+            'Supermercados del Norte',
+            12,
+            450000,
+            const Color(0xFF10B981),
+          ),
           const SizedBox(height: 12),
-          _buildChainReportCard('Pulperías Centro', 8, 180000, const Color(0xFFF59E0B)),
+          _buildChainReportCard(
+            'PulperÃ­as Centro',
+            8,
+            180000,
+            const Color(0xFFF59E0B),
+          ),
           const SizedBox(height: 12),
-          _buildChainReportCard('Tiendas Express', 5, 75000, const Color(0xFF8B5CF6)),
+          _buildChainReportCard(
+            'Tiendas Express',
+            5,
+            75000,
+            const Color(0xFF8B5CF6),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildChainReportCard(String nombre, int sucursales, double ventas, Color color) {
+  Widget _buildChainReportCard(
+    String nombre,
+    int sucursales,
+    double ventas,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,11 +147,17 @@ class _ReportesCadenaState extends State<ReportesCadena> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: _buildStatItem('Ventas Totales', 'L.${ventas.toStringAsFixed(0)}'),
+                child: _buildStatItem(
+                  'Ventas Totales',
+                  'L.${ventas.toStringAsFixed(0)}',
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildStatItem('Promedio/Sucursal', 'L.${(ventas / sucursales).toStringAsFixed(0)}'),
+                child: _buildStatItem(
+                  'Promedio/Sucursal',
+                  'L.${(ventas / sucursales).toStringAsFixed(0)}',
+                ),
               ),
             ],
           ),
@@ -128,7 +174,9 @@ class _ReportesCadenaState extends State<ReportesCadena> {
           label,
           style: GoogleFonts.dmSans(
             fontSize: 12,
-            color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
           ),
         ),
         Text(

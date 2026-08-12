@@ -13,14 +13,16 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -33,14 +35,28 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFF59E0B), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFF59E0B),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Análisis de Márgenes', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'AnÃ¡lisis de MÃ¡rgenes',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFFF59E0B),
               size: 20,
             ),
@@ -53,21 +69,29 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildSectionHeader('MÁRGENES POR CANAL'),
+          _buildSectionHeader('MÃRGENES POR CANAL'),
           const SizedBox(height: 12),
           _buildMarginCard('Canal Tradicional', 12.5, const Color(0xFFF59E0B)),
           const SizedBox(height: 12),
           _buildMarginCard('Canal Moderno', 15.2, const Color(0xFF10B981)),
           const SizedBox(height: 12),
-          _buildMarginCard('Membresías', 18.7, const Color(0xFF8B5CF6)),
+          _buildMarginCard('MembresÃ­as', 18.7, const Color(0xFF8B5CF6)),
           const SizedBox(height: 24),
-          _buildSectionHeader('MÁRGENES POR PRODUCTO'),
+          _buildSectionHeader('MÃRGENES POR PRODUCTO'),
           const SizedBox(height: 12),
-          _buildProductMargin('Arroz Premium 5kg', 15.0, const Color(0xFF6366F1)),
+          _buildProductMargin(
+            'Arroz Premium 5kg',
+            15.0,
+            const Color(0xFF6366F1),
+          ),
           const SizedBox(height: 12),
-          _buildProductMargin('Frijol Negro 1kg', 18.5, const Color(0xFF10B981)),
+          _buildProductMargin(
+            'Frijol Negro 1kg',
+            18.5,
+            const Color(0xFF10B981),
+          ),
           const SizedBox(height: 12),
-          _buildProductMargin('Azúcar 5kg', 12.0, const Color(0xFFF59E0B)),
+          _buildProductMargin('AzÃºcar 5kg', 12.0, const Color(0xFFF59E0B)),
           const SizedBox(height: 12),
           _buildProductMargin('Aceite 1L', 22.0, const Color(0xFFEC4899)),
         ],
@@ -81,7 +105,9 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
       style: GoogleFonts.syne(
         fontSize: 12,
         fontWeight: FontWeight.w800,
-        color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+        color: appThemeNotifier.isDark
+            ? const Color(0xFFA3A3A3)
+            : const Color(0xFF6B7280),
         letterSpacing: 1.5,
       ),
     );
@@ -114,7 +140,9 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
                 'Margen promedio',
                 style: GoogleFonts.dmSans(
                   fontSize: 12,
-                  color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
                 ),
               ),
             ],
@@ -145,7 +173,11 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -164,7 +196,9 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
                 width: 100,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFF262626)
+                      : const Color(0xFFE5E7EB),
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: FractionallySizedBox(

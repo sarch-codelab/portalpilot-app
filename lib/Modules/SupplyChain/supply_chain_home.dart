@@ -18,14 +18,16 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
   @override
   void initState() {
     super.initState();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -38,7 +40,11 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF14B8A6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF14B8A6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -47,19 +53,35 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
             Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF14B8A6), Color(0xFF0D9488)]),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.local_shipping_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
             const SizedBox(width: 12),
-            Text('CADENA DE SUMINISTRO', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+            Text(
+              'CADENA DE SUMINISTRO',
+              style: GoogleFonts.syne(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 1.5,
+              ),
+            ),
           ],
         ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF14B8A6),
               size: 20,
             ),
@@ -74,18 +96,26 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
         children: [
           _buildActionCard(
             Icons.inventory_rounded,
-            'Recepción',
-            'Recepción de mercancía de proveedores',
+            'RecepciÃ³n',
+            'RecepciÃ³n de mercancÃ­a de proveedores',
             const Color(0xFF14B8A6),
-            () => Navigator.push(context, MaterialPageRoute(builder: (context) => const Recepcion())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const Recepcion()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.assignment_return_rounded,
             'Devoluciones a Proveedor',
-            'Gestión de devoluciones y reembolsos',
+            'GestiÃ³n de devoluciones y reembolsos',
             const Color(0xFFEF4444),
-            () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DevolucionesProveedor())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DevolucionesProveedor(),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
@@ -93,7 +123,10 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
             'Trazabilidad',
             'Seguimiento completo de productos',
             const Color(0xFF6366F1),
-            () => Navigator.push(context, MaterialPageRoute(builder: (context) => const Trazabilidad())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const Trazabilidad()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
@@ -101,30 +134,48 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
             'Lote y Caducidad',
             'Control de lotes y fechas de vencimiento',
             const Color(0xFFF59E0B),
-            () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoteCaducidad())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const LoteCaducidad()),
+            ),
           ),
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.warehouse_rounded,
             'Multi-Bodega',
-            'Gestión de múltiples almacenes',
+            'GestiÃ³n de mÃºltiples almacenes',
             const Color(0xFF8B5CF6),
-            () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MultiBodega())),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MultiBodega()),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionCard(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
+  Widget _buildActionCard(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF111111)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+          border: Border.all(
+            color: appThemeNotifier.isDark
+                ? const Color(0xFF262626)
+                : const Color(0xFFE5E7EB),
+          ),
         ),
         child: Row(
           children: [
@@ -146,7 +197,9 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
                     style: GoogleFonts.syne(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                      color: appThemeNotifier.isDark
+                          ? Colors.white
+                          : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -154,7 +207,9 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
-                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
                     ),
                   ),
                 ],
@@ -162,7 +217,9 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: appThemeNotifier.isDark ? const Color(0xFF525252) : const Color(0xFF9CA3AF),
+              color: appThemeNotifier.isDark
+                  ? const Color(0xFF525252)
+                  : const Color(0xFF9CA3AF),
               size: 16,
             ),
           ],

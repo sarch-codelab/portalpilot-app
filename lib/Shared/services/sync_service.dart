@@ -354,7 +354,12 @@ class SyncService {
           empresaCodigo: empresaCodigo,
         );
       case SyncOperation.delete:
-        return false;
+        final codigo = (datos['codigo'] as String?) ?? '';
+        if (codigo.isEmpty) return false;
+        return await PortalPilotDB.deleteProducto(
+          codigo: codigo,
+          empresaCodigo: empresaCodigo,
+        );
     }
   }
 

@@ -89,14 +89,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.13"
-  bluetooth_print:
-    dependency: "direct main"
-    description:
-      name: bluetooth_print
-      sha256: b391cd7b22b772e07dfddb4e065ecbed5f0e8dd777ce726e1ea56492c8d3ecc8
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.3.0"
   boolean_selector:
     dependency: transitive
     description:
@@ -269,10 +261,10 @@ packages:
     dependency: transitive
     description:
       name: dbus
-      sha256: "0ce9b0a839e6dee59a37a623d2fc26a35bbbe6404213e419b0d6411023d62645"
+      sha256: "792974a4007974fbc5c1b5433eb2330a9db3e368c3f906253af4c007d0f49a91"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.14"
+    version: "0.7.13"
   drift:
     dependency: "direct main"
     description:
@@ -313,6 +305,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.1"
+  file_selector_linux:
+    dependency: transitive
+    description:
+      name: file_selector_linux
+      sha256: "2567f398e06ac72dcf2e98a0c95df2a9edd03c2c2e0cacd4780f20cdf56263a0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.9.4"
+  file_selector_macos:
+    dependency: transitive
+    description:
+      name: file_selector_macos
+      sha256: "5e0bbe9c312416f1787a68259ea1505b52f258c587f12920422671807c4d618a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.9.5"
+  file_selector_platform_interface:
+    dependency: transitive
+    description:
+      name: file_selector_platform_interface
+      sha256: "35e0bd61ebcdb91a3505813b055b09b79dfdc7d0aee9c09a7ba59ae4bb13dc85"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.7.0"
+  file_selector_windows:
+    dependency: transitive
+    description:
+      name: file_selector_windows
+      sha256: "62197474ae75893a62df75939c777763d39c2bc5f73ce5b88497208bc269abfd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.9.3+5"
   fixnum:
     dependency: transitive
     description:
@@ -342,6 +366,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.23"
+  flutter_plugin_android_lifecycle:
+    dependency: transitive
+    description:
+      name: flutter_plugin_android_lifecycle
+      sha256: "3854fe5e3bff0b113c658f260b90c95dea17c92db0f2addeac2e343dd9969785"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.35"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -436,10 +468,74 @@ packages:
     dependency: "direct main"
     description:
       name: image
-      sha256: f9881ff4998044947ec38d098bc7c8316ae1186fa786eddffdb867b9bc94dfce
+      sha256: "6300175e00616bbc832e2fc91bfa4d776af5402c81c7151bee6905bb08473c52"
       url: "https://pub.dev"
     source: hosted
-    version: "4.8.0"
+    version: "4.9.1"
+  image_picker:
+    dependency: "direct main"
+    description:
+      name: image_picker
+      sha256: d8402284df184bc05f4a2210c6c23983b0720f4cd87cbd05c5390a78af602667
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.3"
+  image_picker_android:
+    dependency: transitive
+    description:
+      name: image_picker_android
+      sha256: "6f3a1995eafb000333174fae92202622033b0ee7fd917a6cd3730295264df84a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.13+19"
+  image_picker_for_web:
+    dependency: transitive
+    description:
+      name: image_picker_for_web
+      sha256: "66257a3191ab360d23a55c8241c91a6e329d31e94efa7be9cf7a212e65850214"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.1"
+  image_picker_ios:
+    dependency: transitive
+    description:
+      name: image_picker_ios
+      sha256: b9c4a438a9ff4f60808c9cf0039b93a42bb6c2211ef6ebb647394b2b3fa84588
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.13+6"
+  image_picker_linux:
+    dependency: transitive
+    description:
+      name: image_picker_linux
+      sha256: "1f81c5f2046b9ab724f85523e4af65be1d47b038160a8c8deed909762c308ed4"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.2"
+  image_picker_macos:
+    dependency: transitive
+    description:
+      name: image_picker_macos
+      sha256: "86f0f15a309de7e1a552c12df9ce5b59fe927e71385329355aec4776c6a8ec91"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.2+1"
+  image_picker_platform_interface:
+    dependency: transitive
+    description:
+      name: image_picker_platform_interface
+      sha256: "567e056716333a1647c64bb6bd873cff7622233a5c3f694be28a583d4715690c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.11.1"
+  image_picker_windows:
+    dependency: transitive
+    description:
+      name: image_picker_windows
+      sha256: d248c86554a72b5495a31c56f060cf73a41c7ff541689327b1a7dbccc33adfae
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.2"
   intl:
     dependency: "direct main"
     description:
@@ -692,10 +788,10 @@ packages:
     dependency: "direct main"
     description:
       name: pdf
-      sha256: e47a275b267873d5944ad5f5ff0dcc7ac2e36c02b3046a0ffac9b72fd362c44b
+      sha256: "517df47af468734a23c8b513c0c6a8a62357403ab1b8ab7fad1606576a9dbdd0"
       url: "https://pub.dev"
     source: hosted
-    version: "3.12.0"
+    version: "3.13.0"
   pdf_widget_wrapper:
     dependency: transitive
     description:
@@ -724,10 +820,10 @@ packages:
     dependency: transitive
     description:
       name: permission_handler_apple
-      sha256: "11b7e94a9d2fbee23c27f0cae0105c6266c03fd83b9a2eda6cf09141fc82624b"
+      sha256: "9239ec1147f2b798fb162e6c5c8f05fddd52c74fcead997a12bd619ace11582c"
       url: "https://pub.dev"
     source: hosted
-    version: "9.5.0"
+    version: "9.6.0"
   permission_handler_html:
     dependency: transitive
     description:
@@ -820,10 +916,10 @@ packages:
     dependency: "direct main"
     description:
       name: printing
-      sha256: "689170c9ddb1bda85826466ba80378aa8993486d3c959a71cd7d2d80cb606692"
+      sha256: f6cd14c768c1352dd37a958a3ee351aa9ce305b398218d3acd86389d5f7ecad1
       url: "https://pub.dev"
     source: hosted
-    version: "5.14.3"
+    version: "5.15.0"
   pub_semver:
     dependency: transitive
     description:
@@ -1214,7 +1310,7 @@ packages:
     source: hosted
     version: "3.1.5"
   uuid:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: uuid
       sha256: "1fef9e8e11e2991bb773070d4656b7bd5d850967a2456cfc83cf47925ba79489"
@@ -1297,10 +1393,10 @@ packages:
     dependency: transitive
     description:
       name: xml
-      sha256: "971043b3a0d3da28727e40ed3e0b5d18b742fa5a68665cca88e74b7876d5e025"
+      sha256: "67f0aff7be013d107995e9b75bf4e7f2c3ef2dfdb2c8e68024bba0a7fd5756a4"
       url: "https://pub.dev"
     source: hosted
-    version: "6.6.1"
+    version: "7.0.1"
   yaml:
     dependency: transitive
     description:

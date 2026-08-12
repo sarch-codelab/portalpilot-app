@@ -19,14 +19,16 @@ class _BackupSettingsState extends State<BackupSettings> {
   void initState() {
     super.initState();
     _loadBackups();
-    appThemeNotifier.addListener(() {
-      if (mounted) setState(() {});
-    });
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    appThemeNotifier.removeListener(() {});
+    appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -48,14 +50,28 @@ class _BackupSettingsState extends State<BackupSettings> {
         backgroundColor: palette.appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF3B82F6), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF3B82F6),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Backup y Restauración', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+        title: Text(
+          'Backup y RestauraciÃ³n',
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              appThemeNotifier.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
               color: const Color(0xFF3B82F6),
               size: 20,
             ),
@@ -69,36 +85,40 @@ class _BackupSettingsState extends State<BackupSettings> {
         children: [
           _buildCreateBackupButton(palette),
           Expanded(
-            child: _isLoading 
+            child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _backups.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.backup_rounded,
-                              size: 64,
-                              color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No hay backups disponibles',
-                              style: GoogleFonts.dmSans(
-                                color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
-                              ),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.backup_rounded,
+                          size: 64,
+                          color: appThemeNotifier.isDark
+                              ? const Color(0xFF262626)
+                              : const Color(0xFFE5E7EB),
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _backups.length,
-                        itemBuilder: (context, index) {
-                          final backup = _backups[index];
-                          return _buildBackupCard(backup, palette);
-                        },
-                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No hay backups disponibles',
+                          style: GoogleFonts.dmSans(
+                            color: appThemeNotifier.isDark
+                                ? const Color(0xFFA3A3A3)
+                                : const Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _backups.length,
+                    itemBuilder: (context, index) {
+                      final backup = _backups[index];
+                      return _buildBackupCard(backup, palette);
+                    },
+                  ),
           ),
         ],
       ),
@@ -146,7 +166,10 @@ class _BackupSettingsState extends State<BackupSettings> {
               ? const SizedBox(
                   width: 24,
                   height: 24,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
                 )
               : ElevatedButton.icon(
                   onPressed: _createBackup,
@@ -155,7 +178,10 @@ class _BackupSettingsState extends State<BackupSettings> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: const Color(0xFF3B82F6),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                   ),
                 ),
         ],
@@ -170,7 +196,11 @@ class _BackupSettingsState extends State<BackupSettings> {
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: appThemeNotifier.isDark
+              ? const Color(0xFF262626)
+              : const Color(0xFFE5E7EB),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +217,9 @@ class _BackupSettingsState extends State<BackupSettings> {
                       style: GoogleFonts.syne(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                        color: appThemeNotifier.isDark
+                            ? Colors.white
+                            : Colors.black,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -195,7 +227,9 @@ class _BackupSettingsState extends State<BackupSettings> {
                       backup.formattedDate,
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
-                        color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                        color: appThemeNotifier.isDark
+                            ? const Color(0xFFA3A3A3)
+                            : const Color(0xFF6B7280),
                       ),
                     ),
                   ],
@@ -255,16 +289,22 @@ class _BackupSettingsState extends State<BackupSettings> {
 
   Future<void> _createBackup() async {
     setState(() => _isCreatingBackup = true);
-    
+
     try {
       await BackupManager().createBackup();
       await _loadBackups();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Backup creado exitosamente'), backgroundColor: Color(0xFF10B981)),
+        const SnackBar(
+          content: Text('Backup creado exitosamente'),
+          backgroundColor: Color(0xFF10B981),
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al crear backup: $e'), backgroundColor: Color(0xFFEF4444)),
+        SnackBar(
+          content: Text('Error al crear backup: $e'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
       );
     } finally {
       setState(() => _isCreatingBackup = false);
@@ -275,18 +315,41 @@ class _BackupSettingsState extends State<BackupSettings> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Confirmar Restauración', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
-        content: Text('Esta acción reemplazará todos los datos actuales. ¿Deseas continuar?', style: GoogleFonts.dmSans(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280))),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Confirmar RestauraciÃ³n',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
+        content: Text(
+          'Esta acciÃ³n reemplazarÃ¡ todos los datos actuales. Â¿Deseas continuar?',
+          style: GoogleFonts.dmSans(
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-            child: Text('Restaurar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+            ),
+            child: Text(
+              'Restaurar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -296,11 +359,17 @@ class _BackupSettingsState extends State<BackupSettings> {
       try {
         await BackupManager().restoreBackup(backupPath);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Backup restaurado exitosamente'), backgroundColor: Color(0xFF10B981)),
+          const SnackBar(
+            content: Text('Backup restaurado exitosamente'),
+            backgroundColor: Color(0xFF10B981),
+          ),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al restaurar backup: $e'), backgroundColor: Color(0xFFEF4444)),
+          SnackBar(
+            content: Text('Error al restaurar backup: $e'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
         );
       }
     }
@@ -310,18 +379,41 @@ class _BackupSettingsState extends State<BackupSettings> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
-        title: Text('Eliminar Backup', style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
-        content: Text('¿Estás seguro de eliminar este backup? Esta acción no se puede deshacer.', style: GoogleFonts.dmSans(color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280))),
+        backgroundColor: appThemeNotifier.isDark
+            ? const Color(0xFF111111)
+            : Colors.white,
+        title: Text(
+          'Eliminar Backup',
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.w700,
+            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+          ),
+        ),
+        content: Text(
+          'Â¿EstÃ¡s seguro de eliminar este backup? Esta acciÃ³n no se puede deshacer.',
+          style: GoogleFonts.dmSans(
+            color: appThemeNotifier.isDark
+                ? const Color(0xFFA3A3A3)
+                : const Color(0xFF6B7280),
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3))),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
-            child: Text('Eliminar', style: GoogleFonts.dmSans(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+            child: Text(
+              'Eliminar',
+              style: GoogleFonts.dmSans(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -332,7 +424,10 @@ class _BackupSettingsState extends State<BackupSettings> {
       if (deleted) {
         await _loadBackups();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Backup eliminado'), backgroundColor: Color(0xFF10B981)),
+          const SnackBar(
+            content: Text('Backup eliminado'),
+            backgroundColor: Color(0xFF10B981),
+          ),
         );
       }
     }

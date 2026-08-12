@@ -63,8 +63,11 @@ class _HomeScreenState extends State<HomeScreen>
     _fadeController.forward();
     AuthController.instance.addListener(_onAuthChanged);
     _loadUserData();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _currentTime = DateTime.now());
+    _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      final now = DateTime.now();
+      if (mounted && now.hour != _currentTime.hour) {
+        setState(() => _currentTime = now);
+      }
     });
   }
 
@@ -251,27 +254,33 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Portal Pilot',
-                  style: GoogleFonts.syne(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Portal Pilot',
+                    style: GoogleFonts.syne(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  _empresaNombre.isNotEmpty ? _empresaNombre : _empresaCodigo,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: const Color(0xFFA3A3A3),
-                    fontWeight: FontWeight.w500,
+                  Text(
+                    _empresaNombre.isNotEmpty ? _empresaNombre : _empresaCodigo,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: const Color(0xFFA3A3A3),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const Spacer(),
             Container(
@@ -360,8 +369,14 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildModulosGrid(bool isMobile) {
+    final size = MediaQuery.of(context).size;
     final crossAxisCount = isMobile ? 2 : 3;
-    final childAspectRatio = isMobile ? 1.2 : 1.4;
+    final isPortrait = size.height > size.width;
+    final gridWidth = size.width - (isMobile ? 40 : 96);
+    final cellWidth = (gridWidth - (crossAxisCount - 1) * 16) / crossAxisCount;
+    final cellHeight = !isMobile
+        ? (cellWidth / 1.4).clamp(220.0, 340.0)
+        : (cellWidth / (isPortrait ? 0.9 : 1.2)).clamp(180.0, 260.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,13 +396,17 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             const SizedBox(width: 10),
-            Text(
-              'TUS MÓDULOS',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFFA3A3A3),
-                letterSpacing: 1.5,
+            Flexible(
+              child: Text(
+                'TUS MÓDULOS',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFA3A3A3),
+                  letterSpacing: 1.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 8),
@@ -446,7 +465,7 @@ class _HomeScreenState extends State<HomeScreen>
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: childAspectRatio,
+            mainAxisExtent: cellHeight,
           ),
           itemCount: _modulosDisponibles.length,
           itemBuilder: (context, index) {
@@ -476,13 +495,8 @@ class _HomeScreenState extends State<HomeScreen>
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-              BoxShadow(
-                color: modulo.color.withValues(alpha: 0.1),
-                blurRadius: 15,
-                spreadRadius: -3,
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -494,7 +508,7 @@ class _HomeScreenState extends State<HomeScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
@@ -513,7 +527,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ],
                     ),
-                    child: Icon(modulo.icono, color: Colors.white, size: 24),
+                    child: Icon(modulo.icono, color: Colors.white, size: 22),
                   ),
                   Container(
                     width: 8,
@@ -542,6 +556,8 @@ class _HomeScreenState extends State<HomeScreen>
                       color: Colors.white,
                       letterSpacing: -0.3,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(

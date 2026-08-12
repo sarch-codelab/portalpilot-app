@@ -780,10 +780,11 @@ class _SocioDetalleScreenState extends State<_SocioDetalleScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
             children: [
               _buildBeneficio('Descuento', '${vigente.descuentoPorcentaje.toStringAsFixed(0)}%'),
-              const SizedBox(width: 12),
               _buildBeneficio('Pagó', 'L.${vigente.precioPagado.toStringAsFixed(2)}'),
             ],
           ),
