@@ -17,7 +17,7 @@ class _CadenasFranquiciasState extends State<CadenasFranquicias> {
       'sucursales': 12,
       'activo': true,
     },
-    {'id': '2', 'nombre': 'PulperÃ­as Centro', 'sucursales': 8, 'activo': true},
+    {'id': '2', 'nombre': 'Pulperías Centro', 'sucursales': 8, 'activo': true},
     {'id': '3', 'nombre': 'Tiendas Express', 'sucursales': 5, 'activo': false},
   ];
 
@@ -220,7 +220,7 @@ class _CadenasFranquiciasState extends State<CadenasFranquicias> {
               controller: sucursalesController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'NÃºmero de sucursales',
+                labelText: 'Número de sucursales',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
                       ? const Color(0xFFA3A3A3)

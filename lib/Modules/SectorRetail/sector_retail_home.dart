@@ -97,7 +97,7 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
           _buildActionCard(
             Icons.price_change_rounded,
             'Precios por Canal',
-            'Diferentes precios para pulperÃ­as vs supermercados',
+            'Diferentes precios para pulperías vs supermercados',
             const Color(0xFFEC4899),
             () => Navigator.push(
               context,
@@ -119,7 +119,7 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
           _buildActionCard(
             Icons.inventory_2_rounded,
             'Inventario por Tienda',
-            'Stock especÃ­fico por cada punto de venta',
+            'Stock específico por cada punto de venta',
             const Color(0xFF10B981),
             () => Navigator.push(
               context,
@@ -130,7 +130,7 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
           _buildActionCard(
             Icons.analytics_rounded,
             'Reportes por Canal',
-            'AnÃ¡lisis comparativo Canal Tradicional vs Moderno',
+            'Análisis comparativo Canal Tradicional vs Moderno',
             const Color(0xFF3B82F6),
             () => Navigator.push(
               context,
@@ -141,7 +141,7 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
           _buildActionCard(
             Icons.price_check_rounded,
             'Precios Competitivos',
-            'AnÃ¡lisis de precios por zona',
+            'Análisis de precios por zona',
             const Color(0xFF10B981),
             () => Navigator.push(
               context,

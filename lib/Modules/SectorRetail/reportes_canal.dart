@@ -86,7 +86,7 @@ class _ReportesCanalState extends State<ReportesCanal> {
           ),
           const SizedBox(height: 12),
           _buildChannelStatsCard(
-            'MembresÃ­as',
+            'Membresías',
             const Color(0xFF8B5CF6),
             32000,
             1890,
@@ -112,7 +112,7 @@ class _ReportesCanalState extends State<ReportesCanal> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'ComparaciÃ³n de Ventas por Canal',
+            'Comparación de Ventas por Canal',
             style: GoogleFonts.syne(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -128,7 +128,7 @@ class _ReportesCanalState extends State<ReportesCanal> {
           const SizedBox(height: 12),
           _buildComparisonBar('Canal Moderno', 78000, const Color(0xFF10B981)),
           const SizedBox(height: 12),
-          _buildComparisonBar('MembresÃ­as', 32000, const Color(0xFF8B5CF6)),
+          _buildComparisonBar('Membresías', 32000, const Color(0xFF8B5CF6)),
         ],
       ),
     );

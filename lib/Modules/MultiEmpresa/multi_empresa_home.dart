@@ -95,7 +95,7 @@ class _MultiEmpresaHomeState extends State<MultiEmpresaHome> {
           _buildActionCard(
             Icons.account_tree_rounded,
             'Holding y Filiales',
-            'GestiÃ³n de empresas y subsidiarias',
+            'Gestión de empresas y subsidiarias',
             const Color(0xFFEC4899),
             () => Navigator.push(
               context,
@@ -119,7 +119,7 @@ class _MultiEmpresaHomeState extends State<MultiEmpresaHome> {
           _buildActionCard(
             Icons.currency_exchange_rounded,
             'Tipo de Cambio',
-            'ConversiÃ³n automÃ¡tica de monedas',
+            'Conversión automática de monedas',
             const Color(0xFF10B981),
             () => Navigator.push(
               context,

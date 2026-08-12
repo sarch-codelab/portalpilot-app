@@ -13,21 +13,21 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
   List<Map<String, dynamic>> _socios = [
     {
       'id': '1',
-      'nombre': 'Juan PÃ©rez',
+      'nombre': 'Juan Pérez',
       'puntos': 2450,
       'nivel': 'Oro',
       'beneficios': ['5% descuento', 'Acceso prioritario'],
     },
     {
       'id': '2',
-      'nombre': 'MarÃ­a GarcÃ­a',
+      'nombre': 'María García',
       'puntos': 1200,
       'nivel': 'Plata',
       'beneficios': ['3% descuento', 'Promociones exclusivas'],
     },
     {
       'id': '3',
-      'nombre': 'Carlos LÃ³pez',
+      'nombre': 'Carlos López',
       'puntos': 850,
       'nivel': 'Bronce',
       'beneficios': ['2% descuento'],
@@ -326,7 +326,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
           ),
         ),
         content: Text(
-          'Tienes ${socio['puntos']} puntos disponibles. Â¿CuÃ¡ntos deseas canjear?',
+          'Tienes ${socio['puntos']} puntos disponibles. ¿Cuántos deseas canjear?',
           style: GoogleFonts.dmSans(
             color: appThemeNotifier.isDark
                 ? const Color(0xFFA3A3A3)

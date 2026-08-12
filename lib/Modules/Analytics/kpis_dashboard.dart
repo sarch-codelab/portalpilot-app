@@ -78,7 +78,7 @@ class _KPIsDashboardState extends State<KPIsDashboard> {
           ),
           const SizedBox(height: 12),
           _buildKPICard(
-            'MÃ¡rgenes',
+            'Márgenes',
             '15.0%',
             '+2.1%',
             const Color(0xFF6366F1),
@@ -94,7 +94,7 @@ class _KPIsDashboardState extends State<KPIsDashboard> {
           ),
           const SizedBox(height: 12),
           _buildKPICard(
-            'SatisfacciÃ³n Cliente',
+            'Satisfacción Cliente',
             '92%',
             '+3.2%',
             const Color(0xFFEC4899),
@@ -102,7 +102,7 @@ class _KPIsDashboardState extends State<KPIsDashboard> {
           ),
           const SizedBox(height: 12),
           _buildKPICard(
-            'RotaciÃ³n Inventario',
+            'Rotación Inventario',
             '4.2x',
             '+0.8x',
             const Color(0xFF8B5CF6),
@@ -110,7 +110,7 @@ class _KPIsDashboardState extends State<KPIsDashboard> {
           ),
           const SizedBox(height: 12),
           _buildKPICard(
-            'RetenciÃ³n Clientes',
+            'Retención Clientes',
             '78%',
             '+5.4%',
             const Color(0xFF14B8A6),

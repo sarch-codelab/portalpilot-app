@@ -180,7 +180,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             const SizedBox(height: 16),
             _buildStatsGrid(),
             const SizedBox(height: 20),
-            _buildSectionTitle('Acciones RÃ¡pidas'),
+            _buildSectionTitle('Acciones Rápidas'),
             const SizedBox(height: 10),
             _buildActionButtons(),
             const SizedBox(height: 20),
@@ -253,7 +253,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'ConfigurÃ¡ tu CAI para empezar a facturar',
+                      'Configurá tu CAI para empezar a facturar',
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
                         color: const Color(0xFFD4D4D4),
@@ -523,7 +523,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
         _buildActionRow(
           icon: Icons.add_circle_outline_rounded,
           title: 'Nueva Factura',
-          subtitle: 'Crear factura con CAI y correlativo automÃ¡tico',
+          subtitle: 'Crear factura con CAI y correlativo automático',
           color: const Color(0xFF10B981),
           onTap: () async {
             await Navigator.push(
@@ -656,21 +656,21 @@ class _FacturacionHomeState extends State<FacturacionHome> {
           ),
           const Divider(color: Color(0xFF262626), height: 16),
           _buildDocTypeRow(
-            'Nota de CrÃ©dito',
+            'Nota de Crédito',
             'Devoluciones y anulaciones',
             Icons.undo_rounded,
             const Color(0xFF3B82F6),
           ),
           const Divider(color: Color(0xFF262626), height: 16),
           _buildDocTypeRow(
-            'Nota de DÃ©bito',
+            'Nota de Débito',
             'Ajustes al alza',
             Icons.redo_rounded,
             const Color(0xFFF59E0B),
           ),
           const Divider(color: Color(0xFF262626), height: 16),
           _buildDocTypeRow(
-            'Factura ExportaciÃ³n',
+            'Factura Exportación',
             'Ventas al exterior',
             Icons.public_rounded,
             const Color(0xFF8B5CF6),

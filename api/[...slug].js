@@ -14,6 +14,7 @@ const routes = {
   'ordenes-compra': ordenesCompraHandler,
   'productos': productosHandler,
   'proveedores': proveedoresHandler,
+  'storage': storageHandler,
   'transacciones': transaccionesHandler,
   'ventas': ventasHandler,
 };
@@ -874,5 +875,107 @@ async function ventasHandler(req, res) {
     }, 201);
   } catch (err) {
     return fail(res, err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Handler de Storage (Supabase Storage: upload y delete de imágenes)
+// ═══════════════════════════════════════════════════════════════
+
+const MIME_EXT = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'image/bmp': 'bmp',
+  'image/avif': 'avif',
+};
+
+async function storageHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+
+  try {
+    const body = parseBody(req);
+    const action = body.action === 'delete' ? 'delete' : 'upload';
+
+    // ── Eliminar imagen a partir de su URL pública ───────────────────────────
+    if (action === 'delete') {
+      const url = String(body.url || '');
+      const prefix = `${SUPABASE_URL}/storage/v1/object/`;
+      if (!url.startsWith(prefix)) return ok(res, { deleted: false });
+      const path = url.slice(prefix.length).replace(/^public\//, '');
+      if (!path) return ok(res, { deleted: false });
+      const del = await fetch(`${SUPABASE_URL}/storage/v1/object/${path}`, {
+        method: 'DELETE',
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      });
+      return ok(res, { deleted: del.status === 200 });
+    }
+
+    // ── Subir imagen ──────────────────────────────────────────────────────────
+    const bucket = String(body.bucket || 'productos').replace(/[^a-zA-Z0-9_-]/g, '');
+    const folder = String(body.folder || '')
+      .replace(/[^a-zA-Z0-9_/-]/g, '')
+      .replace(/^\/+|\/+$/g, '');
+    const rawBase64 = String(body.base64 || '');
+    if (!rawBase64) return fail(res, { message: 'Falta base64.', status: 400 });
+
+    const match = /^data:(image\/[\w.+-]+);base64,(.*)$/s.exec(rawBase64);
+    const mime = match ? match[1] : 'image/jpeg';
+    const dataB64 = match ? match[2] : rawBase64.replace(/\s+/g, '');
+
+    let buffer;
+    try {
+      buffer = Buffer.from(dataB64, 'base64');
+    } catch {
+      return fail(res, { message: 'base64 inválido.', status: 400 });
+    }
+    if (buffer.length === 0) return fail(res, { message: 'Imagen vacía.', status: 400 });
+    if (buffer.length > 3.5 * 1024 * 1024) {
+      return fail(res, { message: 'La imagen excede el límite de 3.5 MB.', status: 413 });
+    }
+
+    const ext = MIME_EXT[mime] || 'jpg';
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+    const objectPath = folder ? `${folder}/${fileName}` : fileName;
+
+    // Asegurar que el bucket exista y sea público (ignorar si ya existe).
+    await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: bucket, name: bucket, public: true }),
+    }).catch(() => {});
+
+    let up = null;
+    for (const method of ['POST', 'PUT']) {
+      up = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${objectPath}`, {
+        method,
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': mime,
+        },
+        body: buffer,
+      });
+      if (up.status !== 405) break;
+    }
+    if (up.status >= 400) {
+      return fail(res, { message: `Error subiendo a Storage: ${up.status} ${await up.text()}`, status: up.status });
+    }
+
+    return ok(res, {
+      url: `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${objectPath}`,
+    });
+  } catch (e) {
+    return fail(res, { message: `Error en storage: ${(e && e.message) || e}`, status: 500 });
   }
 }

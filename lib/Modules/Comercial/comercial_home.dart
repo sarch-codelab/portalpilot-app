@@ -96,7 +96,7 @@ class _ComercialHomeState extends State<ComercialHome> {
           _buildActionCard(
             Icons.people_outline,
             'Proveedores',
-            'GestiÃ³n de proveedores y contactos',
+            'Gestión de proveedores y contactos',
             const Color(0xFF6B7280),
             () => Navigator.of(
               context,
@@ -116,7 +116,7 @@ class _ComercialHomeState extends State<ComercialHome> {
           _buildActionCard(
             Icons.inventory_2_outlined,
             'Ã“rdenes de Compra',
-            'GestiÃ³n de Ã³rdenes de compra',
+            'Gestión de órdenes de compra',
             const Color(0xFF3B82F6),
             () => Navigator.of(
               context,

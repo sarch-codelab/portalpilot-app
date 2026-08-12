@@ -183,7 +183,7 @@ class _InventarioHomeState extends State<InventarioHome> {
               _buildAlertBanner(productosBajo.length),
               const SizedBox(height: 16),
             ],
-            _buildSectionTitle('Acciones RÃ¡pidas'),
+            _buildSectionTitle('Acciones Rápidas'),
             const SizedBox(height: 10),
             _buildActions(),
             const SizedBox(height: 20),
@@ -392,7 +392,7 @@ class _InventarioHomeState extends State<InventarioHome> {
         _buildActionRow(
           Icons.add_circle_outline_rounded,
           'Nuevo Producto',
-          'Agregar producto al catÃ¡logo',
+          'Agregar producto al catálogo',
           const Color(0xFFF59E0B),
           () async {
             await Navigator.push(
@@ -405,7 +405,7 @@ class _InventarioHomeState extends State<InventarioHome> {
         const SizedBox(height: 8),
         _buildActionRow(
           Icons.list_alt_rounded,
-          'Ver CatÃ¡logo',
+          'Ver Catálogo',
           'Lista completa de productos',
           const Color(0xFF3B82F6),
           () async {
@@ -597,7 +597,7 @@ class _InventarioHomeState extends State<InventarioHome> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${p['codigo'] ?? 'S/C'}  â€¢  ${p['categoria'] ?? 'Sin categorÃ­a'}',
+                      '${p['codigo'] ?? 'S/C'}  â€¢  ${p['categoria'] ?? 'Sin categoría'}',
                       style: GoogleFonts.dmMono(
                         fontSize: 11,
                         color: const Color(0xFF737373),

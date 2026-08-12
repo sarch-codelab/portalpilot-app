@@ -13,21 +13,21 @@ class _CobrosEfectivoState extends State<CobrosEfectivo> {
   List<Map<String, dynamic>> _cobros = [
     {
       'id': '1',
-      'cliente': 'PulperÃ­a DoÃ±a MarÃ­a',
+      'cliente': 'Pulpería Doña María',
       'monto': 1200.00,
       'fecha': '2026-08-09',
       'estado': 'completado',
     },
     {
       'id': '2',
-      'cliente': 'Mercadito San JosÃ©',
+      'cliente': 'Mercadito San José',
       'monto': 850.00,
       'fecha': '2026-08-09',
       'estado': 'pendiente',
     },
     {
       'id': '3',
-      'cliente': 'AbarroterÃ­a El Vecino',
+      'cliente': 'Abarrotería El Vecino',
       'monto': 560.00,
       'fecha': '2026-08-08',
       'estado': 'completado',

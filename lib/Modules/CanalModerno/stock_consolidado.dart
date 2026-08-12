@@ -29,7 +29,7 @@ class _StockConsolidadoState extends State<StockConsolidado> {
     },
     {
       'id': '3',
-      'nombre': 'AzÃºcar 5kg',
+      'nombre': 'Azúcar 5kg',
       'stock_tradicional': 280,
       'stock_moderno': 750,
       'stock_membresia': 210,
@@ -165,7 +165,7 @@ class _StockConsolidadoState extends State<StockConsolidado> {
           ),
           const SizedBox(height: 8),
           _buildChannelStock(
-            'MembresÃ­as',
+            'Membresías',
             producto['stock_membresia'],
             const Color(0xFF8B5CF6),
           ),

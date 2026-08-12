@@ -6,7 +6,7 @@ import 'package:portal_pilot_app/Shared/services/canal_tradicional_service.dart'
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 /// Rutas de reparto / visita del Canal Tradicional.
-/// CRUD de rutas y asignaciÃ³n de clientes a cada ruta.
+/// CRUD de rutas y asignación de clientes a cada ruta.
 class RutaScreen extends StatefulWidget {
   const RutaScreen({super.key});
 
@@ -234,7 +234,7 @@ class _RutaScreenState extends State<RutaScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'CreÃ¡ rutas de reparto o visita y asignÃ¡ clientes.',
+            'Creá rutas de reparto o visita y asigná clientes.',
             textAlign: TextAlign.center,
             style: GoogleFonts.dmSans(
               fontSize: 12,
@@ -291,7 +291,7 @@ class _RutaScreenState extends State<RutaScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${RutaFrecuencia.etiqueta(r.frecuencia)} Â· ${RutaFrecuencia.diaEtiqueta(r.diaSemana)}',
+                        '${RutaFrecuencia.etiqueta(r.frecuencia)} · ${RutaFrecuencia.diaEtiqueta(r.diaSemana)}',
                         style: GoogleFonts.dmSans(
                           fontSize: 11,
                           color: const Color(0xFF737373),
@@ -397,7 +397,7 @@ class _RutaScreenState extends State<RutaScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              '${RutaFrecuencia.etiqueta(info.ruta.frecuencia)} Â· ${RutaFrecuencia.diaEtiqueta(info.ruta.diaSemana)}',
+              '${RutaFrecuencia.etiqueta(info.ruta.frecuencia)} · ${RutaFrecuencia.diaEtiqueta(info.ruta.diaSemana)}',
               style: GoogleFonts.dmSans(
                 fontSize: 12,
                 color: const Color(0xFF737373),
@@ -646,11 +646,11 @@ class _RutaScreenState extends State<RutaScreen> {
                   value: diaSemana,
                   dropdownColor: const Color(0xFF1A1A1A),
                   style: GoogleFonts.dmSans(fontSize: 14, color: Colors.white),
-                  decoration: _inputDecoration('DÃ­a de visita'),
+                  decoration: _inputDecoration('Día de visita'),
                   items: [
                     const DropdownMenuItem<int?>(
                       value: null,
-                      child: Text('Sin dÃ­a fijo'),
+                      child: Text('Sin día fijo'),
                     ),
                     ...List.generate(7, (i) {
                       return DropdownMenuItem<int?>(
@@ -666,7 +666,7 @@ class _RutaScreenState extends State<RutaScreen> {
                   controller: descripcionController,
                   maxLines: 2,
                   style: GoogleFonts.dmSans(fontSize: 14, color: Colors.white),
-                  decoration: _inputDecoration('DescripciÃ³n (opcional)'),
+                  decoration: _inputDecoration('Descripción (opcional)'),
                 ),
               ],
             ),
@@ -821,7 +821,7 @@ class _RutaScreenState extends State<RutaScreen> {
           ),
         ),
         content: Text(
-          'Â¿Eliminar "${info.ruta.nombre}"? TambiÃ©n se quitarÃ¡n sus clientes asignados.',
+          '¿Eliminar "${info.ruta.nombre}"? También se quitarán sus clientes asignados.',
           style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
         ),
         actions: [

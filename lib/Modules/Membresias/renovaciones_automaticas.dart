@@ -14,7 +14,7 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
   List<Map<String, dynamic>> _membresias = [
     {
       'id': '1',
-      'socio': 'Juan PÃ©rez',
+      'socio': 'Juan Pérez',
       'plan': 'Oro',
       'vencimiento': '2026-08-15',
       'auto_renovar': true,
@@ -22,7 +22,7 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
     },
     {
       'id': '2',
-      'socio': 'MarÃ­a GarcÃ­a',
+      'socio': 'María García',
       'plan': 'Plata',
       'vencimiento': '2026-08-20',
       'auto_renovar': true,
@@ -30,7 +30,7 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
     },
     {
       'id': '3',
-      'socio': 'Carlos LÃ³pez',
+      'socio': 'Carlos López',
       'plan': 'Bronce',
       'vencimiento': '2026-08-25',
       'auto_renovar': false,
@@ -71,7 +71,7 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Renovaciones AutomÃ¡ticas',
+          'Renovaciones Automáticas',
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
@@ -240,7 +240,7 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'RenovaciÃ³n automÃ¡tica activada',
+                    'Renovación automática activada',
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,

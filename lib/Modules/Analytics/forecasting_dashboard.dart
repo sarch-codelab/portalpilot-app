@@ -110,7 +110,7 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
           ),
           const SizedBox(height: 12),
           _buildChannelForecast(
-            'MembresÃ­as',
+            'Membresías',
             'L.210,000',
             '+25.0%',
             const Color(0xFF8B5CF6),

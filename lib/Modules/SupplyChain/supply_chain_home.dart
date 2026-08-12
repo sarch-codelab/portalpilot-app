@@ -96,8 +96,8 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
         children: [
           _buildActionCard(
             Icons.inventory_rounded,
-            'RecepciÃ³n',
-            'RecepciÃ³n de mercancÃ­a de proveedores',
+            'Recepción',
+            'Recepción de mercancía de proveedores',
             const Color(0xFF14B8A6),
             () => Navigator.push(
               context,
@@ -108,7 +108,7 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
           _buildActionCard(
             Icons.assignment_return_rounded,
             'Devoluciones a Proveedor',
-            'GestiÃ³n de devoluciones y reembolsos',
+            'Gestión de devoluciones y reembolsos',
             const Color(0xFFEF4444),
             () => Navigator.push(
               context,
@@ -143,7 +143,7 @@ class _SupplyChainHomeState extends State<SupplyChainHome> {
           _buildActionCard(
             Icons.warehouse_rounded,
             'Multi-Bodega',
-            'GestiÃ³n de mÃºltiples almacenes',
+            'Gestión de múltiples almacenes',
             const Color(0xFF8B5CF6),
             () => Navigator.push(
               context,

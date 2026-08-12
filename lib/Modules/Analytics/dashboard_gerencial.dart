@@ -227,7 +227,7 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
           const SizedBox(height: 12),
           _buildRevenueBar('Canal Moderno', 620000, const Color(0xFF10B981)),
           const SizedBox(height: 12),
-          _buildRevenueBar('MembresÃ­as', 180000, const Color(0xFF8B5CF6)),
+          _buildRevenueBar('Membresías', 180000, const Color(0xFF8B5CF6)),
         ],
       ),
     );
@@ -333,7 +333,7 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildPerformanceCard(
-                  'MembresÃ­as',
+                  'Membresías',
                   'L.180K',
                   '18.7%',
                   '1,550',
@@ -448,7 +448,7 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildMetricItem(
-                  'Ãndice de RotaciÃ³n',
+                  'Índice de Rotación',
                   '4.2x',
                   const Color(0xFFF59E0B),
                 ),

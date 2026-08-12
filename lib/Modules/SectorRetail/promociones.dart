@@ -105,7 +105,7 @@ class _PromocionesState extends State<Promociones> {
         backgroundColor: const Color(0xFFF59E0B),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: Text(
-          'Nueva PromociÃ³n',
+          'Nueva Promoción',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
             color: Colors.white,
@@ -226,7 +226,7 @@ class _PromocionesState extends State<Promociones> {
               ? const Color(0xFF111111)
               : Colors.white,
           title: Text(
-            'Nueva PromociÃ³n',
+            'Nueva Promoción',
             style: GoogleFonts.syne(
               fontWeight: FontWeight.w700,
               color: appThemeNotifier.isDark ? Colors.white : Colors.black,
@@ -238,7 +238,7 @@ class _PromocionesState extends State<Promociones> {
               TextField(
                 controller: nombreController,
                 decoration: InputDecoration(
-                  labelText: 'Nombre de la promociÃ³n',
+                  labelText: 'Nombre de la promoción',
                   labelStyle: TextStyle(
                     color: appThemeNotifier.isDark
                         ? const Color(0xFFA3A3A3)
@@ -276,7 +276,7 @@ class _PromocionesState extends State<Promociones> {
                   });
                 },
                 decoration: InputDecoration(
-                  labelText: 'Tipo de promociÃ³n',
+                  labelText: 'Tipo de promoción',
                   labelStyle: TextStyle(
                     color: appThemeNotifier.isDark
                         ? const Color(0xFFA3A3A3)

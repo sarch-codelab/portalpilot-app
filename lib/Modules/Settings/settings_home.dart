@@ -81,7 +81,7 @@ class _SettingsHomeState extends State<SettingsHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.settings_rounded,
-            'ConfiguraciÃ³n Fiscal',
+            'Configuración Fiscal',
             'RTN, CAI, tasas de impuestos SAR',
             const Color(0xFF10B981),
             () => Navigator.push(
@@ -92,8 +92,8 @@ class _SettingsHomeState extends State<SettingsHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.backup_rounded,
-            'Backup y RestauraciÃ³n',
-            'GestiÃ³n de backups de datos',
+            'Backup y Restauración',
+            'Gestión de backups de datos',
             const Color(0xFF3B82F6),
             () => Navigator.push(
               context,
@@ -104,7 +104,7 @@ class _SettingsHomeState extends State<SettingsHome> {
           _buildActionCard(
             Icons.bug_report_rounded,
             'Logs del Sistema',
-            'VisualizaciÃ³n de logs y auditorÃ­a',
+            'Visualización de logs y auditoría',
             const Color(0xFFF59E0B),
             () => Navigator.push(
               context,
@@ -116,8 +116,8 @@ class _SettingsHomeState extends State<SettingsHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.speed_rounded,
-            'OptimizaciÃ³n de CachÃ©',
-            'GestiÃ³n de cachÃ© local',
+            'Optimización de Caché',
+            'Gestión de caché local',
             const Color(0xFF8B5CF6),
             () => _showCacheOptions(),
           ),
@@ -229,7 +229,7 @@ class _SettingsHomeState extends State<SettingsHome> {
             ? const Color(0xFF111111)
             : Colors.white,
         title: Text(
-          'Opciones de CachÃ©',
+          'Opciones de Caché',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
             color: appThemeNotifier.isDark ? Colors.white : Colors.black,
@@ -244,7 +244,7 @@ class _SettingsHomeState extends State<SettingsHome> {
                 color: Color(0xFFEF4444),
               ),
               title: Text(
-                'Limpiar cachÃ© expirado',
+                'Limpiar caché expirado',
                 style: GoogleFonts.dmSans(
                   color: appThemeNotifier.isDark ? Colors.white : Colors.black,
                 ),
@@ -254,7 +254,7 @@ class _SettingsHomeState extends State<SettingsHome> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('CachÃ© expirado limpiado'),
+                    content: Text('Caché expirado limpiado'),
                     backgroundColor: Color(0xFF10B981),
                   ),
                 );
@@ -266,7 +266,7 @@ class _SettingsHomeState extends State<SettingsHome> {
                 color: Color(0xFFEF4444),
               ),
               title: Text(
-                'Limpiar todo el cachÃ©',
+                'Limpiar todo el caché',
                 style: GoogleFonts.dmSans(
                   color: appThemeNotifier.isDark ? Colors.white : Colors.black,
                 ),
@@ -276,7 +276,7 @@ class _SettingsHomeState extends State<SettingsHome> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('CachÃ© limpiado completamente'),
+                    content: Text('Caché limpiado completamente'),
                     backgroundColor: Color(0xFF10B981),
                   ),
                 );
@@ -320,7 +320,7 @@ class _SettingsHomeState extends State<SettingsHome> {
                 color: Color(0xFFF59E0B),
               ),
               title: Text(
-                'Limpiar logs antiguos (7 dÃ­as)',
+                'Limpiar logs antiguos (7 días)',
                 style: GoogleFonts.dmSans(
                   color: appThemeNotifier.isDark ? Colors.white : Colors.black,
                 ),

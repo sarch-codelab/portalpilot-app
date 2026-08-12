@@ -117,8 +117,8 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.trending_up_rounded,
-            'AnÃ¡lisis de MÃ¡rgenes',
-            'MÃ¡rgenes por canal y producto',
+            'Análisis de Márgenes',
+            'Márgenes por canal y producto',
             const Color(0xFFF59E0B),
             () => Navigator.push(
               context,
@@ -129,7 +129,7 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
           _buildActionCard(
             Icons.show_chart_rounded,
             'Forecasting',
-            'PronÃ³sticos y proyecciones',
+            'Pronósticos y proyecciones',
             const Color(0xFFEC4899),
             () => Navigator.push(
               context,

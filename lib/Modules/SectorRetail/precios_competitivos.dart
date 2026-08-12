@@ -29,7 +29,7 @@ class _PreciosCompetitivosState extends State<PreciosCompetitivos> {
     },
     {
       'id': '3',
-      'nombre': 'AzÃºcar 5kg',
+      'nombre': 'Azúcar 5kg',
       'precio_propio': 32.00,
       'precio_competencia': 35.00,
       'zona': 'Sur',
@@ -198,8 +198,8 @@ class _PreciosCompetitivosState extends State<PreciosCompetitivos> {
                 Expanded(
                   child: Text(
                     producto['ventaja']
-                        ? 'Estamos L.${diferencia.abs().toStringAsFixed(2)} mÃ¡s baratos'
-                        : 'Estamos L.${diferencia.abs().toStringAsFixed(2)} mÃ¡s caros',
+                        ? 'Estamos L.${diferencia.abs().toStringAsFixed(2)} más baratos'
+                        : 'Estamos L.${diferencia.abs().toStringAsFixed(2)} más caros',
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

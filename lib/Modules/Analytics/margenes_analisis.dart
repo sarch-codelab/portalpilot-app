@@ -43,7 +43,7 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'AnÃ¡lisis de MÃ¡rgenes',
+          'Análisis de Márgenes',
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
@@ -75,7 +75,7 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
           const SizedBox(height: 12),
           _buildMarginCard('Canal Moderno', 15.2, const Color(0xFF10B981)),
           const SizedBox(height: 12),
-          _buildMarginCard('MembresÃ­as', 18.7, const Color(0xFF8B5CF6)),
+          _buildMarginCard('Membresías', 18.7, const Color(0xFF8B5CF6)),
           const SizedBox(height: 24),
           _buildSectionHeader('MÃRGENES POR PRODUCTO'),
           const SizedBox(height: 12),
@@ -91,7 +91,7 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
             const Color(0xFF10B981),
           ),
           const SizedBox(height: 12),
-          _buildProductMargin('AzÃºcar 5kg', 12.0, const Color(0xFFF59E0B)),
+          _buildProductMargin('Azúcar 5kg', 12.0, const Color(0xFFF59E0B)),
           const SizedBox(height: 12),
           _buildProductMargin('Aceite 1L', 22.0, const Color(0xFFEC4899)),
         ],

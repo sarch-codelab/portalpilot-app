@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,8 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:portal_pilot_app/Shared/services/db_service.dart';
-import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/image_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
@@ -86,7 +83,8 @@ class _ProductoFormState extends State<ProductoForm> {
     _imagenUrl = p['imagen_url'] as String? ?? p['imagenUrl'] as String?;
     // Si no hay base64 local pero la URL es una data URL, derivarla para el preview
     if ((_imagenBase64 == null || _imagenBase64!.isEmpty) &&
-        (_imagenUrl ?? '').isNotEmpty) {
+        (_imagenUrl ?? '').isNotEmpty &&
+        !(_imagenUrl ?? '').startsWith('http')) {
       _imagenBase64 = _normalizarBase64(_imagenUrl);
     }
   }
@@ -372,8 +370,11 @@ class _ProductoFormState extends State<ProductoForm> {
   }
 
   Widget _buildImagenPicker() {
-    final base64 = _normalizarBase64(_imagenBase64 ?? _imagenUrl);
-    final tieneImagen = base64 != null;
+    final esUrlRemota = (_imagenUrl ?? '').startsWith('http');
+    final base64 = _normalizarBase64(
+      _imagenBase64 ?? (esUrlRemota ? null : _imagenUrl),
+    );
+    final tieneImagen = esUrlRemota || (base64 != null);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -383,18 +384,31 @@ class _ProductoFormState extends State<ProductoForm> {
               borderRadius: BorderRadius.circular(14),
               child: Container(
                 color: const Color(0xFF0F0F0F),
-                child: Image.memory(
-                  base64Decode(base64!),
-                  width: 160,
-                  height: 160,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    width: 160,
-                    height: 160,
-                    color: const Color(0xFF0F0F0F),
-                    child: const Icon(Icons.broken_image_rounded, color: Color(0xFF404040), size: 40),
-                  ),
-                ),
+                child: esUrlRemota
+                    ? Image.network(
+                        _imagenUrl!,
+                        width: 160,
+                        height: 160,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 160,
+                          height: 160,
+                          color: const Color(0xFF0F0F0F),
+                          child: const Icon(Icons.broken_image_rounded, color: Color(0xFF404040), size: 40),
+                        ),
+                      )
+                    : Image.memory(
+                        base64Decode(base64!),
+                        width: 160,
+                        height: 160,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 160,
+                          height: 160,
+                          color: const Color(0xFF0F0F0F),
+                          child: const Icon(Icons.broken_image_rounded, color: Color(0xFF404040), size: 40),
+                        ),
+                      ),
               ),
             ),
           )

@@ -28,7 +28,7 @@ class _RetencionesState extends State<Retenciones> {
     {
       'id': '3',
       'tipo': 'ISR',
-      'proveedor': 'Servicios TÃ©cnicos',
+      'proveedor': 'Servicios Técnicos',
       'monto': 800.00,
       'fecha': '2026-08-03',
     },
@@ -103,7 +103,7 @@ class _RetencionesState extends State<Retenciones> {
         backgroundColor: const Color(0xFFDC2626),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: Text(
-          'Nueva RetenciÃ³n',
+          'Nueva Retención',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
             color: Colors.white,
@@ -220,7 +220,7 @@ class _RetencionesState extends State<Retenciones> {
             ? const Color(0xFF111111)
             : Colors.white,
         title: Text(
-          'Nueva RetenciÃ³n',
+          'Nueva Retención',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
             color: appThemeNotifier.isDark ? Colors.white : Colors.black,

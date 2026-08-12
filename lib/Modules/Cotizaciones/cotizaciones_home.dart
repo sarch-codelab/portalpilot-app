@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
-/// Pantalla principal del mÃ³dulo de Cotizaciones
+/// Pantalla principal del módulo de Cotizaciones
 class CotizacionesHome extends StatefulWidget {
   const CotizacionesHome({super.key});
 
@@ -105,7 +105,7 @@ class _CotizacionesHomeState extends State<CotizacionesHome> {
             ),
             const SizedBox(height: 24),
             Text(
-              'MÃ³dulo de Cotizaciones',
+              'Módulo de Cotizaciones',
               style: GoogleFonts.syne(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -114,7 +114,7 @@ class _CotizacionesHomeState extends State<CotizacionesHome> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Cotizaciones a clientes, conversiÃ³n a ventas',
+              'Cotizaciones a clientes, conversión a ventas',
               style: GoogleFonts.dmSans(
                 fontSize: 16,
                 color: appThemeNotifier.isDark
@@ -133,7 +133,7 @@ class _CotizacionesHomeState extends State<CotizacionesHome> {
                 );
               },
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Nueva CotizaciÃ³n'),
+              label: const Text('Nueva Cotización'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF43F5E),
                 foregroundColor: Colors.white,

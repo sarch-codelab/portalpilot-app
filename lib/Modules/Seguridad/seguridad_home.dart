@@ -95,7 +95,7 @@ class _SeguridadHomeState extends State<SeguridadHome> {
           _buildActionCard(
             Icons.admin_panel_settings_rounded,
             'Roles de Usuario',
-            'GestiÃ³n granular de permisos por rol',
+            'Gestión granular de permisos por rol',
             const Color(0xFF6366F1),
             () => Navigator.push(
               context,
@@ -105,7 +105,7 @@ class _SeguridadHomeState extends State<SeguridadHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.history_rounded,
-            'AuditorÃ­a',
+            'Auditoría',
             'Logs inmutables de acciones',
             const Color(0xFF10B981),
             () => Navigator.push(
@@ -116,8 +116,8 @@ class _SeguridadHomeState extends State<SeguridadHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.verified_user_rounded,
-            'ConfiguraciÃ³n',
-            '2FA, polÃ­ticas de seguridad',
+            'Configuración',
+            '2FA, políticas de seguridad',
             const Color(0xFFF59E0B),
             () => Navigator.push(
               context,

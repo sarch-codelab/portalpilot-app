@@ -157,7 +157,7 @@ class _RrhhHomeState extends State<RrhhHome> {
           children: [
             _buildStatsGrid(),
             const SizedBox(height: 16),
-            _buildSectionTitle('Acciones RÃ¡pidas'),
+            _buildSectionTitle('Acciones Rápidas'),
             const SizedBox(height: 10),
             _buildActions(),
             const SizedBox(height: 20),
@@ -199,7 +199,7 @@ class _RrhhHomeState extends State<RrhhHome> {
           const Color(0xFFEF4444),
         ),
         _buildStatCard(
-          'NÃ³mina/Mes',
+          'Nómina/Mes',
           'L.${_formatNumber(_nominaMensual)}',
           Icons.payments_rounded,
           const Color(0xFFF59E0B),
@@ -310,7 +310,7 @@ class _RrhhHomeState extends State<RrhhHome> {
         const SizedBox(height: 8),
         _buildActionRow(
           Icons.payments_rounded,
-          'Calcular NÃ³mina',
+          'Calcular Nómina',
           'Generar planilla del mes',
           const Color(0xFFF59E0B),
           () {

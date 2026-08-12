@@ -27,7 +27,7 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
     },
     {
       'id': '3',
-      'nombre': 'AzÃºcar 5kg',
+      'nombre': 'Azúcar 5kg',
       'precio_pulperia': 35.00,
       'precio_super': 32.00,
       'precio_membresia': 29.00,
@@ -144,7 +144,7 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
           ),
           const SizedBox(height: 12),
           _buildPriceRow(
-            'PulperÃ­a',
+            'Pulpería',
             producto['precio_pulperia'],
             const Color(0xFFF59E0B),
           ),
@@ -156,7 +156,7 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
           ),
           const SizedBox(height: 8),
           _buildPriceRow(
-            'MembresÃ­a',
+            'Membresía',
             producto['precio_membresia'],
             const Color(0xFF8B5CF6),
           ),
@@ -241,7 +241,7 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
               controller: pulperiaController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Precio PulperÃ­a',
+                labelText: 'Precio Pulpería',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
                       ? const Color(0xFFA3A3A3)
@@ -281,7 +281,7 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
               controller: membresiaController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Precio MembresÃ­a',
+                labelText: 'Precio Membresía',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
                       ? const Color(0xFFA3A3A3)

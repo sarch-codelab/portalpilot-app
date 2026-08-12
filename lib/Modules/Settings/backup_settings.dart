@@ -58,7 +58,7 @@ class _BackupSettingsState extends State<BackupSettings> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Backup y RestauraciÃ³n',
+          'Backup y Restauración',
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
@@ -319,14 +319,14 @@ class _BackupSettingsState extends State<BackupSettings> {
             ? const Color(0xFF111111)
             : Colors.white,
         title: Text(
-          'Confirmar RestauraciÃ³n',
+          'Confirmar Restauración',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
             color: appThemeNotifier.isDark ? Colors.white : Colors.black,
           ),
         ),
         content: Text(
-          'Esta acciÃ³n reemplazarÃ¡ todos los datos actuales. Â¿Deseas continuar?',
+          'Esta acción reemplazará todos los datos actuales. ¿Deseas continuar?',
           style: GoogleFonts.dmSans(
             color: appThemeNotifier.isDark
                 ? const Color(0xFFA3A3A3)
@@ -390,7 +390,7 @@ class _BackupSettingsState extends State<BackupSettings> {
           ),
         ),
         content: Text(
-          'Â¿EstÃ¡s seguro de eliminar este backup? Esta acciÃ³n no se puede deshacer.',
+          '¿Estás seguro de eliminar este backup? Esta acción no se puede deshacer.',
           style: GoogleFonts.dmSans(
             color: appThemeNotifier.isDark
                 ? const Color(0xFFA3A3A3)

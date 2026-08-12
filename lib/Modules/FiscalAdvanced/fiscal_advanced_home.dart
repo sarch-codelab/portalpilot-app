@@ -95,7 +95,7 @@ class _FiscalAdvancedHomeState extends State<FiscalAdvancedHome> {
           _buildActionCard(
             Icons.account_balance_wallet_rounded,
             'Retenciones',
-            'GestiÃ³n de retenciones de impuestos (ISR, IVA)',
+            'Gestión de retenciones de impuestos (ISR, IVA)',
             const Color(0xFFDC2626),
             () => Navigator.push(
               context,
@@ -106,7 +106,7 @@ class _FiscalAdvancedHomeState extends State<FiscalAdvancedHome> {
           _buildActionCard(
             Icons.menu_book_rounded,
             'Libros Contables',
-            'Libros segÃºn normativa SAR Honduras',
+            'Libros según normativa SAR Honduras',
             const Color(0xFF8B5CF6),
             () => Navigator.push(
               context,
@@ -116,8 +116,8 @@ class _FiscalAdvancedHomeState extends State<FiscalAdvancedHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.receipt_long_rounded,
-            'FacturaciÃ³n ElectrÃ³nica',
-            'IntegraciÃ³n SAT - timbrado y XML',
+            'Facturación Electrónica',
+            'Integración SAT - timbrado y XML',
             const Color(0xFF10B981),
             () => Navigator.push(
               context,

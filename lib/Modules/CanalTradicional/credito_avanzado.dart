@@ -13,7 +13,7 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
   List<Map<String, dynamic>> _clientes = [
     {
       'id': '1',
-      'nombre': 'PulperÃ­a DoÃ±a MarÃ­a',
+      'nombre': 'Pulpería Doña María',
       'limite': 5000.00,
       'usado': 2340.00,
       'disponible': 2660.00,
@@ -21,7 +21,7 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
     },
     {
       'id': '2',
-      'nombre': 'Mercadito San JosÃ©',
+      'nombre': 'Mercadito San José',
       'limite': 3500.00,
       'usado': 3500.00,
       'disponible': 0.00,
@@ -29,7 +29,7 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
     },
     {
       'id': '3',
-      'nombre': 'AbarroterÃ­a El Vecino',
+      'nombre': 'Abarrotería El Vecino',
       'limite': 2000.00,
       'usado': 890.00,
       'disponible': 1110.00,
@@ -70,7 +70,7 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Control de CrÃ©dito Avanzado',
+          'Control de Crédito Avanzado',
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
@@ -169,7 +169,7 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
           ),
           const SizedBox(height: 16),
           _buildCreditRow(
-            'LÃ­mite',
+            'Límite',
             cliente['limite'],
             const Color(0xFF3B82F6),
           ),
@@ -272,7 +272,7 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
               controller: limiteController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'LÃ­mite de crÃ©dito',
+                labelText: 'Límite de crédito',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
                       ? const Color(0xFFA3A3A3)

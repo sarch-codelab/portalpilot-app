@@ -167,7 +167,7 @@ class _CrmHomeState extends State<CrmHome> {
           children: [
             _buildStatsGrid(),
             const SizedBox(height: 16),
-            _buildSectionTitle('Acciones RÃ¡pidas'),
+            _buildSectionTitle('Acciones Rápidas'),
             const SizedBox(height: 10),
             _buildActions(),
             const SizedBox(height: 20),
@@ -334,7 +334,7 @@ class _CrmHomeState extends State<CrmHome> {
         _buildActionRow(
           Icons.analytics_rounded,
           'Reportes',
-          'EstadÃ­sticas de ventas',
+          'Estadísticas de ventas',
           const Color(0xFF8B5CF6),
           () {
             Navigator.push(
@@ -423,7 +423,7 @@ class _CrmHomeState extends State<CrmHome> {
       ),
       child: Row(
         children: [
-          Expanded(child: _buildPipeStage('CotizaciÃ³n', porCotizar, const Color(0xFF3B82F6))),
+          Expanded(child: _buildPipeStage('Cotización', porCotizar, const Color(0xFF3B82F6))),
           Expanded(child: _buildPipeStage('Proceso', enProceso, const Color(0xFFF59E0B))),
           Expanded(child: _buildPipeStage('Ganada', ganadas, const Color(0xFF10B981))),
           Expanded(child: _buildPipeStage('Perdida', perdidas, const Color(0xFFEF4444))),

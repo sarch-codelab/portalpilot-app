@@ -96,7 +96,7 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
           _buildActionCard(
             Icons.route_rounded,
             'Rutas Optimizadas',
-            'GestiÃ³n de rutas de reparto y visita',
+            'Gestión de rutas de reparto y visita',
             const Color(0xFF8B5CF6),
             () => Navigator.push(
               context,
@@ -106,8 +106,8 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.account_balance_wallet_rounded,
-            'Control de CrÃ©dito',
-            'LÃ­mites, uso y disponibilidad por cliente',
+            'Control de Crédito',
+            'Límites, uso y disponibilidad por cliente',
             const Color(0xFFEC4899),
             () => Navigator.push(
               context,
@@ -129,7 +129,7 @@ class _CanalTradicionalHomeState extends State<CanalTradicionalHome> {
           _buildActionCard(
             Icons.receipt_long_rounded,
             'Fiado',
-            'GestiÃ³n de ventas a crÃ©dito',
+            'Gestión de ventas a crédito',
             const Color(0xFFF59E0B),
             () => Navigator.push(
               context,

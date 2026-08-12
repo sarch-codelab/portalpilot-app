@@ -139,7 +139,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             _buildAccion(
               Icons.storefront_rounded,
               'Sucursales',
-              'Multi-sucursal: creÃ¡ y gestionÃ¡ puntos de venta',
+              'Multi-sucursal: creá y gestioná puntos de venta',
               const Color(0xFF3B82F6),
               () => Navigator.push(
                 context,
@@ -183,7 +183,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             _buildAccion(
               Icons.business_rounded,
               'Cadenas y Franquicias',
-              'GestiÃ³n de cadenas y franquicias',
+              'Gestión de cadenas y franquicias',
               const Color(0xFFEC4899),
               () => Navigator.push(
                 context,
@@ -194,7 +194,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             _buildAccion(
               Icons.price_check_rounded,
               'Precios Centralizados',
-              'CentralizaciÃ³n de precios',
+              'Centralización de precios',
               const Color(0xFF6366F1),
               () => Navigator.push(
                 context,
@@ -229,7 +229,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
         ),
         const SizedBox(width: 10),
         _buildResumenCard(
-          'En trÃ¡nsito',
+          'En tránsito',
           '$_enTransito',
           Icons.local_shipping_rounded,
           const Color(0xFFF97316),

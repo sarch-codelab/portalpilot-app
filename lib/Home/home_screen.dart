@@ -193,25 +193,7 @@ class _HomeScreenState extends State<HomeScreen>
           SafeArea(
             child: FadeTransition(
               opacity: _fadeAnimation,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: isMobile ? 20 : 48,
-                  vertical: isMobile ? 24 : 40,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(isMobile),
-                    const SizedBox(height: 40),
-                    _buildModulosGrid(isMobile),
-                    const SizedBox(height: 40),
-                    _buildQuickActions(isMobile),
-                    const SizedBox(height: 40),
-                    _buildFooter(),
-                  ],
-                ),
-              ),
+              child: _buildScrollView(isMobile),
             ),
           ),
         ],
@@ -368,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildModulosGrid(bool isMobile) {
+  Widget _buildScrollView(bool isMobile) {
     final size = MediaQuery.of(context).size;
     final crossAxisCount = isMobile ? 2 : 3;
     final isPortrait = size.height > size.width;
@@ -378,10 +360,67 @@ class _HomeScreenState extends State<HomeScreen>
         ? (cellWidth / 1.4).clamp(220.0, 340.0)
         : (cellWidth / (isPortrait ? 0.9 : 1.2)).clamp(180.0, 260.0);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            isMobile ? 20 : 48,
+            isMobile ? 24 : 40,
+            isMobile ? 20 : 48,
+            0,
+          ),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              _buildHeader(isMobile),
+              const SizedBox(height: 40),
+              _buildModulosHeader(isMobile),
+            ]),
+          ),
+        ),
+        SliverPadding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 20 : 48,
+            vertical: 20,
+          ),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              mainAxisExtent: cellHeight,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) =>
+                  _buildModuleCard(_modulosDisponibles[index], isMobile),
+              childCount: _modulosDisponibles.length,
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            isMobile ? 20 : 48,
+            20,
+            isMobile ? 20 : 48,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(child: _buildQuickActions(isMobile)),
+        ),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            isMobile ? 20 : 48,
+            40,
+            isMobile ? 20 : 48,
+            40,
+          ),
+          sliver: SliverToBoxAdapter(child: _buildFooter()),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModulosHeader(bool isMobile) {
+    return Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
@@ -456,24 +495,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
           ],
-        ),
-        const SizedBox(height: 20),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            mainAxisExtent: cellHeight,
-          ),
-          itemCount: _modulosDisponibles.length,
-          itemBuilder: (context, index) {
-            return _buildModuleCard(_modulosDisponibles[index], isMobile);
-          },
-        ),
-      ],
-    );
+        );
   }
 
   Widget _buildModuleCard(Modulo modulo, bool isMobile) {

@@ -13,7 +13,7 @@ class _InventarioTiendaState extends State<InventarioTienda> {
   List<Map<String, dynamic>> _tiendas = [
     {
       'id': '1',
-      'nombre': 'PulperÃ­a Centro',
+      'nombre': 'Pulpería Centro',
       'tipo': 'tradicional',
       'stock_total': 450,
     },
@@ -25,7 +25,7 @@ class _InventarioTiendaState extends State<InventarioTienda> {
     },
     {
       'id': '3',
-      'nombre': 'PulperÃ­a Sur',
+      'nombre': 'Pulpería Sur',
       'tipo': 'tradicional',
       'stock_total': 320,
     },

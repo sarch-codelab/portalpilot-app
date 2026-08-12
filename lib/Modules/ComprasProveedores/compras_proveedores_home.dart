@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
-/// Pantalla principal del mÃ³dulo de Compras y Proveedores
+/// Pantalla principal del módulo de Compras y Proveedores
 class ComprasProveedoresHome extends StatefulWidget {
   const ComprasProveedoresHome({super.key});
 
@@ -105,7 +105,7 @@ class _ComprasProveedoresHomeState extends State<ComprasProveedoresHome> {
             ),
             const SizedBox(height: 24),
             Text(
-              'MÃ³dulo de Compras y Proveedores',
+              'Módulo de Compras y Proveedores',
               style: GoogleFonts.syne(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -114,7 +114,7 @@ class _ComprasProveedoresHomeState extends State<ComprasProveedoresHome> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Ã“rdenes de compra, recepciÃ³n, costeo',
+              'Ã“rdenes de compra, recepción, costeo',
               style: GoogleFonts.dmSans(
                 fontSize: 16,
                 color: appThemeNotifier.isDark

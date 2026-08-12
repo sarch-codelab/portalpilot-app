@@ -342,13 +342,14 @@ class SyncService {
 
   Future<bool> _syncProducto(Map<String, dynamic> datos, SyncOperation op) async {
     final empresaCodigo = datos['empresa_codigo'] as String?;
-    final productos = datos['productos'] as List<dynamic>?;
 
-    if (empresaCodigo == null || productos == null) return false;
+    if (empresaCodigo == null) return false;
 
     switch (op) {
       case SyncOperation.insert:
       case SyncOperation.update:
+        final productos = datos['productos'] as List<dynamic>?;
+        if (productos == null) return false;
         return await PortalPilotDB.syncProductos(
           productos: productos.cast<Map<String, dynamic>>(),
           empresaCodigo: empresaCodigo,

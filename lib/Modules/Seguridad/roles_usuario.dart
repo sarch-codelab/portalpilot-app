@@ -14,7 +14,7 @@ class _RolesUsuarioState extends State<RolesUsuario> {
     {
       'id': '1',
       'nombre': 'Administrador',
-      'permisos': 'Acceso total a todos los mÃ³dulos',
+      'permisos': 'Acceso total a todos los módulos',
       'usuarios': 2,
     },
     {
@@ -26,13 +26,13 @@ class _RolesUsuarioState extends State<RolesUsuario> {
     {
       'id': '3',
       'nombre': 'Contador',
-      'permisos': 'Contabilidad, FacturaciÃ³n, Reportes',
+      'permisos': 'Contabilidad, Facturación, Reportes',
       'usuarios': 3,
     },
     {
       'id': '4',
       'nombre': 'Cajero',
-      'permisos': 'POS, Clientes bÃ¡sicos',
+      'permisos': 'POS, Clientes básicos',
       'usuarios': 8,
     },
   ];

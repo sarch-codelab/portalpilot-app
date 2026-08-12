@@ -73,7 +73,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'ConfiguraciÃ³n Fiscal',
+          'Configuración Fiscal',
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
@@ -106,7 +106,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                 _buildTextField(
                   'RTN',
                   _rtnController,
-                  hintText: '14 dÃ­gitos',
+                  hintText: '14 dígitos',
                   validator: ValidationHelper.validateRTN,
                 ),
                 const SizedBox(height: 12),
@@ -129,7 +129,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                 ),
                 const SizedBox(height: 12),
                 _buildTextField(
-                  'Punto de EmisiÃ³n',
+                  'Punto de Emisión',
                   _puntoEmisionController,
                   hintText: '0000',
                   maxLength: 4,
@@ -140,20 +140,20 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                 _buildTextField(
                   'CAI',
                   _caiController,
-                  hintText: '37 caracteres alfanumÃ©ricos',
+                  hintText: '37 caracteres alfanuméricos',
                   validator: (value) {
                     if (value != null && value.isNotEmpty) {
                       return FiscalCompliance().validateCAI(value)
                           ? null
-                          : 'CAI invÃ¡lido';
+                          : 'CAI inválido';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 12),
                 _buildSwitch(
-                  'Emitir Factura ElectrÃ³nica',
-                  'Activar facturaciÃ³n electrÃ³nica SAR',
+                  'Emitir Factura Electrónica',
+                  'Activar facturación electrónica SAR',
                   _config.emitirFacturaElectronica,
                   (value) => setState(
                     () => _config = _config.copyWith(
@@ -173,7 +173,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                 ),
                 const SizedBox(height: 12),
                 _buildNumberField(
-                  'LÃ­mite Exento ISV (L.)',
+                  'Límite Exento ISV (L.)',
                   _config.limiteExentoISV,
                   (value) => setState(
                     () => _config = _config.copyWith(limiteExentoISV: value),
@@ -190,7 +190,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                     ),
                   ),
                   child: Text(
-                    'Guardar ConfiguraciÃ³n',
+                    'Guardar Configuración',
                     style: GoogleFonts.dmSans(
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
@@ -357,14 +357,14 @@ class _FiscalSettingsState extends State<FiscalSettings> {
     if (saved) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('ConfiguraciÃ³n fiscal guardada'),
+          content: Text('Configuración fiscal guardada'),
           backgroundColor: Color(0xFF10B981),
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Error al guardar configuraciÃ³n'),
+          content: Text('Error al guardar configuración'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );

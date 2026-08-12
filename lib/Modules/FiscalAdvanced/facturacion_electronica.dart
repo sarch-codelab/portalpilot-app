@@ -43,7 +43,7 @@ class _FacturacionElectronicaState extends State<FacturacionElectronica> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'FacturaciÃ³n ElectrÃ³nica',
+          'Facturación Electrónica',
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
@@ -79,7 +79,7 @@ class _FacturacionElectronicaState extends State<FacturacionElectronica> {
             ),
             const SizedBox(height: 16),
             Text(
-              'IntegraciÃ³n SAT',
+              'Integración SAT',
               style: GoogleFonts.syne(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -88,7 +88,7 @@ class _FacturacionElectronicaState extends State<FacturacionElectronica> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Timbrado y generaciÃ³n XML',
+              'Timbrado y generación XML',
               style: GoogleFonts.dmSans(
                 color: appThemeNotifier.isDark
                     ? const Color(0xFFA3A3A3)

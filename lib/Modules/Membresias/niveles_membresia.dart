@@ -16,7 +16,7 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
       'nombre': 'Bronce',
       'puntos_minimos': 0,
       'descuento': 2,
-      'beneficios': ['2% descuento', 'Promociones bÃ¡sicas'],
+      'beneficios': ['2% descuento', 'Promociones básicas'],
     },
     {
       'id': '2',
@@ -76,7 +76,7 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Niveles de MembresÃ­a',
+          'Niveles de Membresía',
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
@@ -196,7 +196,7 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
           ),
           const SizedBox(height: 16),
           Text(
-            '${nivel['puntos_minimos']} puntos mÃ­nimos',
+            '${nivel['puntos_minimos']} puntos mínimos',
             style: GoogleFonts.dmSans(
               fontSize: 12,
               color: appThemeNotifier.isDark
@@ -289,7 +289,7 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
               controller: puntosController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Puntos mÃ­nimos',
+                labelText: 'Puntos mínimos',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
                       ? const Color(0xFFA3A3A3)

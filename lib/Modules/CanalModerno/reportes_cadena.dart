@@ -77,7 +77,7 @@ class _ReportesCadenaState extends State<ReportesCadena> {
           ),
           const SizedBox(height: 12),
           _buildChainReportCard(
-            'PulperÃ­as Centro',
+            'Pulperías Centro',
             8,
             180000,
             const Color(0xFFF59E0B),

@@ -25,7 +25,7 @@ class _PreciosCentralizadosState extends State<PreciosCentralizados> {
     },
     {
       'id': '3',
-      'nombre': 'AzÃºcar 5kg',
+      'nombre': 'Azúcar 5kg',
       'precio_base': 29.00,
       'aplicado': false,
     },

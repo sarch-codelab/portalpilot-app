@@ -163,11 +163,11 @@ class _PosHomeState extends State<PosHome> {
           children: [
             _buildStatsGrid(),
             const SizedBox(height: 16),
-            _buildSectionTitle('Acciones RÃ¡pidas'),
+            _buildSectionTitle('Acciones Rápidas'),
             const SizedBox(height: 10),
             _buildActions(),
             const SizedBox(height: 20),
-            _buildSectionTitle('Resumen del DÃ­a'),
+            _buildSectionTitle('Resumen del Día'),
             const SizedBox(height: 10),
             _buildDaySummary(),
             const SizedBox(height: 30),
@@ -199,7 +199,7 @@ class _PosHomeState extends State<PosHome> {
           const Color(0xFF10B981),
         ),
         _buildStatCard(
-          'ArtÃ­culos',
+          'Artículos',
           '$_totalItems',
           Icons.inventory_rounded,
           const Color(0xFF3B82F6),
@@ -328,7 +328,7 @@ class _PosHomeState extends State<PosHome> {
         _buildActionRow(
           Icons.analytics_rounded,
           'Reportes',
-          'EstadÃ­sticas de ventas',
+          'Estadísticas de ventas',
           const Color(0xFF8B5CF6),
           () {
             Navigator.push(
@@ -340,8 +340,8 @@ class _PosHomeState extends State<PosHome> {
         const SizedBox(height: 8),
         _buildActionRow(
           Icons.account_balance_wallet_rounded,
-          'Fiado Â· Cuentas por Cobrar',
-          'Saldos, abonos y lÃ­mites de crÃ©dito',
+          'Fiado · Cuentas por Cobrar',
+          'Saldos, abonos y límites de crédito',
           const Color(0xFF10B981),
           () {
             Navigator.push(
@@ -366,7 +366,7 @@ class _PosHomeState extends State<PosHome> {
         const SizedBox(height: 8),
         _buildActionRow(
           Icons.badge_rounded,
-          'MembresÃ­as',
+          'Membresías',
           'Socios, precios preferenciales y vigencias',
           const Color(0xFF8B5CF6),
           () {

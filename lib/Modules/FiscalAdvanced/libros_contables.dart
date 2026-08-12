@@ -71,13 +71,13 @@ class _LibrosContablesState extends State<LibrosContables> {
         children: [
           _buildLibroCard(
             'Libro Diario',
-            'Registro cronolÃ³gico de operaciones',
+            'Registro cronológico de operaciones',
             const Color(0xFF8B5CF6),
           ),
           const SizedBox(height: 12),
           _buildLibroCard(
             'Libro Mayor',
-            'ClasificaciÃ³n por cuentas contables',
+            'Clasificación por cuentas contables',
             const Color(0xFF10B981),
           ),
           const SizedBox(height: 12),

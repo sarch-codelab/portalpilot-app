@@ -1,14 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
+const String _defaultApiRoot = String.fromEnvironment(
+  'WEB_DOMAIN',
+  defaultValue: 'https://portalpilot-app.vercel.app',
+);
 
 class ImageService {
   ImageService._();
   static final ImageService instance = ImageService._();
-  
-  /// Sube una imagen (base64 o file) y retorna la data URL
-  /// Temporalmente no usa Supabase Storage debido a cambios en la API
+
+  /// Sube una imagen (base64 o ruta de archivo) a Supabase Storage vía el API.
+  /// Retorna la URL pública; si la subida remota falla, retorna la data URL
+  /// como respaldo para no perder la imagen en la app.
   Future<String?> uploadImage({
     required String base64OrPath,
     required String bucketName,
@@ -16,42 +22,98 @@ class ImageService {
   }) async {
     try {
       // Determinar si es base64 o ruta de archivo
-      Uint8List? imageBytes;
-      
+      final String dataUrl;
       if (base64OrPath.startsWith('data:image') || base64OrPath.contains(',')) {
-        // Es base64 - retornar tal cual
-        return base64OrPath;
+        dataUrl = base64OrPath;
       } else if (File(base64OrPath).existsSync()) {
-        // Es ruta de archivo - convertir a base64
-        imageBytes = await File(base64OrPath).readAsBytes();
-        final base64 = base64Encode(imageBytes);
-        return 'data:image/jpeg;base64,$base64';
+        final imageBytes = await File(base64OrPath).readAsBytes();
+        dataUrl = 'data:image/jpeg;base64,${base64Encode(imageBytes)}';
       } else {
-        // Es solo base64 sin data URL
         try {
-          imageBytes = base64Decode(base64OrPath);
-          final base64 = base64Encode(imageBytes);
-          return 'data:image/jpeg;base64,$base64';
+          final imageBytes = base64Decode(base64OrPath);
+          dataUrl = 'data:image/jpeg;base64,${base64Encode(imageBytes)}';
         } catch (e) {
           debugPrint('❌ Error decodificando imagen: $e');
           return null;
         }
       }
+
+      final remoteUrl = await _subirASupabaseStorage(
+        dataUrl,
+        bucketName: bucketName,
+        folder: folder,
+      );
+      if (remoteUrl != null) return remoteUrl;
+
+      // Respaldo: si no hay red o falla el API, seguir con la data URL.
+      return dataUrl;
     } catch (e) {
       debugPrint('❌ Error en uploadImage: $e');
       return null;
     }
   }
-  
-  /// Elimina una imagen (no-op por ahora)
+
+  /// Elimina una imagen de Supabase Storage (no-op si no es una URL de storage).
   Future<bool> deleteImage({
     required String imageUrl,
     required String bucketName,
   }) async {
-    // No-op por ahora ya que no usamos Supabase Storage
-    return true;
+    if (!imageUrl.contains('/storage/v1/object/')) return true;
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_defaultApiRoot/api/storage'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'action': 'delete',
+              'bucket': bucketName,
+              'url': imageUrl,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data['deleted'] == true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('⚠️ Error eliminando imagen: $e');
+      return false;
+    }
   }
-  
+
+  Future<String?> _subirASupabaseStorage(
+    String dataUrl, {
+    required String bucketName,
+    String? folder,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_defaultApiRoot/api/storage'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'action': 'upload',
+              'bucket': bucketName,
+              'folder': folder ?? '',
+              'base64': dataUrl,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final url = data['url'] as String?;
+        if (url != null && url.isNotEmpty) return url;
+      }
+      debugPrint(
+        '⚠️ Falló subida a Storage (${response.statusCode}): ${response.body}',
+      );
+    } catch (e) {
+      debugPrint('⚠️ Error en _subirASupabaseStorage: $e');
+    }
+    return null;
+  }
+
   /// Convierte base64 a data URL si no lo es
   String toDataUrl(String base64) {
     if (base64.startsWith('data:image')) {

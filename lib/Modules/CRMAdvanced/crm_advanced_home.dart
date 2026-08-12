@@ -96,7 +96,7 @@ class _CRMAdvancedHomeState extends State<CRMAdvancedHome> {
           _buildActionCard(
             Icons.people_outline_rounded,
             'Leads y Oportunidades',
-            'GestiÃ³n de prospectos y pipeline de ventas',
+            'Gestión de prospectos y pipeline de ventas',
             const Color(0xFF8B5CF6),
             () => Navigator.push(
               context,
@@ -108,8 +108,8 @@ class _CRMAdvancedHomeState extends State<CRMAdvancedHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.campaign_rounded,
-            'CampaÃ±as de Marketing',
-            'CampaÃ±as, emails automatizados',
+            'Campañas de Marketing',
+            'Campañas, emails automatizados',
             const Color(0xFF10B981),
             () => Navigator.push(
               context,
@@ -121,8 +121,8 @@ class _CRMAdvancedHomeState extends State<CRMAdvancedHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.group_work_rounded,
-            'SegmentaciÃ³n',
-            'SegmentaciÃ³n de clientes por criterios',
+            'Segmentación',
+            'Segmentación de clientes por criterios',
             const Color(0xFFF59E0B),
             () => Navigator.push(
               context,
@@ -132,8 +132,8 @@ class _CRMAdvancedHomeState extends State<CRMAdvancedHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.loyalty_rounded,
-            'FidelizaciÃ³n Avanzada',
-            'Programas de lealtad y retenciÃ³n',
+            'Fidelización Avanzada',
+            'Programas de lealtad y retención',
             const Color(0xFFEC4899),
             () => Navigator.push(
               context,
