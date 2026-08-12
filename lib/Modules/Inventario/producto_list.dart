@@ -92,7 +92,7 @@ class _ProductoListState extends State<ProductoList> {
       
       debugPrint('📡 Sincronizando productos de Supabase para empresa: $empresaCodigo');
       
-      final url = Uri.parse('https://portal-pilot.vercel.app/api/productos?empresaCodigo=$empresaCodigo');
+      final url = Uri.parse('https://portalpilot-app.vercel.app/api/productos?empresaCodigo=$empresaCodigo');
       final response = await http.get(url);
       
       if (response.statusCode == 200) {

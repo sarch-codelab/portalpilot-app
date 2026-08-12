@@ -498,7 +498,7 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFF97316), size: 22),
+            const Icon(Icons.barcode_reader, color: Color(0xFFF97316), size: 22),
             const SizedBox(width: 10),
             Text('Ingresar Código', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
           ],
@@ -524,7 +524,7 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316))),
-                prefixIcon: const Icon(Icons.qr_code_rounded, color: Color(0xFF525252)),
+                prefixIcon: const Icon(Icons.barcode_reader, color: Color(0xFF525252)),
               ),
               onSubmitted: (v) {
                 if (v.trim().isNotEmpty) {
@@ -790,7 +790,7 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
         const SizedBox(width: 8),
         // Escáner: en Windows abre diálogo de código manual
         IconButton(
-          icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFF97316), size: 22),
+          icon: const Icon(Icons.barcode_reader, color: Color(0xFFF97316), size: 22),
           onPressed: _toggleScanner,
           tooltip: 'Escanear código',
         ),
@@ -1038,7 +1038,7 @@ class _PosTerminalState extends State<PosTerminal> with WidgetsBindingObserver {
                 gradient: const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 56),
+              child: const Icon(Icons.barcode_reader, color: Colors.white, size: 56),
             ),
             const SizedBox(height: 20),
             Text(
