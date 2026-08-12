@@ -20,6 +20,7 @@ import 'package:portal_pilot_app/Shared/services/pos_hardware_service.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 import 'package:portal_pilot_app/Shared/widgets/sync_status_indicator.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
+import 'package:portal_pilot_app/Shared/utils/logger.dart';
 
 class PosTerminalV2 extends StatefulWidget {
   const PosTerminalV2({super.key});
@@ -322,6 +323,19 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       );
 
       if (venta == null) throw Exception('Error creando venta');
+
+      Logger().audit(
+        'venta',
+        'venta',
+        venta.id,
+        userId: _auth.email,
+        module: 'pos',
+        changes: {
+          'metodo_pago': _metodoPago,
+          'total': total.toStringAsFixed(2),
+          'items': carritoConPromos.length,
+        },
+      );
 
       if (_hardwareService.isPrinterConnected) {
         await _imprimirTicket(venta, carritoConPromos, subtotal, descuentoItems, isv15, isv18, total);
@@ -699,9 +713,17 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
 
   Widget _buildProductCard(Producto producto) {
     final tieneImagen = producto.imagenUrl != null && producto.imagenUrl!.isNotEmpty;
-    final imagenUrl = tieneImagen && !producto.imagenUrl!.startsWith('data:')
-        ? producto.imagenUrl
-        : null;
+    final esDataUrl = tieneImagen && producto.imagenUrl!.startsWith('data:');
+    final imagenUrl = tieneImagen && !esDataUrl ? producto.imagenUrl : null;
+    Uint8List? imagenBytes;
+    if (esDataUrl) {
+      try {
+        final raw = producto.imagenUrl!.substring(producto.imagenUrl!.indexOf(',') + 1);
+        imagenBytes = base64Decode(raw);
+      } catch (_) {
+        imagenBytes = null;
+      }
+    }
 
     return GestureDetector(
       onTap: () => _agregarAlCarrito(producto),
@@ -740,9 +762,16 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                           image: NetworkImage(imagenUrl),
                           fit: BoxFit.cover,
                         )
-                      : null,
+                      : imagenBytes != null
+                          ? DecorationImage(
+                              image: MemoryImage(imagenBytes),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                 ),
-                child: imagenUrl == null ? _buildImagePlaceholder(producto) : null,
+                child: imagenUrl == null && imagenBytes == null
+                    ? _buildImagePlaceholder(producto)
+                    : null,
               ),
             ),
             Expanded(

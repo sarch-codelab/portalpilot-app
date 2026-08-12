@@ -100,7 +100,16 @@ class _ClienteListState extends State<ClienteList> {
                               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 Text(nombre.isNotEmpty ? nombre : 'Sin nombre', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                                 const SizedBox(height: 2),
-                                Text('${c['email'] ?? ''}  •  ${c['empresa'] ?? ''}', style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                Text(
+                                  [
+                                    if ((c['dni'] ?? '').toString().isNotEmpty) c['dni'],
+                                    c['email'],
+                                    c['empresa'],
+                                  ].whereType<String>().where((x) => x.isNotEmpty).join('  •  '),
+                                  style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ])),
                               IconButton(icon: const Icon(Icons.delete_rounded, color: Color(0xFFEF4444), size: 18), onPressed: () => _eliminar(c['id'])),
                             ],

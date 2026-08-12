@@ -12,6 +12,8 @@ import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/image_service.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/utils/logger.dart';
 
 class ProductoForm extends StatefulWidget {
   final Map<String, dynamic>? productoExistente;
@@ -80,8 +82,21 @@ class _ProductoFormState extends State<ProductoForm> {
     _bodega = p['bodega'] ?? 'General';
     _isvRate = (p['isv_rate'] as num?)?.toDouble() ?? 15.0;
     _exento = p['exento'] == true;
-    _imagenBase64 = p['imagen_base64'] as String?;
+    _imagenBase64 = _normalizarBase64(p['imagen_base64'] as String?);
     _imagenUrl = p['imagen_url'] as String? ?? p['imagenUrl'] as String?;
+    // Si no hay base64 local pero la URL es una data URL, derivarla para el preview
+    if ((_imagenBase64 == null || _imagenBase64!.isEmpty) &&
+        (_imagenUrl ?? '').isNotEmpty) {
+      _imagenBase64 = _normalizarBase64(_imagenUrl);
+    }
+  }
+
+  /// Extrae el base64 "puro" de un valor que puede ser base64 plano o una data URL.
+  String? _normalizarBase64(String? valor) {
+    if (valor == null || valor.isEmpty) return null;
+    final idx = valor.indexOf(',');
+    if (valor.startsWith('data:') && idx >= 0) return valor.substring(idx + 1);
+    return valor;
   }
 
   Future<void> _seleccionarImagen() async {
@@ -328,6 +343,21 @@ class _ProductoFormState extends State<ProductoForm> {
     
     await prefs.setString('productos_pos', jsonEncode(productosPos));
 
+    // Registrar acción en el log de auditoría
+    final esEdicion = widget.productoExistente != null;
+    Logger().audit(
+      esEdicion ? 'editar' : 'crear',
+      'producto',
+      codigo,
+      userId: AuthController.instance.email,
+      module: 'inventario',
+      changes: {
+        'nombre': _nombreController.text,
+        'precio_venta': producto['precio_venta'],
+        'stock_actual': producto['stock_actual'],
+      },
+    );
+
     // La sincronización ya se maneja automáticamente por LocalDatabaseService
 
     if (mounted) {
@@ -342,7 +372,8 @@ class _ProductoFormState extends State<ProductoForm> {
   }
 
   Widget _buildImagenPicker() {
-    final tieneImagen = _imagenBase64 != null && _imagenBase64!.isNotEmpty;
+    final base64 = _normalizarBase64(_imagenBase64 ?? _imagenUrl);
+    final tieneImagen = base64 != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -353,7 +384,7 @@ class _ProductoFormState extends State<ProductoForm> {
               child: Container(
                 color: const Color(0xFF0F0F0F),
                 child: Image.memory(
-                  base64Decode(_imagenBase64!),
+                  base64Decode(base64!),
                   width: 160,
                   height: 160,
                   fit: BoxFit.cover,
@@ -413,7 +444,10 @@ class _ProductoFormState extends State<ProductoForm> {
             if (tieneImagen) ...[
               const SizedBox(width: 10),
               GestureDetector(
-                onTap: () => setState(() => _imagenBase64 = null),
+                onTap: () => setState(() {
+                  _imagenBase64 = null;
+                  _imagenUrl = null;
+                }),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(

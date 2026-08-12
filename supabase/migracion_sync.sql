@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS clientes (
   empresa_id UUID,                           -- UUID resuelto (opcional, sin FK)
 
   nombre TEXT NOT NULL,
+  dni TEXT,
   rtn TEXT,
   direccion TEXT,
   telefono TEXT,
@@ -132,6 +133,7 @@ CREATE TABLE IF NOT EXISTS clientes (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS dni TEXT;
 ALTER TABLE clientes ADD COLUMN IF NOT EXISTS empresa_codigo TEXT;
 ALTER TABLE clientes ADD COLUMN IF NOT EXISTS empresa_id UUID;
 

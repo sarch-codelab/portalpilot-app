@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/services/sync_service.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/utils/logger.dart';
 
 class ClienteForm extends StatefulWidget {
   final Map<String, dynamic>? clienteExistente;
@@ -15,6 +19,7 @@ class _ClienteFormState extends State<ClienteForm> {
   final _formKey = GlobalKey<FormState>();
   final _nombreCtrl = TextEditingController();
   final _apellidoCtrl = TextEditingController();
+  final _dniCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _telefonoCtrl = TextEditingController();
   final _empresaCtrl = TextEditingController();
@@ -30,6 +35,7 @@ class _ClienteFormState extends State<ClienteForm> {
       final c = widget.clienteExistente!;
       _nombreCtrl.text = c['nombre'] ?? '';
       _apellidoCtrl.text = c['apellido'] ?? '';
+      _dniCtrl.text = c['dni'] ?? '';
       _emailCtrl.text = c['email'] ?? '';
       _telefonoCtrl.text = c['telefono'] ?? '';
       _empresaCtrl.text = c['empresa'] ?? '';
@@ -42,7 +48,7 @@ class _ClienteFormState extends State<ClienteForm> {
 
   @override
   void dispose() {
-    _nombreCtrl.dispose(); _apellidoCtrl.dispose(); _emailCtrl.dispose();
+    _nombreCtrl.dispose(); _apellidoCtrl.dispose(); _dniCtrl.dispose(); _emailCtrl.dispose();
     _telefonoCtrl.dispose(); _empresaCtrl.dispose(); _cargoCtrl.dispose();
     _direccionCtrl.dispose(); _notasCtrl.dispose();
     super.dispose();
@@ -52,9 +58,12 @@ class _ClienteFormState extends State<ClienteForm> {
     if (!_formKey.currentState!.validate()) return;
     final prefs = await SharedPreferences.getInstance();
     final list = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('clientes') ?? '[]'));
+    final id = widget.clienteExistente?['id'] ?? DateTime.now().millisecondsSinceEpoch.toString();
+    final dni = _dniCtrl.text.trim();
     final cliente = {
-      'id': widget.clienteExistente?['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      'id': id,
       'nombre': _nombreCtrl.text.trim(), 'apellido': _apellidoCtrl.text.trim(),
+      'dni': dni,
       'email': _emailCtrl.text.trim(), 'telefono': _telefonoCtrl.text.trim(),
       'empresa': _empresaCtrl.text.trim(), 'cargo': _cargoCtrl.text.trim(),
       'direccion': _direccionCtrl.text.trim(), 'notas': _notasCtrl.text.trim(),
@@ -68,6 +77,36 @@ class _ClienteFormState extends State<ClienteForm> {
       list.add(cliente);
     }
     await prefs.setString('clientes', jsonEncode(list));
+
+    // Encolar sincronización con el backend (nuevo cliente)
+    if (widget.clienteExistente == null) {
+      final empresaCodigo = prefs.getString('empresa_codigo') ?? 'ROOT';
+      await SyncService.instance.enqueueSync(
+        tabla: 'clientes',
+        operacion: SyncOperation.insert,
+        datos: {
+          'empresa_codigo': empresaCodigo,
+          'cliente': {
+            'id': id,
+            'nombre': '${_nombreCtrl.text.trim()} ${_apellidoCtrl.text.trim()}'.trim(),
+            'dni': dni.isEmpty ? null : dni,
+            'direccion': _direccionCtrl.text.trim(),
+            'telefono': _telefonoCtrl.text.trim(),
+            'email': _emailCtrl.text.trim(),
+            'notas': _notasCtrl.text.trim(),
+          },
+        },
+        empresaId: empresaCodigo,
+      );
+      Logger().audit(
+        'crear',
+        'cliente',
+        id,
+        userId: AuthController.instance.email,
+        module: 'crm',
+        changes: {'nombre': cliente['nombre'], 'dni': dni},
+      );
+    }
     if (mounted) Navigator.pop(context);
   }
 
@@ -92,6 +131,9 @@ class _ClienteFormState extends State<ClienteForm> {
             _buildField(_nombreCtrl, 'Nombre *', Icons.person_rounded),
             const SizedBox(height: 10),
             _buildField(_apellidoCtrl, 'Apellido', Icons.person_rounded),
+            const SizedBox(height: 10),
+            _buildField(_dniCtrl, 'DNI / Identidad', Icons.badge_rounded,
+                type: TextInputType.number, digitsOnly: true),
             const SizedBox(height: 10),
             _buildField(_emailCtrl, 'Email *', Icons.email_rounded, type: TextInputType.emailAddress),
             const SizedBox(height: 10),
@@ -127,11 +169,21 @@ class _ClienteFormState extends State<ClienteForm> {
 
   Widget _buildSection(String t) => Text(t, style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF06B6D4), letterSpacing: 0.8));
 
-  Widget _buildField(TextEditingController ctrl, String label, IconData icon, {TextInputType type = TextInputType.text, int maxLines = 1}) {
+  Widget _buildField(TextEditingController ctrl, String label, IconData icon, {TextInputType type = TextInputType.text, int maxLines = 1, bool digitsOnly = false}) {
     return TextFormField(
       controller: ctrl, keyboardType: type, maxLines: maxLines,
       style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
-      validator: label.contains('*') ? (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null : null,
+      inputFormatters: digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
+      validator: label.contains('*')
+          ? (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null
+          : label.startsWith('DNI')
+              ? (v) {
+                  if (v == null || v.trim().isEmpty) return null;
+                  return RegExp(r'^\d{6,20}$').hasMatch(v.trim())
+                      ? null
+                      : 'Ingresa un DNI válido';
+                }
+              : null,
       decoration: InputDecoration(
         labelText: label.replaceAll(' *', ''), labelStyle: GoogleFonts.dmSans(color: const Color(0xFF737373)),
         prefixIcon: Icon(icon, color: const Color(0xFF737373), size: 18),

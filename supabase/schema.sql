@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS clientes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   empresa_id UUID NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
   nombre TEXT NOT NULL,
+  dni TEXT,
   rtn TEXT,
   direccion TEXT,
   telefono TEXT,

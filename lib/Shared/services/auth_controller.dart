@@ -5,6 +5,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:portal_pilot_app/Shared/utils/logger.dart';
 
 class AuthController extends ChangeNotifier {
   AuthController._privateConstructor();
@@ -115,6 +116,14 @@ class AuthController extends ChangeNotifier {
     await prefs.setString('auth_token', token);
     await prefs.setString('user_modulos', _modulos.join(','));
     notifyListeners();
+    Logger().audit(
+      'login',
+      'usuario',
+      email,
+      userId: email,
+      module: 'auth',
+      changes: {'empresa': _empresaCodigo, 'rol': _rol},
+    );
   }
 
   /// Actualiza el nombre/rol de la sesión en memoria y en disco (perfil).
@@ -129,6 +138,7 @@ class AuthController extends ChangeNotifier {
 
   /// Cierra la sesión limpiando todas las claves de usuario.
   Future<void> logout() async {
+    final email = _email;
     _nombre = '';
     _apellido = '';
     _email = '';
@@ -155,5 +165,12 @@ class AuthController extends ChangeNotifier {
     await prefs.remove('auth_token');
     await prefs.remove('user_modulos');
     notifyListeners();
+    Logger().audit(
+      'logout',
+      'usuario',
+      email,
+      userId: email,
+      module: 'auth',
+    );
   }
 }

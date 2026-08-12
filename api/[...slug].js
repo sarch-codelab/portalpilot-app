@@ -457,6 +457,7 @@ async function clientesHandler(req, res) {
       const payload = {
         empresa_codigo: empresaCodigo,
         nombre: c.nombre || '',
+        dni: c.dni || null,
         rtn: c.rtn || null,
         direccion: c.direccion || null,
         telefono: c.telefono || null,
