@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
@@ -36,6 +39,7 @@ class _ProductoFormState extends State<ProductoForm> {
   String? _imagenBase64;
   String? _imagenUrl; // URL real de Supabase Storage
   bool _isUploadingImage = false;
+  bool _showScanner = false;
 
   List<String> _bodegas = ['General'];
 
@@ -153,6 +157,83 @@ class _ProductoFormState extends State<ProductoForm> {
       debugPrint('❌ ImagePicker error: $e');
       setState(() => _isUploadingImage = false);
     }
+  }
+  
+  Future<void> _escanearCodigo() async {
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    if (isMobile) {
+      final status = await Permission.camera.request();
+      if (status.isGranted) {
+        setState(() => _showScanner = true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Permiso de cámara denegado', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFEF4444)),
+        );
+      }
+    } else {
+      _mostrarDialogoCodigoManual();
+    }
+  }
+  
+  void _onBarcodeDetected(BarcodeCapture capture) {
+    String? code;
+    if (capture.raw is String && (capture.raw as String).isNotEmpty) {
+      code = capture.raw as String;
+    } else if (capture.barcades.isNotEmpty) {
+      code = capture.barcodes.first.rawValue;
+    }
+    
+    if (code != null && code.isNotEmpty) {
+      _codigoController.text = code;
+      setState(() => _showScanner = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Código escaneado: $code', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFF10B981)),
+      );
+    }
+  }
+  
+  void _mostrarDialogoCodigoManual() {
+    final codigoController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141414),
+        title: Text('Ingresar Código', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+        content: TextField(
+          controller: codigoController,
+          autofocus: true,
+          style: GoogleFonts.dmSans(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Ej: 04130305444',
+            hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
+            filled: true,
+            fillColor: const Color(0xFF0F0F0F),
+          ),
+          onSubmitted: (v) {
+            if (v.trim().isNotEmpty) {
+              _codigoController.text = v.trim();
+              Navigator.of(ctx).pop();
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFF737373))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (codigoController.text.trim().isNotEmpty) {
+                _codigoController.text = codigoController.text.trim();
+                Navigator.of(ctx).pop();
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
+            child: Text('Agregar', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _guardarProducto() async {
@@ -372,15 +453,29 @@ class _ProductoFormState extends State<ProductoForm> {
         ),
         centerTitle: true,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Stack(
         children: [
-          _buildSection('Información Básica'),
-          const SizedBox(height: 8),
-          _buildImagenPicker(),
-          const SizedBox(height: 16),
-          _buildField('Código / SKU', _codigoController, hint: 'Se genera automáticamente si está vacío'),
-          const SizedBox(height: 12),
+          ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _buildSection('Información Básica'),
+              const SizedBox(height: 8),
+              _buildImagenPicker(),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildField('Código / SKU', _codigoController, hint: 'Se genera automáticamente si está vacío'),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.barcode_reader, color: Color(0xFFF97316), size: 22),
+                    onPressed: _escanearCodigo,
+                    tooltip: 'Escanear código de barras',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
           _buildField('Nombre del Producto *', _nombreController),
           const SizedBox(height: 12),
           _buildField('Descripción', _descripcionController),

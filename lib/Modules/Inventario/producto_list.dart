@@ -93,23 +93,51 @@ class _ProductoListState extends State<ProductoList> {
       debugPrint('📡 Sincronizando productos de Supabase para empresa: $empresaCodigo');
       
       final url = Uri.parse('https://portalpilot-app.vercel.app/api/productos?empresaCodigo=$empresaCodigo');
+      debugPrint('🌐 URL completa: $url');
+      
       final response = await http.get(url);
+      debugPrint('📥 Status code: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final List<dynamic> productosData = jsonDecode(response.body);
+        debugPrint('📦 Productos recibidos: ${productosData.length}');
         
         if (productosData.isNotEmpty) {
-          debugPrint('✅ Descargados ${productosData.length} productos de Supabase');
+          // Obtener productos existentes para evitar duplicados
+          final productosExistentesJson = prefs.getString('productos') ?? '[]';
+          final List<dynamic> productosExistentes = jsonDecode(productosExistentesJson);
+          final idsExistentes = productosExistentes.map((p) => p['id'] as String).toSet();
+          
+          // Filtrar solo productos nuevos
+          final productosNuevos = productosData.where((p) => !idsExistentes.contains(p['id'])).toList();
+          
+          if (productosNuevos.isEmpty) {
+            debugPrint('✅ No hay productos nuevos, todos ya están sincronizados');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Productos ya están sincronizados', style: GoogleFonts.dmSans()),
+                  backgroundColor: const Color(0xFF10B981),
+                ),
+              );
+            }
+            return;
+          }
+          
+          debugPrint('✅ ${productosNuevos.length} productos nuevos para agregar');
           
           // Guardar en base de datos local
           final localDb = LocalDatabaseService.instance;
           await localDb.upsertProductosLocal(
             empresaId: empresaCodigo,
-            productos: productosData.cast<Map<String, dynamic>>(),
+            productos: productosNuevos.cast<Map<String, dynamic>>(),
           );
+          debugPrint('✅ Productos guardados en base local');
           
-          // También guardar en SharedPreferences
-          await prefs.setString('productos', jsonEncode(productosData));
+          // Combinar productos existentes con nuevos
+          final productosFinales = [...productosExistentes, ...productosNuevos];
+          await prefs.setString('productos', jsonEncode(productosFinales));
+          debugPrint('✅ Productos guardados en SharedPreferences');
           
           // Recargar productos
           await _cargarProductos();
@@ -117,12 +145,13 @@ class _ProductoListState extends State<ProductoList> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Sincronizados ${productosData.length} productos', style: GoogleFonts.dmSans()),
+                content: Text('Sincronizados ${productosNuevos.length} productos nuevos', style: GoogleFonts.dmSans()),
                 backgroundColor: const Color(0xFF10B981),
               ),
             );
           }
         } else {
+          debugPrint('⚠️ La API devolvió una lista vacía');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -134,6 +163,7 @@ class _ProductoListState extends State<ProductoList> {
         }
       } else {
         debugPrint('❌ Error de API: ${response.statusCode}');
+        debugPrint('❌ Response body: ${response.body}');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
