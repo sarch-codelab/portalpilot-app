@@ -465,7 +465,13 @@ async function clientesHandler(req, res) {
       };
       if (empresaId) payload.empresa_id = empresaId;
 
-      const result = await supabaseRequest('/clientes', { method: 'POST', body: JSON.stringify(payload) });
+      let result = await supabaseRequest('/clientes', { method: 'POST', body: JSON.stringify(payload) });
+      // Si la columna dni aún no existe en la BD (migración pendiente), reintentar sin ella.
+      if (result.status >= 400 && payload.dni != null && String(result.body || '').includes('dni')) {
+        const fallback = { ...payload };
+        delete fallback.dni;
+        result = await supabaseRequest('/clientes', { method: 'POST', body: JSON.stringify(fallback) });
+      }
       if (result.status >= 400) return fail(res, { message: result.body });
       return ok(res, { success: true, data: JSON.parse(result.body) }, 201);
     }
