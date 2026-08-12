@@ -127,33 +127,53 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   Future<void> _cargarProductosFromSupabase() async {
     try {
       final empresaCodigo = _auth.empresaCodigo;
+      debugPrint('📡 Intentando descargar productos de Supabase para empresa: $empresaCodigo');
+      
       final url = Uri.parse('https://portal-pilot.vercel.app/api/productos?empresa_codigo=$empresaCodigo');
+      debugPrint('🌐 URL: $url');
       
       final response = await http.get(url);
+      debugPrint('📥 Status code: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final List<dynamic> productosData = jsonDecode(response.body);
+        debugPrint('📦 Productos recibidos: ${productosData.length}');
         
         if (productosData.isNotEmpty) {
-          debugPrint('✅ Descargados ${productosData.length} productos de Supabase');
-          
           // Guardar en base de datos local
           await _localDb.upsertProductosLocal(
             empresaId: empresaCodigo,
             productos: productosData,
           );
+          debugPrint('✅ Productos guardados en base local');
           
           // Actualizar UI
           final productos = await _localDb.getProductos(empresaCodigo);
+          debugPrint('📊 Productos en base local después de guardar: ${productos.length}');
+          
           if (mounted) {
             setState(() {
               _productos = productos;
             });
+            _mostrarSnackBar('Sincronizados ${productos.length} productos', isError: false);
           }
+        } else {
+          debugPrint('⚠️ La API devolvió una lista vacía');
+          if (mounted) {
+            _mostrarSnackBar('No hay productos en la base de datos', isError: true);
+          }
+        }
+      } else {
+        debugPrint('❌ Error en API: ${response.statusCode} - ${response.body}');
+        if (mounted) {
+          _mostrarSnackBar('Error de API: ${response.statusCode}', isError: true);
         }
       }
     } catch (e) {
       debugPrint('❌ Error descargando productos de Supabase: $e');
+      if (mounted) {
+        _mostrarSnackBar('Error de conexión: $e', isError: true);
+      }
     }
   }
 
@@ -380,6 +400,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         setState(() => _showScanner = !_showScanner);
       } else {
         _mostrarSnackBar('Permiso de cámara denegado', isError: true);
+        // Si no hay permiso, mostrar diálogo manual
+        _mostrarDialogoCodigoManual();
       }
     } else {
       _mostrarDialogoCodigoManual();
@@ -387,33 +409,42 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
+    debugPrint('📷 BarcodeCapture recibido');
+    debugPrint('📷 raw: ${capture.raw}');
+    debugPrint('📷 barcodes.length: ${capture.barcodes.length}');
+    
     // Intentar obtener el código de barras de múltiples formas
     String? code;
     
     // Método 1: raw value
     if (capture.raw is String && (capture.raw as String).isNotEmpty) {
       code = capture.raw as String;
+      debugPrint('📷 Código desde raw: $code');
     }
     
     // Método 2: barcodes list
     if (code == null && capture.barcodes.isNotEmpty) {
       final barcode = capture.barcodes.first;
       code = barcode.rawValue;
+      debugPrint('📷 Código desde rawValue: $code');
     }
     
     // Método 3: displayValue
     if (code == null && capture.barcodes.isNotEmpty) {
       final barcode = capture.barcodes.first;
       code = barcode.displayValue;
+      debugPrint('📷 Código desde displayValue: $code');
     }
     
     if (code != null && code.isNotEmpty) {
-      debugPrint('📷 Código detectado: $code');
+      debugPrint('✅ Código detectado: $code');
       _agregarPorCodigo(code);
       if (mounted) {
         setState(() => _showScanner = false);
         _mostrarSnackBar('Código escaneado: $code', isError: false);
       }
+    } else {
+      debugPrint('⚠️ No se pudo extraer código del barcode');
     }
   }
 
@@ -535,6 +566,16 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           onTap: () => showDialog(context: context, builder: (_) => const SyncStatusDialog()),
         ),
         const SizedBox(width: 8),
+        IconButton(
+          icon: const Icon(Icons.refresh_rounded, color: Color(0xFF10B981), size: 20),
+          onPressed: () async {
+            setState(() => _isLoading = true);
+            await _cargarProductosFromSupabase();
+            setState(() => _isLoading = false);
+          },
+          tooltip: 'Sincronizar productos',
+        ),
+        const SizedBox(width: 4),
         IconButton(
           icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFF97316), size: 22),
           onPressed: _toggleScanner,
