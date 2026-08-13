@@ -1,5 +1,5 @@
-// Versión mejorada del POS Terminal con escáner de códigos de barras 100% funcional
-// y diseño responsivo para móviles sin elementos superpuestos
+﻿// VersiÃ³n mejorada del POS Terminal con escÃ¡ner de cÃ³digos de barras 100% funcional
+// y diseÃ±o responsivo para mÃ³viles sin elementos superpuestos
 
 import 'dart:async';
 import 'dart:convert';
@@ -68,7 +68,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Manejar cambios de ciclo de vida para el escáner
+    // Manejar cambios de ciclo de vida para el escÃ¡ner
   }
 
   Future<void> _initializePos() async {
@@ -108,10 +108,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         });
         
         if (productos.isEmpty) {
-          debugPrint('⚠️ No hay productos en base local, intentando descargar de Supabase...');
+          debugPrint('âš ï¸ No hay productos en base local, intentando descargar de Supabase...');
           await _cargarProductosFromSupabase();
           
-          // Si aún no hay, usar SharedPreferences como último fallback
+          // Si aÃºn no hay, usar SharedPreferences como Ãºltimo fallback
           final productosAfterSync = await _localDb.getProductos(_auth.empresaCodigo);
           if (productosAfterSync.isEmpty) {
             await _cargarProductosFromSharedPreferences();
@@ -119,7 +119,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         }
       }
     } catch (e) {
-      debugPrint('❌ Error cargando productos: $e');
+      debugPrint('âŒ Error cargando productos: $e');
       await _cargarProductosFromSharedPreferences();
       
       if (mounted) {
@@ -131,17 +131,17 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   Future<void> _cargarProductosFromSupabase() async {
     try {
       final empresaCodigo = _auth.empresaCodigo;
-      debugPrint('📡 Intentando descargar productos de Supabase para empresa: $empresaCodigo');
+      debugPrint('ðŸ“¡ Intentando descargar productos de Supabase para empresa: $empresaCodigo');
       
       final url = Uri.parse('https://portalpilot-app.vercel.app/api/productos?empresaCodigo=$empresaCodigo');
-      debugPrint('🌐 URL: $url');
+      debugPrint('ðŸŒ URL: $url');
       
       final response = await http.get(url);
-      debugPrint('📥 Status code: ${response.statusCode}');
+      debugPrint('ðŸ“¥ Status code: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final List<dynamic> productosData = jsonDecode(response.body);
-        debugPrint('📦 Productos recibidos: ${productosData.length}');
+        debugPrint('ðŸ“¦ Productos recibidos: ${productosData.length}');
         
         if (productosData.isNotEmpty) {
           // Guardar en base de datos local
@@ -150,11 +150,11 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             productos: productosData.cast<Map<String, dynamic>>(),
             enqueueSync: false,
           );
-          debugPrint('✅ Productos guardados en base local');
+          debugPrint('âœ… Productos guardados en base local');
           
           // Actualizar UI
           final productos = await _localDb.getProductos(empresaCodigo);
-          debugPrint('📊 Productos en base local después de guardar: ${productos.length}');
+          debugPrint('ðŸ“Š Productos en base local despuÃ©s de guardar: ${productos.length}');
           
           if (mounted) {
             setState(() {
@@ -163,21 +163,21 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             _mostrarSnackBar('Sincronizados ${productos.length} productos', isError: false);
           }
         } else {
-          debugPrint('⚠️ La API devolvió una lista vacía');
+          debugPrint('âš ï¸ La API devolviÃ³ una lista vacÃ­a');
           if (mounted) {
             _mostrarSnackBar('No hay productos en la base de datos', isError: true);
           }
         }
       } else {
-        debugPrint('❌ Error en API: ${response.statusCode} - ${response.body}');
+        debugPrint('âŒ Error en API: ${response.statusCode} - ${response.body}');
         if (mounted) {
           _mostrarSnackBar('Error de API: ${response.statusCode}', isError: true);
         }
       }
     } catch (e) {
-      debugPrint('❌ Error descargando productos de Supabase: $e');
+      debugPrint('âŒ Error descargando productos de Supabase: $e');
       if (mounted) {
-        _mostrarSnackBar('Error de conexión: $e', isError: true);
+        _mostrarSnackBar('Error de conexiÃ³n: $e', isError: true);
       }
     }
   }
@@ -228,7 +228,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         }
       }
     } catch (e) {
-      debugPrint('❌ Error cargando productos fallback: $e');
+      debugPrint('âŒ Error cargando productos fallback: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -340,6 +340,26 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         },
       );
 
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final lista = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('ventas_pos') ?? '[]'));
+        lista.add({
+          'fecha': DateTime.now().toIso8601String(),
+          'total': total,
+          'cantidad_items': carritoConPromos.fold<int>(0, (s, i) => s + i.cantidad),
+          'metodo_pago': _metodoPago,
+          'estado': 'Completada',
+          'items': carritoConPromos.map((i) => {
+            'nombre': i.nombre,
+            'cantidad': i.cantidad,
+            'precio': i.precioUnitario,
+          }).toList(),
+        });
+        await prefs.setString('ventas_pos', jsonEncode(lista));
+      } catch (e) {
+        debugPrint('âš ï¸ No se pudo guardar historial en SharedPreferences: $e');
+      }
+
       if (_hardwareService.isPrinterConnected) {
         await _imprimirTicket(venta, carritoConPromos, subtotal, descuentoItems, isv15, isv18, total);
       }
@@ -358,7 +378,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   Future<void> _imprimirTicket(dynamic venta, List<PosCarritoItem> items, double subtotal, double descuento, double isv15, double isv18, double total) async {
-    // Implementación de impresión de ticket
+    // ImplementaciÃ³n de impresiÃ³n de ticket
     debugPrint('Imprimiendo ticket...');
   }
 
@@ -382,7 +402,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             ),
             const SizedBox(height: 20),
             Text(
-              '¡Venta Exitosa!',
+              'Â¡Venta Exitosa!',
               style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
             ),
             const SizedBox(height: 8),
@@ -412,7 +432,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   void _toggleScanner() async {
     final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     if (isMobile) {
-      // Solicitar permiso de cámara
+      // Solicitar permiso de cÃ¡mara
       final status = await Permission.camera.request();
       if (status.isGranted) {
         _scannerController?.dispose();
@@ -438,8 +458,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           _torchOn = false;
         });
       } else {
-        _mostrarSnackBar('Permiso de cámara denegado', isError: true);
-        // Si no hay permiso, mostrar diálogo manual
+        _mostrarSnackBar('Permiso de cÃ¡mara denegado', isError: true);
+        // Si no hay permiso, mostrar diÃ¡logo manual
         _mostrarDialogoCodigoManual();
       }
     } else {
@@ -468,42 +488,42 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
-    debugPrint('📷 BarcodeCapture recibido');
-    debugPrint('📷 raw: ${capture.raw}');
-    debugPrint('📷 barcodes.length: ${capture.barcodes.length}');
+    debugPrint('ðŸ“· BarcodeCapture recibido');
+    debugPrint('ðŸ“· raw: ${capture.raw}');
+    debugPrint('ðŸ“· barcodes.length: ${capture.barcodes.length}');
     
-    // Intentar obtener el código de barras de múltiples formas
+    // Intentar obtener el cÃ³digo de barras de mÃºltiples formas
     String? code;
     
-    // Método 1: raw value
+    // MÃ©todo 1: raw value
     if (capture.raw is String && (capture.raw as String).isNotEmpty) {
       code = capture.raw as String;
-      debugPrint('📷 Código desde raw: $code');
+      debugPrint('ðŸ“· CÃ³digo desde raw: $code');
     }
     
-    // Método 2: barcodes list
+    // MÃ©todo 2: barcodes list
     if (code == null && capture.barcodes.isNotEmpty) {
       final barcode = capture.barcodes.first;
       code = barcode.rawValue;
-      debugPrint('📷 Código desde rawValue: $code');
+      debugPrint('ðŸ“· CÃ³digo desde rawValue: $code');
     }
     
-    // Método 3: displayValue
+    // MÃ©todo 3: displayValue
     if (code == null && capture.barcodes.isNotEmpty) {
       final barcode = capture.barcodes.first;
       code = barcode.displayValue;
-      debugPrint('📷 Código desde displayValue: $code');
+      debugPrint('ðŸ“· CÃ³digo desde displayValue: $code');
     }
     
     if (code != null && code.isNotEmpty) {
-      debugPrint('✅ Código detectado: $code');
+      debugPrint('âœ… CÃ³digo detectado: $code');
       _agregarPorCodigo(code);
       if (mounted) {
         _cerrarScanner();
-        _mostrarSnackBar('Código escaneado: $code', isError: false);
+        _mostrarSnackBar('CÃ³digo escaneado: $code', isError: false);
       }
     } else {
-      debugPrint('⚠️ No se pudo extraer código del barcode');
+      debugPrint('âš ï¸ No se pudo extraer cÃ³digo del barcode');
     }
   }
 
@@ -518,7 +538,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           children: [
             const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFF97316), size: 22),
             const SizedBox(width: 10),
-            Text('Ingresar Código', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+            Text('Ingresar CÃ³digo', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
           ],
         ),
         content: TextField(
@@ -626,13 +646,6 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         ),
         const SizedBox(width: 8),
         IconButton(
-          icon: const Icon(Icons.receipt_long_rounded, color: Color(0xFF8B5CF6), size: 20),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const _PosHistorialVentasScreen()),
-          ),
-          tooltip: 'Historial de ventas',
-        ),
-        IconButton(
           icon: const Icon(Icons.refresh_rounded, color: Color(0xFF10B981), size: 20),
           onPressed: () async {
             setState(() => _isLoading = true);
@@ -645,7 +658,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         IconButton(
           icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFF97316), size: 22),
           onPressed: _toggleScanner,
-          tooltip: 'Escanear código',
+          tooltip: 'Escanear cÃ³digo',
         ),
         if (_carrito.isNotEmpty)
           IconButton(
@@ -690,7 +703,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
         onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
         decoration: InputDecoration(
-          hintText: 'Buscar producto por nombre, código...',
+          hintText: 'Buscar producto por nombre, cÃ³digo...',
           hintStyle: GoogleFonts.dmSans(color: const Color(0xFF525252)),
           prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF525252), size: 20),
           border: InputBorder.none,
@@ -726,12 +739,27 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       );
     }
 
-    final productosFiltrados = _searchQuery.isEmpty
-        ? _productos
-        : _productos.where((p) =>
-            (p.nombre?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-            (p.codigo?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
-          ).toList();
+    if (_searchQuery.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF404040), size: 64),
+            const SizedBox(height: 16),
+            Text(
+              'Escanee un cÃ³digo de barras\no escriba el nombre / cÃ³digo del producto',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 15),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final productosFiltrados = _productos.where((p) =>
+        (p.nombre?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+        (p.codigo?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
+      ).toList();
 
     if (productosFiltrados.isEmpty) {
       return Center(
@@ -1341,7 +1369,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                   const Icon(Icons.error_outline, color: Colors.red, size: 48),
                   const SizedBox(height: 16),
                   Text(
-                    'Error de cámara: $error',
+                    'Error de cÃ¡mara: $error',
                     style: GoogleFonts.dmSans(color: Colors.white),
                     textAlign: TextAlign.center,
                   ),
@@ -1366,7 +1394,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Apunte al código de barras del producto',
+              'Apunte al cÃ³digo de barras del producto',
               style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
               textAlign: TextAlign.center,
             ),
@@ -1379,7 +1407,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           child: ElevatedButton.icon(
             onPressed: _cerrarScanner,
             icon: const Icon(Icons.close_rounded),
-            label: Text('Cerrar Escáner', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+            label: Text('Cerrar EscÃ¡ner', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -1404,270 +1432,5 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         ),
       ],
     );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// Historial de ventas anteriores (lee pos_ventas de la BD local)
-// ═══════════════════════════════════════════════════════════════
-class _PosHistorialVentasScreen extends StatefulWidget {
-  const _PosHistorialVentasScreen();
-
-  @override
-  State<_PosHistorialVentasScreen> createState() => _PosHistorialVentasScreenState();
-}
-
-class _PosHistorialVentasScreenState extends State<_PosHistorialVentasScreen> {
-  final PosService _posService = PosService.instance;
-  List<PosVenta> _ventas = [];
-  bool _cargando = true;
-  final Set<String> _expandidas = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _cargar();
-  }
-
-  String _formatearFecha(DateTime dt) {
-    String dos(int n) => n.toString().padLeft(2, '0');
-    return '${dos(dt.day)}/${dos(dt.month)}/${dt.year} ${dos(dt.hour)}:${dos(dt.minute)}';
-  }
-
-  String _nombreMetodo(String metodo) {
-    switch (metodo) {
-      case 'tarjeta':
-        return 'Tarjeta';
-      case 'transferencia':
-        return 'Transferencia';
-      case 'mixto':
-        return 'Mixto';
-      default:
-        return 'Efectivo';
-    }
-  }
-
-  Future<void> _cargar() async {
-    setState(() => _cargando = true);
-    final ventas = await _posService.getVentas(limit: 200);
-    if (mounted) {
-      setState(() {
-        _ventas = ventas;
-        _cargando = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF080808),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFF97316), size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Historial de Ventas',
-          style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF10B981), size: 20),
-            onPressed: _cargar,
-            tooltip: 'Actualizar',
-          ),
-        ],
-      ),
-      body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)))
-          : _ventas.isEmpty
-              ? _buildEmpty()
-              : RefreshIndicator(
-                  onRefresh: _cargar,
-                  color: const Color(0xFFF97316),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _ventas.length,
-                    itemBuilder: (context, index) => _buildVentaCard(_ventas[index]),
-                  ),
-                ),
-    );
-  }
-
-  Widget _buildEmpty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.receipt_long_outlined, color: Color(0xFF404040), size: 64),
-          const SizedBox(height: 16),
-          Text(
-            'Sin ventas registradas',
-            style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Las ventas que hagas en el POS aparecerán aquí',
-            style: GoogleFonts.dmSans(color: const Color(0xFF525252), fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVentaCard(PosVenta venta) {
-    final expandida = _expandidas.contains(venta.id);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF262626)),
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => setState(() {
-              if (expandida) {
-                _expandidas.remove(venta.id);
-              } else {
-                _expandidas.add(venta.id);
-              }
-            }),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          venta.correlativo ?? 'Venta ${venta.id.length >= 8 ? venta.id.substring(venta.id.length - 8) : venta.id}',
-                          style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          _formatearFecha(venta.createdAt),
-                          style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373)),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          '${_nombreMetodo(venta.metodoPago)} · ${venta.estado}',
-                          style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF525252)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        _posService.formatCurrency(venta.total),
-                        style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFFF97316)),
-                      ),
-                      const SizedBox(height: 4),
-                      Icon(
-                        expandida ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                        color: const Color(0xFF525252),
-                        size: 18,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (expandida) _buildDetalleVenta(venta.id),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetalleVenta(String ventaId) {
-    return FutureBuilder<List<PosVentaItem>>(
-      future: _posService.getVentaItems(ventaId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(color: Color(0xFFF97316), strokeWidth: 2),
-              ),
-            ),
-          );
-        }
-        final items = snapshot.data ?? const <PosVentaItem>[];
-        if (items.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'Sin detalles de items',
-              style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF525252)),
-            ),
-          );
-        }
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: Color(0xFF262626))),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              ...items.map((i) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${i.cantidad} × ${i.productoNombre}',
-                            style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFA3A3A3)),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Text(
-                          _posService.formatCurrency(i.subtotal),
-                          style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  )),
-              const Divider(color: Color(0xFF262626), height: 16),
-              Text(
-                'Subtotal: ${_posService.formatCurrency(_totalVenta(items))}',
-                style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFA3A3A3)),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  double _totalVenta(List<PosVentaItem> items) {
-    return items.fold<double>(0, (s, i) => s + i.subtotal);
   }
 }
