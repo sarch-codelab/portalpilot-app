@@ -44,6 +44,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   String _metodoPago = 'efectivo';
   bool _isProcessing = false;
   bool _showScanner = false;
+  MobileScannerController? _scannerController;
+  bool _torchOn = false;
   StreamSubscription<SyncStatus>? _syncSubscription;
   SyncStatus _syncStatus = SyncStatus(pendingCount: 0, message: 'Iniciando...');
 
@@ -60,6 +62,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _syncSubscription?.cancel();
+    _scannerController?.dispose();
     super.dispose();
   }
 
@@ -412,7 +415,28 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       // Solicitar permiso de cámara
       final status = await Permission.camera.request();
       if (status.isGranted) {
-        setState(() => _showScanner = !_showScanner);
+        _scannerController?.dispose();
+        _scannerController = MobileScannerController(
+          detectionSpeed: DetectionSpeed.normal,
+          facing: CameraFacing.back,
+          torchEnabled: false,
+          formats: const [
+            BarcodeFormat.ean13,
+            BarcodeFormat.ean8,
+            BarcodeFormat.upcA,
+            BarcodeFormat.upcE,
+            BarcodeFormat.code128,
+            BarcodeFormat.code39,
+            BarcodeFormat.code93,
+            BarcodeFormat.itf,
+            BarcodeFormat.dataMatrix,
+            BarcodeFormat.qrCode,
+          ],
+        );
+        setState(() {
+          _showScanner = !_showScanner;
+          _torchOn = false;
+        });
       } else {
         _mostrarSnackBar('Permiso de cámara denegado', isError: true);
         // Si no hay permiso, mostrar diálogo manual
@@ -420,6 +444,26 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       }
     } else {
       _mostrarDialogoCodigoManual();
+    }
+  }
+
+  void _cerrarScanner() {
+    _scannerController?.dispose();
+    _scannerController = null;
+    setState(() {
+      _showScanner = false;
+      _torchOn = false;
+    });
+  }
+
+  Future<void> _toggleLinterna() async {
+    final controller = _scannerController;
+    if (controller == null) return;
+    setState(() => _torchOn = !_torchOn);
+    try {
+      await controller.toggleTorch();
+    } catch (_) {
+      if (mounted) setState(() => _torchOn = !_torchOn);
     }
   }
 
@@ -455,7 +499,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       debugPrint('✅ Código detectado: $code');
       _agregarPorCodigo(code);
       if (mounted) {
-        setState(() => _showScanner = false);
+        _cerrarScanner();
         _mostrarSnackBar('Código escaneado: $code', isError: false);
       }
     } else {
@@ -582,6 +626,13 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         ),
         const SizedBox(width: 8),
         IconButton(
+          icon: const Icon(Icons.receipt_long_rounded, color: Color(0xFF8B5CF6), size: 20),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const _PosHistorialVentasScreen()),
+          ),
+          tooltip: 'Historial de ventas',
+        ),
+        IconButton(
           icon: const Icon(Icons.refresh_rounded, color: Color(0xFF10B981), size: 20),
           onPressed: () async {
             setState(() => _isLoading = true);
@@ -612,8 +663,15 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       children: [
         _buildSearchBar(),
         Expanded(
-          child: _carrito.isEmpty ? _buildProductList() : _buildCarritoView(),
+          flex: 3,
+          child: _buildProductList(),
         ),
+        if (_carrito.isNotEmpty) ...[
+          SizedBox(
+            height: size.height * 0.34,
+            child: _buildCarritoView(),
+          ),
+        ],
         if (_carrito.isNotEmpty) _buildCobrarBar(),
       ],
     );
@@ -1238,23 +1296,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     return Stack(
       children: [
         MobileScanner(
-          controller: MobileScannerController(
-            detectionSpeed: DetectionSpeed.normal,
-            facing: CameraFacing.back,
-            torchEnabled: false,
-            formats: [
-              BarcodeFormat.ean13,
-              BarcodeFormat.ean8,
-              BarcodeFormat.upcA,
-              BarcodeFormat.upcE,
-              BarcodeFormat.code128,
-              BarcodeFormat.code39,
-              BarcodeFormat.code93,
-              BarcodeFormat.itf,
-              BarcodeFormat.dataMatrix,
-              BarcodeFormat.qrCode,
-            ],
-          ),
+          controller: _scannerController!,
           onDetect: _onBarcodeDetected,
           errorBuilder: (context, error, child) {
             return Center(
@@ -1270,7 +1312,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => setState(() => _showScanner = false),
+                    onPressed: _cerrarScanner,
                     child: Text('Cerrar', style: GoogleFonts.dmSans()),
                   ),
                 ],
@@ -1300,7 +1342,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           left: 20,
           right: 20,
           child: ElevatedButton.icon(
-            onPressed: () => setState(() => _showScanner = false),
+            onPressed: _cerrarScanner,
             icon: const Icon(Icons.close_rounded),
             label: Text('Cerrar Escáner', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
             style: ElevatedButton.styleFrom(
@@ -1309,7 +1351,288 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             ),
           ),
         ),
+        Positioned(
+          bottom: 40,
+          right: 20,
+          child: FloatingActionButton.small(
+            heroTag: 'linterna',
+            backgroundColor: _torchOn
+                ? const Color(0xFFF97316)
+                : Colors.black.withValues(alpha: 0.6),
+            onPressed: _toggleLinterna,
+            child: Icon(
+              _torchOn ? Icons.flashlight_on_rounded : Icons.flashlight_off_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+        ),
       ],
     );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Historial de ventas anteriores (lee pos_ventas de la BD local)
+// ═══════════════════════════════════════════════════════════════
+class _PosHistorialVentasScreen extends StatefulWidget {
+  const _PosHistorialVentasScreen();
+
+  @override
+  State<_PosHistorialVentasScreen> createState() => _PosHistorialVentasScreenState();
+}
+
+class _PosHistorialVentasScreenState extends State<_PosHistorialVentasScreen> {
+  final PosService _posService = PosService.instance;
+  List<PosVenta> _ventas = [];
+  bool _cargando = true;
+  final Set<String> _expandidas = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _cargar();
+  }
+
+  String _formatearFecha(DateTime dt) {
+    String dos(int n) => n.toString().padLeft(2, '0');
+    return '${dos(dt.day)}/${dos(dt.month)}/${dt.year} ${dos(dt.hour)}:${dos(dt.minute)}';
+  }
+
+  String _nombreMetodo(String metodo) {
+    switch (metodo) {
+      case 'tarjeta':
+        return 'Tarjeta';
+      case 'transferencia':
+        return 'Transferencia';
+      case 'mixto':
+        return 'Mixto';
+      default:
+        return 'Efectivo';
+    }
+  }
+
+  Future<void> _cargar() async {
+    setState(() => _cargando = true);
+    final ventas = await _posService.getVentas(limit: 200);
+    if (mounted) {
+      setState(() {
+        _ventas = ventas;
+        _cargando = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF080808),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFF97316), size: 18),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Historial de Ventas',
+          style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF10B981), size: 20),
+            onPressed: _cargar,
+            tooltip: 'Actualizar',
+          ),
+        ],
+      ),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)))
+          : _ventas.isEmpty
+              ? _buildEmpty()
+              : RefreshIndicator(
+                  onRefresh: _cargar,
+                  color: const Color(0xFFF97316),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _ventas.length,
+                    itemBuilder: (context, index) => _buildVentaCard(_ventas[index]),
+                  ),
+                ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.receipt_long_outlined, color: Color(0xFF404040), size: 64),
+          const SizedBox(height: 16),
+          Text(
+            'Sin ventas registradas',
+            style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Las ventas que hagas en el POS aparecerán aquí',
+            style: GoogleFonts.dmSans(color: const Color(0xFF525252), fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVentaCard(PosVenta venta) {
+    final expandida = _expandidas.contains(venta.id);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF262626)),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => setState(() {
+              if (expandida) {
+                _expandidas.remove(venta.id);
+              } else {
+                _expandidas.add(venta.id);
+              }
+            }),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          venta.correlativo ?? 'Venta ${venta.id.length >= 8 ? venta.id.substring(venta.id.length - 8) : venta.id}',
+                          style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _formatearFecha(venta.createdAt),
+                          style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373)),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${_nombreMetodo(venta.metodoPago)} · ${venta.estado}',
+                          style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF525252)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        _posService.formatCurrency(venta.total),
+                        style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFFF97316)),
+                      ),
+                      const SizedBox(height: 4),
+                      Icon(
+                        expandida ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                        color: const Color(0xFF525252),
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (expandida) _buildDetalleVenta(venta.id),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetalleVenta(String ventaId) {
+    return FutureBuilder<List<PosVentaItem>>(
+      future: _posService.getVentaItems(ventaId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(color: Color(0xFFF97316), strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+        final items = snapshot.data ?? const <PosVentaItem>[];
+        if (items.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Sin detalles de items',
+              style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF525252)),
+            ),
+          );
+        }
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: Color(0xFF262626))),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              ...items.map((i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${i.cantidad} × ${i.productoNombre}',
+                            style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFA3A3A3)),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          _posService.formatCurrency(i.subtotal),
+                          style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  )),
+              const Divider(color: Color(0xFF262626), height: 16),
+              Text(
+                'Subtotal: ${_posService.formatCurrency(_totalVenta(items))}',
+                style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFA3A3A3)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  double _totalVenta(List<PosVentaItem> items) {
+    return items.fold<double>(0, (s, i) => s + i.subtotal);
   }
 }

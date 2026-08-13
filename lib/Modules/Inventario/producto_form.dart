@@ -39,6 +39,8 @@ class _ProductoFormState extends State<ProductoForm> {
   String? _imagenUrl; // URL real de Supabase Storage
   bool _isUploadingImage = false;
   bool _showScanner = false;
+  MobileScannerController? _scannerController;
+  bool _torchOn = false;
 
   List<String> _bodegas = ['General'];
 
@@ -57,6 +59,12 @@ class _ProductoFormState extends State<ProductoForm> {
     super.initState();
     _cargarBodegas();
     if (widget.productoExistente != null) _cargarProducto();
+  }
+
+  @override
+  void dispose() {
+    _scannerController?.dispose();
+    super.dispose();
   }
 
   Future<void> _cargarBodegas() async {
@@ -177,7 +185,28 @@ class _ProductoFormState extends State<ProductoForm> {
     if (isMobile) {
       final status = await Permission.camera.request();
       if (status.isGranted) {
-        setState(() => _showScanner = true);
+        _scannerController?.dispose();
+        _scannerController = MobileScannerController(
+          detectionSpeed: DetectionSpeed.normal,
+          facing: CameraFacing.back,
+          torchEnabled: false,
+          formats: const [
+            BarcodeFormat.ean13,
+            BarcodeFormat.ean8,
+            BarcodeFormat.upcA,
+            BarcodeFormat.upcE,
+            BarcodeFormat.code128,
+            BarcodeFormat.code39,
+            BarcodeFormat.code93,
+            BarcodeFormat.itf,
+            BarcodeFormat.dataMatrix,
+            BarcodeFormat.qrCode,
+          ],
+        );
+        setState(() {
+          _showScanner = true;
+          _torchOn = false;
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Permiso de cámara denegado', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFEF4444)),
@@ -185,6 +214,26 @@ class _ProductoFormState extends State<ProductoForm> {
       }
     } else {
       _mostrarDialogoCodigoManual();
+    }
+  }
+  
+  void _cerrarScanner() {
+    _scannerController?.dispose();
+    _scannerController = null;
+    setState(() {
+      _showScanner = false;
+      _torchOn = false;
+    });
+  }
+
+  Future<void> _toggleLinterna() async {
+    final controller = _scannerController;
+    if (controller == null) return;
+    setState(() => _torchOn = !_torchOn);
+    try {
+      await controller.toggleTorch();
+    } catch (_) {
+      if (mounted) setState(() => _torchOn = !_torchOn);
     }
   }
   
@@ -198,7 +247,7 @@ class _ProductoFormState extends State<ProductoForm> {
     
     if (code != null && code.isNotEmpty) {
       _codigoController.text = code;
-      setState(() => _showScanner = false);
+      _cerrarScanner();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Código escaneado: $code', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFF10B981)),
       );
@@ -692,23 +741,7 @@ class _ProductoFormState extends State<ProductoForm> {
     return Stack(
       children: [
         MobileScanner(
-          controller: MobileScannerController(
-            detectionSpeed: DetectionSpeed.normal,
-            facing: CameraFacing.back,
-            torchEnabled: false,
-            formats: [
-              BarcodeFormat.ean13,
-              BarcodeFormat.ean8,
-              BarcodeFormat.upcA,
-              BarcodeFormat.upcE,
-              BarcodeFormat.code128,
-              BarcodeFormat.code39,
-              BarcodeFormat.code93,
-              BarcodeFormat.itf,
-              BarcodeFormat.dataMatrix,
-              BarcodeFormat.qrCode,
-            ],
-          ),
+          controller: _scannerController!,
           onDetect: _onBarcodeDetected,
           errorBuilder: (context, error, child) {
             return Center(
@@ -724,7 +757,7 @@ class _ProductoFormState extends State<ProductoForm> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => setState(() => _showScanner = false),
+                    onPressed: _cerrarScanner,
                     child: Text('Cerrar', style: GoogleFonts.dmSans()),
                   ),
                 ],
@@ -754,12 +787,28 @@ class _ProductoFormState extends State<ProductoForm> {
           left: 20,
           right: 20,
           child: ElevatedButton.icon(
-            onPressed: () => setState(() => _showScanner = false),
+            onPressed: _cerrarScanner,
             icon: const Icon(Icons.close_rounded),
             label: Text('Cerrar Escáner', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 40,
+          right: 20,
+          child: FloatingActionButton.small(
+            heroTag: 'linterna',
+            backgroundColor: _torchOn
+                ? const Color(0xFFF59E0B)
+                : Colors.black.withValues(alpha: 0.6),
+            onPressed: _toggleLinterna,
+            child: Icon(
+              _torchOn ? Icons.flashlight_on_rounded : Icons.flashlight_off_rounded,
+              color: Colors.white,
+              size: 22,
             ),
           ),
         ),
