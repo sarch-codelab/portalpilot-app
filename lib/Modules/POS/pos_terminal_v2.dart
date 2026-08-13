@@ -1,5 +1,5 @@
-﻿// VersiÃ³n mejorada del POS Terminal con escÃ¡ner de cÃ³digos de barras 100% funcional
-// y diseÃ±o responsivo para mÃ³viles sin elementos superpuestos
+// Versión mejorada del POS Terminal con escáner de códigos de barras 100% funcional
+// y diseño responsivo para móviles sin elementos superpuestos
 
 import 'dart:async';
 import 'dart:convert';
@@ -68,7 +68,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Manejar cambios de ciclo de vida para el escÃ¡ner
+    // Manejar cambios de ciclo de vida para el escáner
   }
 
   Future<void> _initializePos() async {
@@ -108,10 +108,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         });
         
         if (productos.isEmpty) {
-          debugPrint('âš ï¸ No hay productos en base local, intentando descargar de Supabase...');
+          debugPrint('⚠️ No hay productos en base local, intentando descargar de Supabase...');
           await _cargarProductosFromSupabase();
           
-          // Si aÃºn no hay, usar SharedPreferences como Ãºltimo fallback
+          // Si aún no hay, usar SharedPreferences como último fallback
           final productosAfterSync = await _localDb.getProductos(_auth.empresaCodigo);
           if (productosAfterSync.isEmpty) {
             await _cargarProductosFromSharedPreferences();
@@ -119,7 +119,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         }
       }
     } catch (e) {
-      debugPrint('âŒ Error cargando productos: $e');
+      debugPrint('❌ Error cargando productos: $e');
       await _cargarProductosFromSharedPreferences();
       
       if (mounted) {
@@ -131,17 +131,17 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   Future<void> _cargarProductosFromSupabase() async {
     try {
       final empresaCodigo = _auth.empresaCodigo;
-      debugPrint('ðŸ“¡ Intentando descargar productos de Supabase para empresa: $empresaCodigo');
+      debugPrint('📡 Intentando descargar productos de Supabase para empresa: $empresaCodigo');
       
       final url = Uri.parse('https://portalpilot-app.vercel.app/api/productos?empresaCodigo=$empresaCodigo');
-      debugPrint('ðŸŒ URL: $url');
+      debugPrint('🌐 URL: $url');
       
       final response = await http.get(url);
-      debugPrint('ðŸ“¥ Status code: ${response.statusCode}');
+      debugPrint('📥 Status code: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final List<dynamic> productosData = jsonDecode(response.body);
-        debugPrint('ðŸ“¦ Productos recibidos: ${productosData.length}');
+        debugPrint('📦 Productos recibidos: ${productosData.length}');
         
         if (productosData.isNotEmpty) {
           // Guardar en base de datos local
@@ -150,11 +150,11 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             productos: productosData.cast<Map<String, dynamic>>(),
             enqueueSync: false,
           );
-          debugPrint('âœ… Productos guardados en base local');
+          debugPrint('✅ Productos guardados en base local');
           
           // Actualizar UI
           final productos = await _localDb.getProductos(empresaCodigo);
-          debugPrint('ðŸ“Š Productos en base local despuÃ©s de guardar: ${productos.length}');
+          debugPrint('📊 Productos en base local después de guardar: ${productos.length}');
           
           if (mounted) {
             setState(() {
@@ -163,21 +163,21 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             _mostrarSnackBar('Sincronizados ${productos.length} productos', isError: false);
           }
         } else {
-          debugPrint('âš ï¸ La API devolviÃ³ una lista vacÃ­a');
+          debugPrint('⚠️ La API devolvió una lista vacía');
           if (mounted) {
             _mostrarSnackBar('No hay productos en la base de datos', isError: true);
           }
         }
       } else {
-        debugPrint('âŒ Error en API: ${response.statusCode} - ${response.body}');
+        debugPrint('❌ Error en API: ${response.statusCode} - ${response.body}');
         if (mounted) {
           _mostrarSnackBar('Error de API: ${response.statusCode}', isError: true);
         }
       }
     } catch (e) {
-      debugPrint('âŒ Error descargando productos de Supabase: $e');
+      debugPrint('❌ Error descargando productos de Supabase: $e');
       if (mounted) {
-        _mostrarSnackBar('Error de conexiÃ³n: $e', isError: true);
+        _mostrarSnackBar('Error de conexión: $e', isError: true);
       }
     }
   }
@@ -228,7 +228,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         }
       }
     } catch (e) {
-      debugPrint('âŒ Error cargando productos fallback: $e');
+      debugPrint('❌ Error cargando productos fallback: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -357,7 +357,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         });
         await prefs.setString('ventas_pos', jsonEncode(lista));
       } catch (e) {
-        debugPrint('âš ï¸ No se pudo guardar historial en SharedPreferences: $e');
+        debugPrint('⚠️ No se pudo guardar historial en SharedPreferences: $e');
       }
 
       if (_hardwareService.isPrinterConnected) {
@@ -378,7 +378,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   Future<void> _imprimirTicket(dynamic venta, List<PosCarritoItem> items, double subtotal, double descuento, double isv15, double isv18, double total) async {
-    // ImplementaciÃ³n de impresiÃ³n de ticket
+    // Implementación de impresión de ticket
     debugPrint('Imprimiendo ticket...');
   }
 
@@ -402,7 +402,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             ),
             const SizedBox(height: 20),
             Text(
-              'Â¡Venta Exitosa!',
+              '¡Venta Exitosa!',
               style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
             ),
             const SizedBox(height: 8),
@@ -432,7 +432,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   void _toggleScanner() async {
     final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     if (isMobile) {
-      // Solicitar permiso de cÃ¡mara
+      // Solicitar permiso de cámara
       final status = await Permission.camera.request();
       if (status.isGranted) {
         _scannerController?.dispose();
@@ -458,8 +458,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           _torchOn = false;
         });
       } else {
-        _mostrarSnackBar('Permiso de cÃ¡mara denegado', isError: true);
-        // Si no hay permiso, mostrar diÃ¡logo manual
+        _mostrarSnackBar('Permiso de cámara denegado', isError: true);
+        // Si no hay permiso, mostrar diálogo manual
         _mostrarDialogoCodigoManual();
       }
     } else {
@@ -488,42 +488,42 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
-    debugPrint('ðŸ“· BarcodeCapture recibido');
-    debugPrint('ðŸ“· raw: ${capture.raw}');
-    debugPrint('ðŸ“· barcodes.length: ${capture.barcodes.length}');
+    debugPrint('📷 BarcodeCapture recibido');
+    debugPrint('📷 raw: ${capture.raw}');
+    debugPrint('📷 barcodes.length: ${capture.barcodes.length}');
     
-    // Intentar obtener el cÃ³digo de barras de mÃºltiples formas
+    // Intentar obtener el código de barras de múltiples formas
     String? code;
     
-    // MÃ©todo 1: raw value
+    // Método 1: raw value
     if (capture.raw is String && (capture.raw as String).isNotEmpty) {
       code = capture.raw as String;
-      debugPrint('ðŸ“· CÃ³digo desde raw: $code');
+      debugPrint('📷 Código desde raw: $code');
     }
     
-    // MÃ©todo 2: barcodes list
+    // Método 2: barcodes list
     if (code == null && capture.barcodes.isNotEmpty) {
       final barcode = capture.barcodes.first;
       code = barcode.rawValue;
-      debugPrint('ðŸ“· CÃ³digo desde rawValue: $code');
+      debugPrint('📷 Código desde rawValue: $code');
     }
     
-    // MÃ©todo 3: displayValue
+    // Método 3: displayValue
     if (code == null && capture.barcodes.isNotEmpty) {
       final barcode = capture.barcodes.first;
       code = barcode.displayValue;
-      debugPrint('ðŸ“· CÃ³digo desde displayValue: $code');
+      debugPrint('📷 Código desde displayValue: $code');
     }
     
     if (code != null && code.isNotEmpty) {
-      debugPrint('âœ… CÃ³digo detectado: $code');
+      debugPrint('✅ Código detectado: $code');
       _agregarPorCodigo(code);
       if (mounted) {
         _cerrarScanner();
-        _mostrarSnackBar('CÃ³digo escaneado: $code', isError: false);
+        _mostrarSnackBar('Código escaneado: $code', isError: false);
       }
     } else {
-      debugPrint('âš ï¸ No se pudo extraer cÃ³digo del barcode');
+      debugPrint('⚠️ No se pudo extraer código del barcode');
     }
   }
 
@@ -538,7 +538,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           children: [
             const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFF97316), size: 22),
             const SizedBox(width: 10),
-            Text('Ingresar CÃ³digo', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+            Text('Ingresar Código', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
           ],
         ),
         content: TextField(
@@ -612,7 +612,9 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       appBar: _buildAppBar(),
-      body: _showScanner ? _buildScannerView() : _buildMobileLayout(size),
+      body: _showScanner
+          ? _buildScannerView()
+          : (size.width > size.height ? _buildWideLayout() : _buildMobileLayout(size)),
     );
   }
 
@@ -658,7 +660,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         IconButton(
           icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFF97316), size: 22),
           onPressed: _toggleScanner,
-          tooltip: 'Escanear cÃ³digo',
+          tooltip: 'Escanear código',
         ),
         if (_carrito.isNotEmpty)
           IconButton(
@@ -667,6 +669,34 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             tooltip: 'Limpiar carrito',
           ),
         const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _buildWideLayout() {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            children: [
+              _buildSearchBar(),
+              Expanded(child: _buildProductList()),
+            ],
+          ),
+        ),
+        Container(
+          width: 380,
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F0F0F),
+            border: Border(left: BorderSide(color: Color(0xFF262626))),
+          ),
+          child: Column(
+            children: [
+              Expanded(child: _buildCarritoView()),
+              if (_carrito.isNotEmpty) _buildCobrarBar(),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -703,7 +733,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
         onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
         decoration: InputDecoration(
-          hintText: 'Buscar producto por nombre, cÃ³digo...',
+          hintText: 'Buscar producto por nombre, código...',
           hintStyle: GoogleFonts.dmSans(color: const Color(0xFF525252)),
           prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF525252), size: 20),
           border: InputBorder.none,
@@ -747,7 +777,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF404040), size: 64),
             const SizedBox(height: 16),
             Text(
-              'Escanee un cÃ³digo de barras\no escriba el nombre / cÃ³digo del producto',
+              'Escanee un código de barras\no escriba el nombre / código del producto',
               textAlign: TextAlign.center,
               style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 15),
             ),
@@ -780,18 +810,30 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     return RefreshIndicator(
       onRefresh: _cargarProductos,
       color: const Color(0xFFF97316),
-      child: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.75,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: productosFiltrados.length,
-        itemBuilder: (context, index) {
-          final producto = productosFiltrados[index];
-          return _buildProductCard(producto);
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final ancho = constraints.maxWidth;
+          final cols = ancho >= 1200
+              ? 5
+              : ancho >= 900
+                  ? 4
+                  : ancho >= 600
+                      ? 3
+                      : 2;
+          return GridView.builder(
+            padding: const EdgeInsets.all(14),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: cols,
+              childAspectRatio: 0.72,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: productosFiltrados.length,
+            itemBuilder: (context, index) {
+              final producto = productosFiltrados[index];
+              return _buildProductCard(producto);
+            },
+          );
         },
       ),
     );
@@ -839,92 +881,91 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           children: [
             Expanded(
               flex: 3,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF141414),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                  image: imagenUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(imagenUrl),
-                          fit: BoxFit.cover,
-                        )
-                      : imagenBytes != null
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF141414),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                      image: imagenUrl != null
                           ? DecorationImage(
-                              image: MemoryImage(imagenBytes),
+                              image: NetworkImage(imagenUrl),
                               fit: BoxFit.cover,
                             )
-                          : null,
-                ),
-                child: imagenUrl == null && imagenBytes == null
-                    ? _buildImagePlaceholder(producto)
-                    : null,
+                          : imagenBytes != null
+                              ? DecorationImage(
+                                  image: MemoryImage(imagenBytes),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                    ),
+                    child: imagenUrl == null && imagenBytes == null
+                        ? _buildImagePlaceholder(producto)
+                        : null,
+                  ),
+                  if (producto.stockActual != null)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: _buildStockBadge(producto),
+                    ),
+                ],
               ),
             ),
             Expanded(
               flex: 4,
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          producto.nombre ?? 'Sin nombre',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          producto.codigo ?? 'S/C',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            color: const Color(0xFF737373),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      producto.nombre ?? 'Sin nombre',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      producto.codigo ?? 'S/C',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        color: const Color(0xFF737373),
+                      ),
+                    ),
+                    const Spacer(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          _posService.formatCurrency(producto.precioVenta),
-                          style: GoogleFonts.syne(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFFF97316),
+                        Flexible(
+                          child: Text(
+                            _posService.formatCurrency(producto.precioVenta),
+                            style: GoogleFonts.syne(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFFF97316),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: producto.stockActual != null && producto.stockActual! > 0
-                                ? const Color(0xFF10B981).withValues(alpha: 0.2)
-                                : const Color(0xFFEF4444).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: producto.stockActual != null && producto.stockActual! > 0
-                                  ? const Color(0xFF10B981)
-                                  : const Color(0xFFEF4444),
-                              width: 1,
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => _agregarAlCarrito(producto),
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF97316),
+                              shape: BoxShape.circle,
                             ),
-                          ),
-                          child: Text(
-                            'Stock: ${producto.stockActual ?? 0}',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: producto.stockActual != null && producto.stockActual! > 0
-                                  ? const Color(0xFF10B981)
-                                  : const Color(0xFFEF4444),
-                            ),
+                            child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
                           ),
                         ),
                       ],
@@ -935,6 +976,37 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStockBadge(Producto producto) {
+    final tieneStock = producto.stockActual != null && producto.stockActual! > 0;
+    final bajo = !tieneStock ||
+        (producto.stockMinimo != null && producto.stockActual! <= producto.stockMinimo!);
+    final color = tieneStock
+        ? (bajo ? const Color(0xFFF59E0B) : const Color(0xFF10B981))
+        : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.inventory_2_rounded, color: color, size: 10),
+          const SizedBox(width: 3),
+          Text(
+            '${producto.stockActual ?? 0}',
+            style: GoogleFonts.dmSans(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1369,7 +1441,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                   const Icon(Icons.error_outline, color: Colors.red, size: 48),
                   const SizedBox(height: 16),
                   Text(
-                    'Error de cÃ¡mara: $error',
+                    'Error de cámara: $error',
                     style: GoogleFonts.dmSans(color: Colors.white),
                     textAlign: TextAlign.center,
                   ),
@@ -1394,7 +1466,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Apunte al cÃ³digo de barras del producto',
+              'Apunte al código de barras del producto',
               style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
               textAlign: TextAlign.center,
             ),
@@ -1407,7 +1479,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           child: ElevatedButton.icon(
             onPressed: _cerrarScanner,
             icon: const Icon(Icons.close_rounded),
-            label: Text('Cerrar EscÃ¡ner', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+            label: Text('Cerrar Escáner', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -1434,3 +1506,4 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     );
   }
 }
+
