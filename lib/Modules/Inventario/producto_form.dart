@@ -257,6 +257,64 @@ class _ProductoFormState extends State<ProductoForm> {
       return;
     }
 
+    // Validar stock: enteros no negativos (vacío = 0)
+    final stockActual = _stockActualController.text.trim().isEmpty
+        ? 0
+        : int.tryParse(_stockActualController.text);
+    final stockMinimo = _stockMinimoController.text.trim().isEmpty
+        ? 0
+        : int.tryParse(_stockMinimoController.text);
+
+    if (stockActual == null || stockActual < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Stock Actual debe ser un número entero mayor o igual a 0', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFEF4444)),
+      );
+      return;
+    }
+    if (stockMinimo == null || stockMinimo < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Stock Mínimo debe ser un número entero mayor o igual a 0', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFEF4444)),
+      );
+      return;
+    }
+
+    // Aviso (no bloquea): stock actual por debajo del mínimo activa la alerta
+    // de "stock bajo" en Inventario. Se informa para que no tome por sorpresa.
+    if (stockMinimo > 0 && stockActual < stockMinimo) {
+      final continuar = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF111111),
+          title: const Text(
+            'Stock bajo el mínimo',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'El stock actual ($stockActual) está por debajo del mínimo ($stockMinimo). '
+            'Este producto aparecerá en la alerta de stock bajo. ¿Deseas continuar?',
+            style: const TextStyle(color: Color(0xFFA3A3A3)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: Color(0xFFA3A3A3)),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text(
+                'Guardar de todos modos',
+                style: TextStyle(color: Color(0xFFF59E0B)),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (continuar != true) return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final empresaCodigo = prefs.getString('empresa_codigo') ?? 'ROOT';
     final localDb = LocalDatabaseService.instance;
@@ -279,8 +337,8 @@ class _ProductoFormState extends State<ProductoForm> {
       'unidad_medida': _unidadMedida,
       'precio_compra': double.tryParse(_precioCompraController.text) ?? 0,
       'precio_venta': double.tryParse(_precioVentaController.text) ?? 0,
-      'stock_actual': int.tryParse(_stockActualController.text) ?? 0,
-      'stock_minimo': int.tryParse(_stockMinimoController.text) ?? 0,
+      'stock_actual': stockActual,
+      'stock_minimo': stockMinimo,
       'bodega': _bodega,
       'isv_rate': _isvRate,
       'exento': _exento,
@@ -601,9 +659,11 @@ class _ProductoFormState extends State<ProductoForm> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(child: _buildField('Stock Actual', _stockActualController, keyboard: TextInputType.number)),
+              Expanded(child: _buildField('Stock Actual', _stockActualController, keyboard: TextInputType.number,
+                help: 'Cantidad que tienes actualmente en bodega.')),
               const SizedBox(width: 10),
-              Expanded(child: _buildField('Stock Mínimo', _stockMinimoController, keyboard: TextInputType.number)),
+              Expanded(child: _buildField('Stock Mínimo', _stockMinimoController, keyboard: TextInputType.number,
+                help: 'Umbral de alerta: cuando el stock actual baja de este número, el producto aparece en "stock bajo" para que repongas.')),
             ],
           ),
           const SizedBox(height: 24),
@@ -714,11 +774,55 @@ class _ProductoFormState extends State<ProductoForm> {
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller, {String hint = '', TextInputType keyboard = TextInputType.text}) {
+  void _mostrarAyuda(String titulo, String texto) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF111111),
+        title: Text(titulo, style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+        content: Text(texto, style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFA3A3A3), height: 1.4)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendido', style: TextStyle(color: Color(0xFFF59E0B))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildField(String label, TextEditingController controller, {String hint = '', TextInputType keyboard = TextInputType.text, String? help}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+            ),
+            if (help != null) ...[
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => _mostrarAyuda(label, help),
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A1A),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF404040)),
+                  ),
+                  child: const Icon(
+                    Icons.help_outline_rounded,
+                    size: 11,
+                    color: Color(0xFF737373),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
