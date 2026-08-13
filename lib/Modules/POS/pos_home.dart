@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:portal_pilot_app/Modules/POS/pos_terminal.dart';
+import 'package:portal_pilot_app/Modules/POS/pos_terminal_v2.dart';
 import 'package:portal_pilot_app/Modules/POS/pos_historial.dart';
 import 'package:portal_pilot_app/Modules/POS/pos_reportes.dart';
 import 'package:portal_pilot_app/Modules/Inventario/producto_list.dart';
@@ -137,7 +137,7 @@ class _PosHomeState extends State<PosHome> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const PosTerminal()),
+              MaterialPageRoute(builder: (_) => const PosTerminalV2()),
           );
         },
         backgroundColor: const Color(0xFFF97316),
@@ -294,7 +294,7 @@ class _PosHomeState extends State<PosHome> {
           () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const PosTerminal()),
+            MaterialPageRoute(builder: (_) => const PosTerminalV2()),
             );
           },
         ),

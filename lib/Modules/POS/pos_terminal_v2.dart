@@ -1260,6 +1260,17 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildMetodoChip('efectivo', 'Efectivo', Icons.payments_rounded),
+              _buildMetodoChip('tarjeta', 'Tarjeta', Icons.credit_card_rounded),
+              _buildMetodoChip('transferencia', 'Transferencia', Icons.account_balance_rounded),
+              _buildMetodoChip('mixto', 'Mixto', Icons.account_balance_wallet_rounded),
+            ],
+          ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -1288,6 +1299,30 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMetodoChip(String metodo, String label, IconData icon) {
+    final isSelected = _metodoPago == metodo;
+    return GestureDetector(
+      onTap: () => setState(() => _metodoPago = metodo),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFF97316).withValues(alpha: 0.15) : const Color(0xFF141414),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isSelected ? const Color(0xFFF97316) : const Color(0xFF262626)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: isSelected ? const Color(0xFFF97316) : const Color(0xFF737373), size: 14),
+            const SizedBox(width: 6),
+            Text(label, style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? const Color(0xFFF97316) : const Color(0xFF737373))),
+          ],
+        ),
       ),
     );
   }
