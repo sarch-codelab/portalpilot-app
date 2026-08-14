@@ -1,9 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:portal_pilot_app/Shared/database/app_database.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 
-/// Historial de ventas del POS, persistido en SharedPreferences (clave `ventas_pos`).
+/// Historial de ventas del POS, persistido en la base de datos local (Drift)
+/// mediante las tablas `pos_ventas` y `pos_venta_items`.
 class PosHistorial extends StatefulWidget {
   const PosHistorial({super.key});
 
@@ -12,7 +15,12 @@ class PosHistorial extends StatefulWidget {
 }
 
 class _PosHistorialState extends State<PosHistorial> {
-  List<Map<String, dynamic>> _ventas = [];
+  final LocalDatabaseService _localDb = LocalDatabaseService.instance;
+  final AuthController _auth = AuthController.instance;
+
+  List<PosVenta> _ventas = [];
+  Map<String, List<PosVentaItem>> _itemsPorVenta = {};
+  bool _cargando = true;
   String _filtro = 'Todas';
 
   static const Map<String, String> _filtros = {
@@ -29,21 +37,44 @@ class _PosHistorialState extends State<PosHistorial> {
   }
 
   Future<void> _cargar() async {
-    final prefs = await SharedPreferences.getInstance();
-    final ventasJson = prefs.getString('ventas_pos') ?? '[]';
-    final List<dynamic> ventas = jsonDecode(ventasJson);
-    ventas.sort((a, b) => (b['fecha'] ?? '').toString().compareTo(a['fecha'] ?? ''));
-    if (mounted) {
-      setState(() => _ventas = List<Map<String, dynamic>>.from(ventas));
+    setState(() => _cargando = true);
+    try {
+      final db = _localDb.database;
+      final ventas = await (db.select(db.posVentas)
+            ..where((v) => v.empresaId.equals(_auth.empresaCodigo))
+            ..orderBy([(v) => OrderingTerm.desc(v.createdAt)]))
+          .get();
+
+      final ids = ventas.map((v) => v.id).toList();
+      Map<String, List<PosVentaItem>> itemsMap = {};
+      if (ids.isNotEmpty) {
+        final items = await (db.select(db.posVentaItems)
+              ..where((i) => i.ventaId.isIn(ids))
+              ..orderBy([(i) => OrderingTerm.asc(i.createdAt)]))
+            .get();
+        for (final i in items) {
+          itemsMap.putIfAbsent(i.ventaId, () => []).add(i);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _ventas = ventas;
+          _itemsPorVenta = itemsMap;
+          _cargando = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error cargando historial POS: $e');
+      if (mounted) setState(() => _cargando = false);
     }
   }
 
-  List<Map<String, dynamic>> get _filtradas {
+  List<PosVenta> get _filtradas {
     final key = _filtros[_filtro] ?? 'all';
     final ahora = DateTime.now();
     return _ventas.where((v) {
-      final fecha = DateTime.tryParse(v['fecha'] ?? '');
-      if (fecha == null) return true;
+      final fecha = v.createdAt;
       switch (key) {
         case 'hoy':
           return fecha.year == ahora.year && fecha.month == ahora.month && fecha.day == ahora.day;
@@ -58,7 +89,7 @@ class _PosHistorialState extends State<PosHistorial> {
     }).toList();
   }
 
-  Future<void> _eliminarVenta(int index) async {
+  Future<void> _eliminarVenta(PosVenta venta) async {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -74,19 +105,19 @@ class _PosHistorialState extends State<PosHistorial> {
     );
     if (confirmar != true) return;
 
-    final venta = _filtradas[index];
-    final prefs = await SharedPreferences.getInstance();
-    final lista = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('ventas_pos') ?? '[]'));
-    lista.removeWhere((v) => v['fecha'] == venta['fecha'] && v['total'] == venta['total']);
-    await prefs.setString('ventas_pos', jsonEncode(lista));
+    final db = _localDb.database;
+    await db.transaction(() async {
+      await (db.delete(db.posVentaItems)..where((i) => i.ventaId.equals(venta.id))).go();
+      await (db.delete(db.posVentas)..where((v) => v.id.equals(venta.id))).go();
+    });
     _cargar();
   }
 
   @override
   Widget build(BuildContext context) {
     final filtradas = _filtradas;
-    final total = filtradas.fold<double>(0, (s, v) => s + ((v['total'] as num?)?.toDouble() ?? 0));
-    final items = filtradas.fold<int>(0, (s, v) => s + ((v['cantidad_items'] as num?)?.toInt() ?? 0));
+    final total = filtradas.fold<double>(0, (s, v) => s + v.total);
+    final items = filtradas.fold<int>(0, (s, v) => s + (_itemsPorVenta[v.id]?.fold<int>(0, (a, i) => a + i.cantidad) ?? 0));
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
@@ -124,10 +155,15 @@ class _PosHistorialState extends State<PosHistorial> {
             const SizedBox(height: 16),
             _buildFiltros(),
             const SizedBox(height: 12),
-            if (filtradas.isEmpty)
+            if (_cargando)
+              const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: CircularProgressIndicator(color: Color(0xFFF97316))),
+              )
+            else if (filtradas.isEmpty)
               _buildVacio()
             else
-              ...filtradas.map((v) => _buildVentaCard(v, filtradas.indexOf(v))),
+              ...filtradas.map((v) => _buildVentaCard(v)),
             const SizedBox(height: 30),
           ],
         ),
@@ -193,12 +229,12 @@ class _PosHistorialState extends State<PosHistorial> {
     );
   }
 
-  Widget _buildVentaCard(Map<String, dynamic> v, int index) {
-    final fecha = DateTime.tryParse(v['fecha'] ?? '');
-    final total = (v['total'] as num?)?.toDouble() ?? 0;
-    final items = (v['cantidad_items'] as num?)?.toInt() ?? 0;
-    final metodo = v['metodo_pago'] ?? 'efectivo';
-    final detalles = List<Map<String, dynamic>>.from(v['items'] ?? []);
+  Widget _buildVentaCard(PosVenta v) {
+    final fecha = v.createdAt;
+    final total = v.total;
+    final detalles = _itemsPorVenta[v.id] ?? [];
+    final items = detalles.fold<int>(0, (a, i) => a + i.cantidad);
+    final metodo = v.metodoPago;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -224,13 +260,11 @@ class _PosHistorialState extends State<PosHistorial> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      fecha != null
-                          ? '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year} · ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}'
-                          : 'Sin fecha',
+                      '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year} · ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}',
                       style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
                     ),
                     Text(
-                      '$items items · ${metodo.toUpperCase()}',
+                      '${v.correlativo ?? ''} · $items items · ${metodo.toUpperCase()}',
                       style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
                     ),
                   ],
@@ -239,7 +273,7 @@ class _PosHistorialState extends State<PosHistorial> {
               Text('L.${_formatNumber(total)}', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w900, color: const Color(0xFF10B981))),
               const SizedBox(width: 4),
               GestureDetector(
-                onTap: () => _eliminarVenta(index),
+                onTap: () => _eliminarVenta(v),
                 child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 16),
               ),
             ],
@@ -249,17 +283,14 @@ class _PosHistorialState extends State<PosHistorial> {
             const Divider(color: Color(0xFF262626), height: 1),
             const SizedBox(height: 6),
             ...detalles.take(4).map((d) {
-              final nombre = d['nombre'] ?? 'Producto';
-              final cant = (d['cantidad'] as num?)?.toInt() ?? 1;
-              final precio = (d['precio'] as num?)?.toDouble() ?? 0;
               return Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text('• $nombre', style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFFA3A3A3)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      child: Text('• ${d.productoNombre}', style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFFA3A3A3)), maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
-                    Text('$cant x L.${_formatNumber(precio)}', style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF525252))),
+                    Text('${d.cantidad} x L.${_formatNumber(d.precioUnitario)}', style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF525252))),
                   ],
                 ),
               );

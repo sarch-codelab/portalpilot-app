@@ -15,6 +15,7 @@ const routes = {
   'productos': productosHandler,
   'proveedores': proveedoresHandler,
   'storage': storageHandler,
+  'sync': syncHandler,
   'transacciones': transaccionesHandler,
   'ventas': ventasHandler,
 };
@@ -804,77 +805,261 @@ async function ventasHandler(req, res) {
     const body = parseBody(req);
     const empresaCodigo = body.empresa_codigo || '';
     const venta = body.venta || {};
-    const items = Array.isArray(venta.items) ? venta.items : [];
     if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
-    if (items.length === 0) return fail(res, { message: 'La venta no tiene items.', status: 400 });
 
     const empresaId = await resolverEmpresaId(empresaCodigo);
+    const resultado = await procesarVentaSync(empresaCodigo, empresaId, [venta]);
 
-    const decrementados = [];
-    const errores = [];
-
-    // 1. Descuento de stock por item
-    for (const item of items) {
-      const codigo = (item.codigo || '').toString();
-      const nombre = (item.nombre || '').toString();
-      const cantidad = Number(item.cantidad) || 1;
-
-      const filtroTenant = empresaId
-        ? `empresa_id=eq.${empresaId}`
-        : `empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}`;
-      const match = await supabaseRequest(
-        `/productos?${filtroTenant}&or=(codigo.eq.${encodeURIComponent(codigo)},nombre.eq.${encodeURIComponent(nombre)})&select=id,stock_actual,codigo,nombre`
-      );
-      if (match.status >= 400) { errores.push(nombre); continue; }
-      let rows = [];
-      try { rows = JSON.parse(match.body || '[]'); } catch {}
-      const prod = rows[0];
-      if (!prod) { errores.push(nombre); continue; }
-
-      const nuevoStock = Math.max(0, (Number(prod.stock_actual) || 0) - cantidad);
-      await supabaseRequest(`/productos?id=eq.${prod.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ stock_actual: nuevoStock, updated_at: new Date().toISOString() }),
-      });
-      decrementados.push({ id: prod.id, codigo: prod.codigo, nombre: prod.nombre, nuevoStock });
+    if (resultado.ok === 0 && resultado.errores.length > 0) {
+      return fail(res, { message: resultado.errores.join(' | '), status: 502 });
     }
-
-    // 2. Registrar factura de venta
-    const ahora = new Date();
-    const correlativo = `POS-${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}${String(ahora.getDate()).padStart(2, '0')}-${String(ahora.getHours()).padStart(2, '0')}${String(ahora.getMinutes()).padStart(2, '0')}${String(ahora.getSeconds()).padStart(2, '0')}`;
-
-    const facturaPayload = {
-      empresa_codigo: empresaCodigo,
-      correlativo,
-      tipo_documento: 'Factura',
-      cai: 'POS-DIRECTO',
-      cliente_nombre: venta.cliente_nombre || 'Consumidor Final',
-      cliente_rtn: venta.cliente_rtn || 'CF',
-      condicion_pago: 'Contado',
-      tipo_venta: 'Gravada',
-      items,
-      subtotal: Number(venta.subtotal) || 0,
-      isv_15: Number(venta.isv_15) || 0,
-      isv_18: Number(venta.isv_18) || 0,
-      descuento: Number(venta.descuento) || 0,
-      total: Number(venta.total) || items.reduce((s, i) => s + (Number(i.precio) || 0) * (Number(i.cantidad) || 1), 0),
-      estado: 'pagada',
-      notas: `Pago: ${venta.metodo_pago || 'efectivo'}`,
-    };
-    if (empresaId) facturaPayload.empresa_id = empresaId;
-
-    const facturaRes = await supabaseRequest('/facturas', { method: 'POST', body: JSON.stringify(facturaPayload) });
-    if (facturaRes.status >= 400) return fail(res, { message: facturaRes.body });
-
     return ok(res, {
       success: true,
-      correlativo,
-      decrementados,
-      errores,
-      factura: JSON.parse(facturaRes.body),
+      correlativo: resultado.correlativos[0] || null,
+      decrementados: resultado.decrementados,
+      errores: resultado.errores,
     }, 201);
   } catch (err) {
     return fail(res, err);
+  }
+}
+
+/// Procesa una o varias ventas POS de forma idempotente:
+/// - Si la factura ya existe por correlativo, no re-decrementa stock.
+/// - Decrementa stock de cada item y registra la factura de venta.
+async function procesarVentaSync(empresaCodigo, empresaId, ventas) {
+  const decrementados = [];
+  const errores = [];
+  const correlativos = [];
+  let ok = 0;
+
+  const filtroTenant = empresaId
+    ? `empresa_id=eq.${empresaId}`
+    : `empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}`;
+
+  for (const venta of ventas) {
+    try {
+      if (typeof venta !== 'object' || venta === null) continue;
+      const items = Array.isArray(venta.items) ? venta.items : [];
+      const correlativo = String(venta.correlativo || '');
+
+      // Idempotencia: si la venta ya fue registrada, se omite.
+      if (correlativo) {
+        const ex = await supabaseRequest(
+          `/facturas?correlativo=eq.${encodeURIComponent(correlativo)}&select=id`
+        );
+        if (ex.status < 400) {
+          let found = [];
+          try { found = JSON.parse(ex.body || '[]'); } catch {}
+          if (found.length > 0) { ok++; correlativos.push(correlativo); continue; }
+        }
+      }
+
+      // 1. Descuento de stock por item
+      for (const item of items) {
+        const codigo = (item.codigo || '').toString();
+        const nombre = (item.nombre || '').toString();
+        const cantidad = Number(item.cantidad) || 1;
+
+        const match = await supabaseRequest(
+          `/productos?${filtroTenant}&or=(codigo.eq.${encodeURIComponent(codigo)},nombre.eq.${encodeURIComponent(nombre)})&select=id,stock_actual,codigo,nombre`
+        );
+        if (match.status >= 400) { errores.push(nombre); continue; }
+        let rows = [];
+        try { rows = JSON.parse(match.body || '[]'); } catch {}
+        const prod = rows[0];
+        if (!prod) { errores.push(nombre); continue; }
+
+        const nuevoStock = Math.max(0, (Number(prod.stock_actual) || 0) - cantidad);
+        await supabaseRequest(`/productos?id=eq.${prod.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ stock_actual: nuevoStock, updated_at: new Date().toISOString() }),
+        });
+        decrementados.push({ id: prod.id, codigo: prod.codigo, nombre: prod.nombre, nuevoStock });
+      }
+
+      // 2. Registrar factura de venta
+      const ahora = new Date();
+      const correlativoFinal = correlativo ||
+        `POS-${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}${String(ahora.getDate()).padStart(2, '0')}-${String(ahora.getHours()).padStart(2, '0')}${String(ahora.getMinutes()).padStart(2, '0')}${String(ahora.getSeconds()).padStart(2, '0')}`;
+
+      const facturaPayload = {
+        empresa_codigo: empresaCodigo,
+        correlativo: correlativoFinal,
+        tipo_documento: 'Factura',
+        cai: 'POS-DIRECTO',
+        cliente_nombre: venta.cliente_nombre || 'Consumidor Final',
+        cliente_rtn: venta.cliente_rtn || 'CF',
+        condicion_pago: 'Contado',
+        tipo_venta: 'Gravada',
+        items,
+        subtotal: Number(venta.subtotal) || 0,
+        isv_15: Number(venta.isv_15) || 0,
+        isv_18: Number(venta.isv_18) || 0,
+        descuento: Number(venta.descuento) || 0,
+        total: Number(venta.total) || items.reduce((s, i) => s + (Number(i.precio) || 0) * (Number(i.cantidad) || 1), 0),
+        estado: 'pagada',
+        notas: `Pago: ${venta.metodo_pago || 'efectivo'}`,
+      };
+      if (empresaId) facturaPayload.empresa_id = empresaId;
+
+      const facturaRes = await supabaseRequest('/facturas', { method: 'POST', body: JSON.stringify(facturaPayload) });
+      if (facturaRes.status >= 400) throw new Error(facturaRes.body);
+
+      ok++;
+      correlativos.push(correlativoFinal);
+    } catch (e) {
+      errores.push((e && e.message) || String(e));
+    }
+  }
+
+  return { ok, errores, decrementados, correlativos };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Sync genérico por tabla (upsert idempotente fila por fila)
+// ═══════════════════════════════════════════════════════════════
+
+// Tablas sincronizables desde la app (nombres de tabla locales = Supabase).
+const TABLAS_SYNC = new Set([
+  'proveedores',
+  'cotizaciones',
+  'cotizacion_items',
+  'ordenes_compra',
+  'orden_compra_items',
+  'compras',
+  'compra_items',
+  'transacciones',
+  'matriculas',
+  'notas',
+  'empleados',
+  'nomina',
+  'fiado_abonos',
+  'rutas',
+  'ruta_clientes',
+  'sucursales',
+  'transferencias',
+  'transferencia_items',
+  'membresias',
+  'socios',
+  'socio_membresias',
+  'socio_precios',
+  'sar_correlativo',
+  'sar_contingencia',
+  'pos_arqueo_caja',
+  'pos_promociones',
+  'pos_cliente_credito',
+  'pos_config',
+  'pos_ventas',
+]);
+
+function sanitizeColumnName(name) {
+  return String(name || '')
+    .replace(/[^a-zA-Z0-9_]/g, '')
+    .slice(0, 60);
+}
+
+function sanitizeValue(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') return v;
+  return JSON.stringify(v);
+}
+
+async function syncHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+
+  try {
+    const body = parseBody(req);
+    const empresaCodigo = body.empresa_codigo || '';
+    const tabla = String(body.tabla || '');
+    const operacion = String(body.operacion || 'insert');
+    const rows = Array.isArray(body.rows) ? body.rows : [];
+
+    if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
+    if (!TABLAS_SYNC.has(tabla)) {
+      return fail(res, { message: `Tabla no permitida para sync: ${tabla}`, status: 400 });
+    }
+    if (rows.length === 0) return ok(res, { success: true, ok: 0, errores: [] });
+
+    const empresaId = await resolverEmpresaId(empresaCodigo);
+
+    // Ventas POS: flujo especial con decremento de stock y factura idempotente.
+    if (tabla === 'pos_ventas') {
+      const resultado = await procesarVentaSync(empresaCodigo, empresaId, rows);
+      if (resultado.ok === 0 && resultado.errores.length > 0) {
+        return fail(res, { message: resultado.errores.join(' | '), status: 502 });
+      }
+      return ok(res, {
+        success: true,
+        ok: resultado.ok,
+        decrementados: resultado.decrementados,
+        errores: resultado.errores,
+      }, 201);
+    }
+
+    const procesados = [];
+    const errores = [];
+
+    for (const raw of rows) {
+      try {
+        if (typeof raw !== 'object' || raw === null) continue;
+        const payload = {};
+        for (const [k, v] of Object.entries(raw)) {
+          const col = sanitizeColumnName(k);
+          if (!col || col === 'empresa_id') continue;
+          payload[col] = sanitizeValue(v);
+        }
+        if (Object.keys(payload).length === 0) continue;
+        payload.empresa_codigo = empresaCodigo;
+        if (empresaId) payload.empresa_id = empresaId;
+
+        const id = payload.id ? String(payload.id) : null;
+
+        if (operacion === 'delete' && id) {
+          const del = await supabaseRequest(`/${tabla}?id=eq.${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+          });
+          if (del.status >= 400) throw new Error(del.body);
+          procesados.push({ id });
+          continue;
+        }
+
+        if (id) {
+          const existing = await supabaseRequest(`/${tabla}?id=eq.${encodeURIComponent(id)}&select=id`);
+          let rowsFound = [];
+          try { rowsFound = JSON.parse(existing.body || '[]'); } catch {}
+          if (existing.status < 400 && rowsFound.length > 0) {
+            const patch = await supabaseRequest(`/${tabla}?id=eq.${encodeURIComponent(id)}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() }),
+            });
+            if (patch.status >= 400) throw new Error(patch.body);
+            procesados.push({ id, actualizado: true });
+            continue;
+          }
+        }
+
+        const inserted = await supabaseRequest(`/${tabla}`, { method: 'POST', body: JSON.stringify(payload) });
+        if (inserted.status >= 400) throw new Error(inserted.body);
+        procesados.push({ id, insertado: true });
+      } catch (e) {
+        errores.push({ error: (e && e.message) || String(e) });
+      }
+    }
+
+    if (procesados.length === 0 && errores.length > 0) {
+      return fail(res, { message: errores.join(' | '), status: 502 });
+    }
+    return ok(res, { success: true, ok: procesados.length, errores }, 201);
+  } catch (e) {
+    return fail(res, e);
   }
 }
 

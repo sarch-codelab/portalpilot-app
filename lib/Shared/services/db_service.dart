@@ -417,18 +417,27 @@ class PortalPilotDB {
     }
   }
 
-  /// Ventas/POS - sync to backend
-  static Future<Map<String, dynamic>?> registrarVenta({
-    required Map<String, dynamic> venta,
+  /// Sync genérico por tabla (ruta /api/sync) para cualquier entidad.
+  /// El backend hace upsert idempotente fila por fila y reporta errores
+  /// individuales para que la cola siga procesando el resto.
+  static Future<bool> syncRows({
+    required String tabla,
     required String empresaCodigo,
+    required List<Map<String, dynamic>> rows,
+    String operacion = 'insert',
   }) async {
     try {
-      final result = await _postJson('/api/ventas', {'empresa_codigo': empresaCodigo, 'venta': venta});
-      if (result is Map<String, dynamic>) return result;
+      final result = await _postJson('/api/sync', {
+        'empresa_codigo': empresaCodigo,
+        'tabla': tabla,
+        'operacion': operacion,
+        'rows': rows,
+      });
+      return result != null;
     } catch (e) {
-      debugPrint('❌ registrarVenta sync: $e');
+      debugPrint('❌ syncRows ($tabla) sync: $e');
+      return false;
     }
-    return null;
   }
 
   /// Notas - sync to backend
