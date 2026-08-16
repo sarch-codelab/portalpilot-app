@@ -1,0 +1,110 @@
+LICENCIA PROPIETARIA — PORTAL PILOT APP (FLUTTER)
+====================================================
+
+© 2026 Portal Pilot. Todos los derechos reservados.
+
+Este software, incluyendo pero no limitado a:
+- Código fuente de la aplicación Flutter (Dart) para Android, iOS, Web, Windows, macOS, Linux
+- Motor de base de datos local (SQLite / Drift) y esquema de sincronización offline-first
+- Módulos funcionales: POS, Facturación SAR, Inventario, CRM, Comercial, Educación, RRHH, Contabilidad, Analytics, Membresías, Canal Tradicional/Moderno, Multi-Empresa, Supply Chain, Seguridad
+- Algoritmos de facturación electrónica SAR (CAI, RTN, correlativos, PDF, número a letras)
+- Motor de escaneo de códigos de barras (EAN-13/8, UPC, Code 39/93/128, ITF, DataMatrix, QR)
+- Lógica de sincronización idempotente por `(empresa_codigo, codigo)` y cola offline (SyncService)
+- Arquitectura multi-tenant con aislamiento por `empresa_codigo` y RLS en Supabase
+- API Serverless (Node.js/Vercel): handler único `/api/[...slug].js` y endpoints especializados
+- Esquemas SQL de Supabase (multi-tenant, índices UNIQUE, políticas RLS, migraciones idempotentes)
+- Diseño de interfaz, experiencia de usuario, tema visual y widgets compartidos
+- Marca "Portal Pilot", logotipos, activos visuales y nombre comercial
+- Documentación técnica, guías de instalación, CI/CD (Codemagic), configuración de builds
+
+ES PROPIEDAD EXCLUSIVA DE PORTAL PILOT.
+
+--------------------------------------------------
+PROHIBICIONES EXPRESAS
+--------------------------------------------------
+Queda ESTRICTAMENTE PROHIBIDO sin autorización escrita previa de Portal Pilot:
+
+❌ Copiar, reproducir, duplicar, clonar o forkear el código fuente (total o parcial)
+❌ Distribuir, sublicenciar, vender, arrendar, prestar o publicar la aplicación o su código
+❌ Modificar, adaptar, traducir, portar a otro framework o crear obras derivadas
+❌ Realizar ingeniería inversa, descompilar, desensamblar, deobfuscar o analizar binarios
+❌ Extraer, reutilizar o replicar la lógica de facturación SAR, escaneo, sincronización offline o multi-tenant
+❌ Eliminar, alterar u ofuscar avisos de derechos de autor, marcas, logotipos o identificadores de versión
+❌ Usar el código, arquitectura o algoritmos para desarrollar productos competidores o similares
+❌ Publicar, compartir o hacer accesible el código fuente, binarios firmados o artefactos de build a terceros
+❌ Usar la marca "Portal Pilot", logotipos, nombre comercial o identidad visual en cualquier contexto
+❌ Distribuir la app (APK, IPA, EXE, DMG, AppImage, Web build) fuera de los canales oficiales autorizados
+❌ Compartir claves de firma (keystore Android, certificados iOS/macOS) o configuraciones de despliegue
+❌ Ejecutar la app en entornos no autorizados, modificar su comportamiento en tiempo de ejecución o inyectar código
+
+--------------------------------------------------
+USO PERMITIDO (Solo para clientes con licencia vigente)
+--------------------------------------------------
+Los clientes con plan activo (Starter, Business, Enterprise) y licencia asignada tienen derecho a:
+
+✅ Instalar y ejecutar la app en dispositivos propiedad de la empresa licenciada (Windows, Android, iOS, macOS, Linux)
+✅ Acceder a la versión Web (PWA) desde navegadores autorizados
+✅ Usar todos los módulos habilitados según su plan contratado
+✅ Operar en modo offline-first: guardar datos localmente (SQLite/Drift) y sincronizar al restablecer conexión
+✅ Escanear códigos de barras, emitir facturas SAR, gestionar inventario multi-bodega, POS, CRM, etc.
+✅ Invitar usuarios dentro de los límites de su plan (roles: owner, admin, user, profesor, etc.)
+✅ Exportar sus propios datos operativos en formatos estándar (CSV, PDF, JSON, Excel) desde la app
+✅ Realizar backups locales cifrados y restaurarlos en dispositivos autorizados
+✅ Recibir actualizaciones automáticas (cuando estén disponibles) a través de los canales oficiales
+
+--------------------------------------------------
+PROTECCIÓN TÉCNICA Y LEGAL
+--------------------------------------------------
+Este software implementa medidas de protección que no deben ser eludidas:
+
+🔒 **Código ofuscado en builds de release** (Dart AOT compilation, tree-shaking)
+🔒 **Firma digital obligatoria** (Android: keystore; iOS/macOS: certificados Apple; Windows: certificado EV)
+🔒 **Verificación de integridad** en tiempo de ejecución (checksums, attestation)
+🔒 **Claves de API solo en servidor** (Supabase service role, Groq AI) — nunca en el cliente
+🔒 **Aislamiento multi-tenant a nivel de BD** (RLS en PostgreSQL por `empresa_codigo`)
+🔒 **Encriptación en tránsito** (TLS 1.3) y en reposo (SQLite cifrado opcional, Supabase encryption)
+
+--------------------------------------------------
+MARCO LEGAL Y JURISDICCIÓN
+--------------------------------------------------
+Esta licencia se rige exclusivamente por las leyes de la **República de Honduras**.
+
+Cualquier violación será perseguida con el máximo rigor legal, incluyendo:
+
+- **Daños y perjuicios** (lucro cesante, daño emergente, daño punitivo)
+- **Medidas cautelares e injunctions** (cesación inmediata de uso, incautación de copias)
+- **Costas judiciales y honorarios de abogados** a cargo del infractor
+- **Responsabilidad penal** según Ley de Derecho de Autor y Propiedad Intelectual de Honduras
+- **Competencia desleal** y violación de secreto empresarial / know-how protegido
+
+El uso no autorizado, distribución, modificación o ingeniería inversa constituye delito informático y violación de propiedad intelectual bajo la legislación hondureña y tratados internacionales (Convenio de Berna, TRIPS).
+
+--------------------------------------------------
+CONTACTO PARA AUTORIZACIONES EXCEPCIONALES
+--------------------------------------------------
+Portal Pilot
+📧 Email: legal@portalpilot.hn
+🌐 Web: https://portal-pilot.vercel.app
+📱 App: https://portal-pilot.vercel.app/download.html
+💻 GitHub (Web): https://github.com/sarch-codelab/portalpilot
+💻 GitHub (App): https://github.com/sarch-codelab/portalpilot-app
+
+Toda solicitud de autorización debe ser por escrito y firmada por representante legal de Portal Pilot.
+
+--------------------------------------------------
+VIGENCIA Y TERMINACIÓN
+--------------------------------------------------
+- **Vigencia**: Perpetua desde la primera publicación (2026). No caduca por el paso del tiempo.
+- **Terminación automática**: Cualquier incumplimiento de esta licencia revoca **inmediata y automáticamente** todos los derechos concedidos, sin necesidad de notificación previa.
+- **Efectos de terminación**: El licenciatario debe destruir todas las copias (fuente, binarios, backups, artefactos de build) y certificar por escrito su destrucción.
+- **Supervivencia**: Las cláusulas de propiedad, prohibiciones, protección legal, jurisdicción y confidencialidad sobreviven a la terminación.
+
+--------------------------------------------------
+RECONOCIMIENTO DE TERCEROS (Solo componentes permitidos)
+--------------------------------------------------
+La app incluye componentes de código abierto bajo sus respectivas licencias (Flutter, Dart, Drift, Supabase client, mobile_scanner, pdf, intl, etc.). Estos componentes conservan sus licencias originales (BSD-3, MIT, Apache-2.0). **Ningún componente abierto otorga derechos sobre el código propietario de Portal Pilot**.
+
+------------------------------------------------==
+PORTAL PILOT — Tu Negocio Inteligente
+Hecho en Honduras 🇭🇳 con ❤️ por el equipo de Portal Pilot
+====================================================
