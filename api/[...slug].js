@@ -79,7 +79,7 @@ function loginHandler(req, res) {
 
   const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || '';
-  const jwtSecret = process.env.JWT_SECRET || 'portalpilot-jwt-secret-key-2026';
+  const jwtSecret = process.env.JWT_SECRET || 'portalpilot_production_jwt_secret_key_2026_secure';
 
   if (!supabaseUrl || !supabaseKey) {
     return res.status(503).json({ error: 'Supabase no está configurado en las variables de entorno de Vercel (SUPABASE_URL / SUPABASE_SERVICE_KEY).' });
@@ -101,17 +101,36 @@ function loginHandler(req, res) {
       }
 
       let isMatch = false;
-      if (user.password_hash) {
-        if (user.password_hash.startsWith('$2')) {
-          isMatch = await bcrypt.compare(password, user.password_hash);
+      const storedHash = user.password_hash || user.password;
+      if (storedHash) {
+        if (storedHash.startsWith('$2')) {
+          isMatch = await bcrypt.compare(password, storedHash);
         } else {
-          isMatch = (password === user.password_hash);
+          isMatch = (password === storedHash);
         }
       }
 
       if (!isMatch) {
         return res.status(401).json({ error: 'Contraseña incorrecta.' });
       }
+
+      // Lookup tenant data (area, plan) — same as web portal
+      let tenantData = null;
+      if (user.empresa_codigo) {
+        try {
+          const tenantRes = await fetch(
+            `${restBase}/tenants?codigo=eq.${encodeURIComponent(user.empresa_codigo)}&select=*`,
+            { headers }
+          );
+          const tenantRows = await tenantRes.json();
+          if (Array.isArray(tenantRows) && tenantRows.length > 0) {
+            tenantData = tenantRows[0];
+          }
+        } catch (_) {}
+      }
+
+      const userArea = tenantData?.area || user.area || 'Área Comercial';
+      const userPlan = tenantData?.plan || 'pro';
 
       const token = jwt.sign(
         {
@@ -130,11 +149,16 @@ function loginHandler(req, res) {
         user: {
           id: user.id,
           nombre: user.nombre || '',
+          apellido: user.apellido || '',
           email: user.email,
           rol: user.rol || 'admin',
           empresa_codigo: user.empresa_codigo || 'ROOT',
+          tenant: user.empresa_codigo || 'ROOT',
+          area: userArea,
+          plan: userPlan,
           status: user.estado || 'activo',
-          avatar_url: user.avatar_url || null
+          foto_perfil_url: user.avatar_url || user.foto_perfil_url || null,
+          token: token
         }
       });
     })
@@ -142,81 +166,6 @@ function loginHandler(req, res) {
       console.error('[login] Error consultando Supabase:', err.message);
       res.status(500).json({ error: 'Error al conectar con la base de datos Supabase.' });
     });
-}
-      }
-    }
-  } catch (err) {
-    console.error('[NocoDB] Error obteniendo tablas:', err.message);
-  }
-
-  // Paso 2: Buscar el usuario por email
-  let userRecord = null;
-  
-  if (tableId) {
-    // Usar el tableId encontrado con API v2
-    const where = encodeURIComponent(`(email,eq,${email})`);
-    const recordsUrl = `${apiUrl}/api/v2/tables/${tableId}/records?where=${where}&limit=1`;
-    const recordsRes = await fetch(recordsUrl, { headers });
-    
-    if (recordsRes.ok) {
-      const data = await recordsRes.json();
-      const records = data.list || data.data?.list || data.records || [];
-      if (records.length > 0) {
-        userRecord = records[0];
-      }
-    }
-  } else {
-    // Fallback: intentar con el nombre de tabla directamente (API v1)
-    const where = encodeURIComponent(`(email,eq,${email})`);
-    const recordsUrl = `${apiUrl}/api/v1/db/data/noco/${baseId}/${tableName}?where=${where}&limit=1`;
-    const recordsRes = await fetch(recordsUrl, { headers });
-    
-    if (recordsRes.ok) {
-      const data = await recordsRes.json();
-      const records = data.list || data.data?.list || data.records || [];
-      if (records.length > 0) {
-        userRecord = records[0];
-      }
-    }
-  }
-
-  if (!userRecord) {
-    throw new Error('AUTH_Credenciales inválidas. Usuario no encontrado.');
-  }
-
-  // Paso 3: Validar la contraseña
-  const storedPassword = userRecord.password || userRecord.contrasena || userRecord.contraseña || '';
-  const passwordMatch = await comparePassword(password, storedPassword);
-  
-  if (!passwordMatch) {
-    throw new Error('AUTH_Credenciales inválidas. Contraseña incorrecta.');
-  }
-
-  // Paso 4: Verificar que el usuario esté activo
-  const userStatus = (userRecord.status || userRecord.estado || 'active').toLowerCase();
-  if (userStatus !== 'active' && userStatus !== 'activo') {
-    throw new Error('AUTH_Tu cuenta está pendiente de activación por el Owner.');
-  }
-
-  // Paso 5: Construir respuesta en el formato que espera Flutter
-  const userId = (userRecord.Id || userRecord.id || userRecord.ID || '').toString();
-  const simpleToken = `pp_token_${userId}_${Date.now()}`;
-
-  return {
-    user: {
-      id: userId,
-      nombre: userRecord.nombre || userRecord.name || userRecord.first_name || '',
-      apellido: userRecord.apellido || userRecord.last_name || userRecord.apellidos || '',
-      email: userRecord.email || email,
-      rol: userRecord.rol || userRecord.role || userRecord.cargo || 'Empleado',
-      area: userRecord.area || userRecord.department || '',
-      rango: userRecord.rango || userRecord.rank || '',
-      status: userStatus,
-      empresa_codigo: (userRecord.empresa_codigo || userRecord.company_code || '').toUpperCase(),
-      empresa_nombre: userRecord.empresa_nombre || userRecord.company_name || '',
-    },
-    token: simpleToken,
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
