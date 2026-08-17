@@ -35,7 +35,7 @@
 
 ## Descripción
 
-**Portal Pilot** es un ERP diseñado para empresas hondureñas (pulperías, distribuidoras, retail, educación, salud, cadenas multi-sucursal). Funciona **offline-first**: los datos se guardan localmente (SQLite/Drift) y se sincronizan con la nube (Supabase) cuando hay conexión, con cola de sincronización y resolución de conflictos por `(empresa, código)`.
+**Portal Pilot** es un ERP diseñado para negocios comerciales hondureños (pulperías, abarroterías, distribuidoras, supermercados, cadenas multi-sucursal y modelos de membresía). Funciona **offline-first**: los datos se guardan localmente (SQLite/Drift) y se sincronizan con la nube (Supabase) cuando hay conexión, con cola de sincronización y resolución de conflictos por `(empresa, código)`.
 
 Está construido con un único código Flutter que compila para **Android, iOS, Web y Windows**, respaldado por una API serverless en Vercel y una base de datos PostgreSQL multi-tenant.
 
@@ -66,11 +66,11 @@ Está construido con un único código Flutter que compila para **Android, iOS, 
 
 ### Multi-tenant y multi-área
 - **Empresas como tenants** con módulos habilitados por plan.
-- Configuración **multi-área**: retail, canal tradicional/moderno, membresías, educación, general, comercial.
+- Configuración **multi-área**: retail, canal tradicional/moderno, membresías, comercial general.
 - Módulos activables por empresa con flags persistentes y restablecimiento por área.
 
 ### Otros módulos
-- Educación (matrícula, notas, asistencia, IA), RRHH/nómina, membresías, analytics/BI, seguridad (roles/auditoría) y más.
+- Compras y proveedores, cotizaciones, analytics/BI, RRHH/nómina, seguridad (roles/auditoría), supply chain, y más.
 
 ---
 
@@ -124,7 +124,6 @@ Está construido con un único código Flutter que compila para **Android, iOS, 
 | `SectorRetail` | Precios por canal, promociones, inventario por tienda |
 | `SupplyChain` | Recepción, trazabilidad, multi-bodega |
 | `Membresias` | Socios, precios, puntos, renovaciones |
-| `Educacion` | Matrícula, notas, asistencia, IA |
 | `RRHH` | Empleados y nómina |
 | `MultiEmpresa` | Holding, filiales, consolidado, tipo de cambio |
 | `Analytics` | Dashboard gerencial, KPIs, forecasting |

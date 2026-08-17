@@ -74,125 +74,75 @@ function loginHandler(req, res) {
     return;
   }
 
-  // ── Configuración NocoDB ──────────────────────────────────────────────────
-  const rawAuth = (process.env.AUTH_BACKEND_URL || '').trim();
-  const tokenEnv = (process.env.AUTH_BACKEND_TOKEN || '').trim();
-  const nocodbBaseId = (process.env.NOCODB_BASE_ID || '').trim();
-  const nocodbTableName = (process.env.NOCODB_TABLE_NAME || 'usuarios').trim();
-  const nocodbApiUrl = (process.env.NOCODB_API_URL || 'https://app.nocodb.com').trim().replace(/\/$/, '');
+  const jwt = require('jsonwebtoken');
+  const bcrypt = require('bcryptjs');
 
-  // El token puede estar en AUTH_BACKEND_URL (como nc_pat_...) o en AUTH_BACKEND_TOKEN
-  const isToken = rawAuth.startsWith('nc_pat_') || rawAuth.startsWith('nc_');
-  const nocodbToken = isToken ? rawAuth : tokenEnv;
+  const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || '';
+  const jwtSecret = process.env.JWT_SECRET || 'portalpilot-jwt-secret-key-2026';
 
-  // ── Intento 1: Consultar tabla 'usuarios' en NocoDB ───────────────────────
-  if (nocodbToken && nocodbBaseId) {
-    loginWithNocoDB({
-      apiUrl: nocodbApiUrl,
-      token: nocodbToken,
-      baseId: nocodbBaseId,
-      tableName: nocodbTableName,
-      email,
-      password,
-    })
-      .then(result => {
-        if (result) {
-          res.status(200).json(result);
-        } else {
-          throw new Error('No se pudo autenticar');
-        }
-      })
-      .catch(err => {
-        console.error('[login] Error consultando NocoDB:', err.message);
-        // Si hay un error claro de autenticación, devolver error
-        if (err.message && err.message.startsWith('AUTH_')) {
-          const msg = err.message.replace('AUTH_', '');
-          res.status(401).json({ error: msg });
-          return;
-        }
-        // Otros errores: continuar al fallback
-        attemptFallback();
-      });
-    return;
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(503).json({ error: 'Supabase no está configurado en las variables de entorno de Vercel (SUPABASE_URL / SUPABASE_SERVICE_KEY).' });
   }
 
-  // ── Intento 2: Fallback de emergencia ─────────────────────────────────────
-  function attemptFallback() {
-    const fallbackEnabled = (process.env.AUTH_BACKEND_LOGIN_FALLBACK || '').trim().toLowerCase() === 'true';
-    const fallbackEmails = (process.env.AUTH_BACKEND_FALLBACK_EMAILS || '')
-      .split(',')
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    const fallbackPassword = (process.env.AUTH_BACKEND_FALLBACK_PASSWORD || '').trim();
-    const fallbackToken = (process.env.AUTH_BACKEND_FALLBACK_TOKEN || '').trim();
-
-    if (fallbackEnabled && fallbackEmails.length > 0 && fallbackToken && fallbackPassword && fallbackEmails.includes(email) && password === fallbackPassword) {
-      res.status(200).json({
-        user: {
-          id: 'fallback-user',
-          nombre: 'PortalPilot',
-          apellido: 'Admin',
-          email: email,
-          rol: 'Administrador',
-          area: 'Educacion',
-          rango: 'Admin',
-          status: 'active',
-          empresa_codigo: 'ROOT',
-          empresa_nombre: 'Portal Pilot',
-        },
-        token: fallbackToken,
-      });
-      return;
-    }
-
-    // ── Error final ───────────────────────────────────────────────────────────
-    const missingConfig = !nocodbToken
-      ? 'AUTH_BACKEND_URL (token PAT de NocoDB) no está configurado en Vercel.'
-      : !nocodbBaseId
-      ? 'NOCODB_BASE_ID no está configurado en Vercel. Ve a NocoDB → tu proyecto → copia el ID de la URL.'
-      : 'No se pudo autenticar. Verifica las credenciales.';
-
-    res.status(500).json({
-      error: missingConfig,
-      debug: {
-        hasToken: Boolean(nocodbToken),
-        hasBaseId: Boolean(nocodbBaseId),
-        tableName: nocodbTableName,
-        fallbackEnabled,
-        hint: 'Configura NOCODB_BASE_ID en Vercel con el ID de tu proyecto NocoDB (ej: p69dy4zcqfhddyp)',
-      },
-    });
-  }
-
-  attemptFallback();
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Función: loginWithNocoDB
-// Consulta la tabla de usuarios en NocoDB y valida las credenciales
-// ─────────────────────────────────────────────────────────────────────────────
-async function loginWithNocoDB({ apiUrl, token, baseId, tableName, email, password }) {
+  const restBase = `${supabaseUrl}/rest/v1`;
   const headers = {
-    'Content-Type': 'application/json',
-    'xc-token': token,
+    apikey: supabaseKey,
+    Authorization: `Bearer ${supabaseKey}`,
+    'Content-Type': 'application/json'
   };
 
-  // Paso 1: Obtener las tablas de la base de datos para encontrar el tableId
-  let tableId = null;
-  
-  try {
-    const tablesUrl = `${apiUrl}/api/v2/meta/bases/${baseId}/tables`;
-    const tablesRes = await fetch(tablesUrl, { headers });
-    
-    if (tablesRes.ok) {
-      const tablesData = await tablesRes.json();
-      const tables = tablesData.list || tablesData.tables || tablesData || [];
-      const found = tables.find(
-        (t) => t.title?.toLowerCase() === tableName.toLowerCase() ||
-               t.table_name?.toLowerCase() === tableName.toLowerCase()
+  fetch(`${restBase}/usuarios?email=eq.${encodeURIComponent(email)}&select=*`, { headers })
+    .then(r => r.json())
+    .then(async (rows) => {
+      const user = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+      if (!user) {
+        return res.status(401).json({ error: 'Credenciales inválidas. Usuario no registrado.' });
+      }
+
+      let isMatch = false;
+      if (user.password_hash) {
+        if (user.password_hash.startsWith('$2')) {
+          isMatch = await bcrypt.compare(password, user.password_hash);
+        } else {
+          isMatch = (password === user.password_hash);
+        }
+      }
+
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Contraseña incorrecta.' });
+      }
+
+      const token = jwt.sign(
+        {
+          sub: user.id,
+          email: user.email,
+          rol: user.rol || 'admin',
+          empresa_codigo: user.empresa_codigo || 'ROOT'
+        },
+        jwtSecret,
+        { expiresIn: '30d' }
       );
-      if (found) {
-        tableId = found.id;
+
+      res.status(200).json({
+        message: 'Login exitoso',
+        token: token,
+        user: {
+          id: user.id,
+          nombre: user.nombre || '',
+          email: user.email,
+          rol: user.rol || 'admin',
+          empresa_codigo: user.empresa_codigo || 'ROOT',
+          status: user.estado || 'activo',
+          avatar_url: user.avatar_url || null
+        }
+      });
+    })
+    .catch((err) => {
+      console.error('[login] Error consultando Supabase:', err.message);
+      res.status(500).json({ error: 'Error al conectar con la base de datos Supabase.' });
+    });
+}
       }
     }
   } catch (err) {
