@@ -82,6 +82,15 @@ class _LoginScreenState extends State<LoginScreen>
 
     setState(() => _isLoading = true);
 
+    // Mostrar overlay de carga fullscreen
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const _LoadingOverlay(),
+      );
+    }
+
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -134,20 +143,20 @@ class _LoginScreenState extends State<LoginScreen>
         modulosAsignados: modulos.split(',').map((m) => m.trim()).toList(),
       );
 
-      _notificationManager.showNotification(
-        'Acceso concedido. Cargando Dashboard...',
-        NotificationType.success,
+      // Pequeña pausa para que el usuario vea el overlay de éxito
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Cerrar overlay
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
-
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (!mounted) return;
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      });
     } catch (e) {
+      if (mounted) Navigator.of(context).pop(); // Cerrar overlay en error
       _notificationManager.showNotification(
         e.toString().replaceAll('Exception:', '').trim(),
         NotificationType.error,
@@ -934,6 +943,54 @@ class NotificationModel {
       case NotificationType.info:
         return Icons.info_rounded;
     }
+  }
+}
+
+class _LoadingOverlay extends StatelessWidget {
+  const _LoadingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.85),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Color(0xFF8B5CF6),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Iniciando sesión...',
+                style: GoogleFonts.dmSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Preparando tu dashboard',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: Color(0xFFA3A3A3),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

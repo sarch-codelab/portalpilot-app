@@ -499,122 +499,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildModuleCard(Modulo modulo, bool isMobile) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    return RepaintBoundary(
+      child: ModuleCard(
+        modulo: modulo,
+        isMobile: isMobile,
         onTap: () => _openModule(modulo),
-        borderRadius: BorderRadius.circular(20),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: EdgeInsets.all(isMobile ? 18 : 24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF111111),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: modulo.color.withValues(alpha: 0.3),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          modulo.color,
-                          modulo.color.withValues(alpha: 0.7),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: modulo.color.withValues(alpha: 0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Icon(modulo.icono, color: Colors.white, size: 22),
-                  ),
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.6),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    modulo.nombre,
-                    style: GoogleFonts.syne(
-                      fontSize: isMobile ? 16 : 18,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.3,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    modulo.descripcion,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      color: const Color(0xFFA3A3A3),
-                      height: 1.4,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Text(
-                    'Abrir',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: modulo.color,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: modulo.color,
-                    size: 16,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -848,6 +737,147 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ModuleCard extends StatelessWidget {
+  final Modulo modulo;
+  final bool isMobile;
+  final VoidCallback onTap;
+
+  const ModuleCard({
+    super.key,
+    required this.modulo,
+    required this.isMobile,
+    required this.onTap,
+  });
+
+  static final Map<int, TextStyle> _titleCache = {};
+  static final TextStyle _descStyle = GoogleFonts.dmSans(
+    fontSize: 12,
+    color: Color(0xFFA3A3A3),
+    height: 1.4,
+  );
+
+  TextStyle _getTitleStyle(double fontSize) {
+    final key = fontSize.toInt();
+    return _titleCache.putIfAbsent(key, () => GoogleFonts.syne(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w800,
+      color: Colors.white,
+      letterSpacing: -0.3,
+    ));
+  }
+
+  TextStyle _getActionStyle(Color color) {
+    return GoogleFonts.dmSans(
+      fontSize: 13,
+      fontWeight: FontWeight.bold,
+      color: color,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: EdgeInsets.all(isMobile ? 18 : 24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111111),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: modulo.color.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x4D000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            modulo.color,
+                            modulo.color.withValues(alpha: 0.7),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: modulo.color.withValues(alpha: 0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(modulo.icono, color: Colors.white, size: 22),
+                    ),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x9910B981),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      modulo.nombre,
+                      style: _getTitleStyle(isMobile ? 16 : 18),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      modulo.descripcion,
+                      style: _descStyle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Text('Abrir', style: _getActionStyle(modulo.color)),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_rounded, color: modulo.color, size: 16),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
