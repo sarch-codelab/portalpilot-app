@@ -28,18 +28,35 @@ const routes = {
 };
 
 module.exports = async function handler(req, res) {
-  const pathname = req.url
-    .split('?')[0]
-    .replace(/^\/api\//, '')
-    .replace(/\/+$/, '');
+  // Vercel [...slug] puede venir en req.query.slug (array) o en req.url
+  let pathname = '';
+  if (req.query && req.query.slug) {
+    const slug = req.query.slug;
+    pathname = Array.isArray(slug) ? slug.join('/') : String(slug);
+    pathname = pathname.replace(/^\/+|\/+$/g, '');
+  } else {
+    pathname = (req.url || '').split('?')[0].replace(/^\/api\//, '').replace(/\/+$/g, '').replace(/^\/+|\/+$/g, '');
+  }
+  if (!pathname && req.url) {
+    // fallback por si req.query.slug no está poblado
+    pathname = req.url.split('?')[0].replace(/^\/api\//, '').replace(/\/+$/g, '').replace(/^\/+|\/+$/g, '');
+  }
 
   // Soporte para rutas dinámicas con prefijo (ej: ai/barcode/12345)
   let route = routes[pathname];
   if (!route && pathname.startsWith('ai/barcode/')) {
     route = aiBarcodeHandler;
   }
+  // normalize: quitar trailing slash ya hecho, pero por si acaso
   if (!route) {
-    return res.status(404).json({ error: `Ruta no encontrada: /api/${pathname}` });
+    // intentar sin query extra
+    const clean = pathname.split('?')[0];
+    route = routes[clean];
+    if (!route && clean.startsWith('ai/barcode/')) route = aiBarcodeHandler;
+    if (!route) {
+      console.log(`[api] 404 pathname='${pathname}' url='${req.url}' query=${JSON.stringify(req.query)}`);
+      return res.status(404).json({ error: `Ruta no encontrada: /api/${pathname}`, debug: { pathname, url: req.url, query: req.query } });
+    }
   }
   return route(req, res);
 };
