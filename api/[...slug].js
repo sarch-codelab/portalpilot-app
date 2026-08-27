@@ -4,6 +4,13 @@
 const routes = {
   'login': loginHandler,
   'ai/groq': aiGroqHandler,
+  'ai/chat': aiChatHandler,
+  'ai/vision': aiVisionHandler,
+  'ai/barcode': aiBarcodeHandler,
+  'ai/dashboard': aiDashboardHandler,
+  'ai/pos/analyze': aiPosAnalyzeHandler,
+  'ai/crm/customer': aiCrmHandler,
+  'ai/support': aiSupportHandler,
   'clientes': clientesHandler,
   'compras': comprasHandler,
   'cotizaciones': cotizacionesHandler,
@@ -26,7 +33,11 @@ module.exports = async function handler(req, res) {
     .replace(/^\/api\//, '')
     .replace(/\/+$/, '');
 
-  const route = routes[pathname];
+  // Soporte para rutas dinámicas con prefijo (ej: ai/barcode/12345)
+  let route = routes[pathname];
+  if (!route && pathname.startsWith('ai/barcode/')) {
+    route = aiBarcodeHandler;
+  }
   if (!route) {
     return res.status(404).json({ error: `Ruta no encontrada: /api/${pathname}` });
   }
@@ -313,6 +324,120 @@ function aiGroqHandler(req, res) {
       res.status(500).json({ error: err.message });
     });
 }
+
+// ═══════════════════════════════════════════════════════════════
+// AI Gateway handlers (vision, chat, barcode, dashboard...)
+// ═══════════════════════════════════════════════════════════════
+
+function aiChatHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido', reply: null });
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return res.status(500).json({ error: 'Falta GROQ_API_KEY en Vercel', reply: null });
+  const body = parseBody(req);
+  const message = body.message || body.prompt || body.query || '';
+  const systemPrompt = body.systemPrompt || 'Eres un asistente útil de Portal Pilot.';
+  if (!message) return res.status(400).json({ error: 'Falta message', reply: null });
+  fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: body.model || body.modelId || 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ],
+      max_tokens: body.maxTokens || 1500,
+      temperature: body.temperature ?? 0.7,
+    }),
+  })
+    .then(async (r) => {
+      const data = await r.json();
+      if (!r.ok || !data.choices) {
+        return res.status(r.status || 502).json({ error: data.error?.message || 'Error Groq', reply: null, details: data });
+      }
+      const reply = data.choices?.[0]?.message?.content || '';
+      return res.status(200).json({ reply, model: data.model || body.model, provider: 'groq', usage: data.usage });
+    })
+    .catch((err) => res.status(500).json({ error: err.message, reply: null }));
+}
+
+function aiVisionHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido', reply: null });
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return res.status(500).json({ error: 'Falta GROQ_API_KEY en Vercel', reply: null });
+  const body = parseBody(req);
+  let image = body.image || body.base64 || '';
+  const prompt = body.prompt || 'Identifica este producto y devuelve un JSON con: nombre, marca, categoria, descripcion, presentacion, unidad_medida, confianza (0-1). Si no puedes determinar algo, deja el campo como null. Responde SOLO con el JSON.';
+  if (!image) return res.status(400).json({ error: 'Falta image (base64)', reply: null });
+  if (!image.startsWith('data:')) image = `data:image/jpeg;base64,${image.replace(/\s+/g, '')}`;
+  fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: body.model || 'meta-llama/llama-4-scout-17b-16e-instruct',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: image } },
+          ],
+        },
+      ],
+      max_tokens: body.maxTokens || 800,
+      temperature: 0.2,
+    }),
+  })
+    .then(async (r) => {
+      const data = await r.json();
+      if (!r.ok || !data.choices) {
+        return res.status(r.status || 502).json({ error: data.error?.message || 'Error Groq Vision', reply: null, details: data });
+      }
+      const reply = data.choices?.[0]?.message?.content || '';
+      return res.status(200).json({ reply, model: data.model || 'meta-llama/llama-4-scout-17b-16e-instruct', provider: 'groq', usage: data.usage });
+    })
+    .catch((err) => res.status(500).json({ error: err.message, reply: null }));
+}
+
+async function aiBarcodeHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido' });
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  // Extraer código de la ruta ai/barcode/<code> o query ?code=
+  const urlParts = (req.url || '').split('?')[0].split('/');
+  let code = urlParts[urlParts.length - 1] || '';
+  if (!code || code === 'barcode') code = (req.query?.code || '').toString();
+  code = decodeURIComponent((code || '').toString().trim());
+  if (!code) return res.status(400).json({ found: false, products: [], source: 'error', message: 'Falta código de barras' });
+  try {
+    const result = await supabaseRequest(`/productos?codigo=eq.${encodeURIComponent(code)}&select=*&limit=10`);
+    if (result.status >= 400) return res.status(502).json({ found: false, products: [], source: 'supabase', message: result.body });
+    const rows = JSON.parse(result.body || '[]');
+    if (Array.isArray(rows) && rows.length > 0) {
+      return ok(res, { found: true, products: rows, source: 'supabase' });
+    }
+    // Fallback sin empresa_codigo: busca global
+    return ok(res, { found: false, products: [], source: 'supabase', message: 'No encontrado en catálogo' });
+  } catch (e) {
+    return res.status(500).json({ found: false, products: [], source: 'error', message: e.message });
+  }
+}
+
+function aiDashboardHandler(req, res) { return aiChatHandler(req, res); }
+function aiPosAnalyzeHandler(req, res) { return aiChatHandler(req, res); }
+function aiCrmHandler(req, res) { return aiChatHandler(req, res); }
+function aiSupportHandler(req, res) { return aiChatHandler(req, res); }
 
 // ═══════════════════════════════════════════════════════════════
 // Placeholder handlers para otros endpoints
