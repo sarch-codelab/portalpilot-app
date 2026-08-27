@@ -258,33 +258,72 @@ class _ProductoFormState extends State<ProductoForm> {
     if (_isAiAnalyzing || _aiAnalysisInProgress) return;
     _aiAnalysisInProgress = true;
 
-    // Check camera permission first
-    final isMobile = Platform.isAndroid || Platform.isIOS;
-    if (isMobile) {
-      final status = await Permission.camera.request();
-      if (!status.isGranted) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('No se pudo acceder a la cámara. Puedes ingresar el producto manualmente.', style: GoogleFonts.dmSans()),
-              backgroundColor: const Color(0xFFF59E0B),
-            ),
-          );
-        }
+    // PC = galería, Móvil = opción cámara/galería
+    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    ImageSource? source;
+    if (isDesktop) {
+      source = ImageSource.gallery;
+    } else {
+      // En móvil preguntar: cámara o galería
+      if (!mounted) {
+        _aiAnalysisInProgress = false;
         return;
+      }
+      source = await showDialog<ImageSource>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF141414),
+          title: Text('Identificar con IA', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+          content: Text('Elige de dónde tomar la foto del producto', style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFA3A3A3))),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, ImageSource.gallery), child: Text('Galería', style: GoogleFonts.dmSans(color: const Color(0xFF737373)))),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, ImageSource.camera), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)), child: Text('Cámara', style: GoogleFonts.dmSans(color: Colors.white))),
+          ],
+        ),
+      );
+      if (source == null) {
+        _aiAnalysisInProgress = false;
+        return;
+      }
+      // Permiso solo si es cámara en móvil
+      if (source == ImageSource.camera) {
+        final status = await Permission.camera.request();
+        if (!status.isGranted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Permiso de cámara denegado. Intenta con Galería.', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFF59E0B)),
+            );
+          }
+          _aiAnalysisInProgress = false;
+          return;
+        }
       }
     }
 
-    // Pick image from camera or gallery
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.camera,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 75,
-    );
-    if (picked == null) return;
+    // Pick image
+    XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(source: source, maxWidth: 800, maxHeight: 800, imageQuality: 75);
+    } on PlatformException catch (e) {
+      debugPrint('[AI] ImagePicker PlatformException: $e');
+      // Fallback a galería si cámara falla en desktop
+      if (source == ImageSource.camera) {
+        try {
+          picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800, imageQuality: 75);
+        } catch (_) {}
+      }
+    }
+    if (picked == null) {
+      _aiAnalysisInProgress = false;
+      return;
+    }
 
-    setState(() => _isAiAnalyzing = true);
+    if (mounted) {
+      setState(() => _isAiAnalyzing = true);
+    } else {
+      _aiAnalysisInProgress = false;
+      return;
+    }
 
     try {
       final bytes = await picked.readAsBytes();
