@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ConfiguracionImpuestos extends StatefulWidget {
   const ConfiguracionImpuestos({super.key});
@@ -10,23 +13,25 @@ class ConfiguracionImpuestos extends StatefulWidget {
 }
 
 class _ConfiguracionImpuestosState extends State<ConfiguracionImpuestos> {
-  List<Map<String, dynamic>> _impuestos = [
+  static const String _prefsKey = 'impuestos_config';
+
+  static const List<Map<String, dynamic>> _impuestosPredeterminados = [
     {
-      'id': '1',
+      'id': 'isv',
       'nombre': 'ISV (IVA)',
       'tasa': 15.0,
       'tipo': 'Ventas',
       'descripcion': 'Impuesto Sobre Ventas',
     },
     {
-      'id': '2',
+      'id': 'isr',
       'nombre': 'ISR',
       'tasa': 25.0,
       'tipo': 'Retencion',
       'descripcion': 'Impuesto Sobre Renta',
     },
     {
-      'id': '3',
+      'id': 'timbre',
       'nombre': 'Timbre Fiscal',
       'tasa': 0.5,
       'tipo': 'Fijo',
@@ -34,10 +39,49 @@ class _ConfiguracionImpuestosState extends State<ConfiguracionImpuestos> {
     },
   ];
 
+  List<Map<String, dynamic>> _impuestos = [];
+  bool _cargando = true;
+
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarImpuestos();
+  }
+
+  Future<void> _cargarImpuestos() async {
+    List<Map<String, dynamic>> cargados = [];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString(_prefsKey);
+      if (json != null) {
+        final data = jsonDecode(json) as List<dynamic>;
+        cargados = data
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+    } catch (_) {}
+    if (cargados.isEmpty) {
+      cargados = _impuestosPredeterminados
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      await _persistirImpuestos(cargados);
+    }
+    if (!mounted) return;
+    setState(() {
+      _impuestos = cargados;
+      _cargando = false;
+    });
+  }
+
+  Future<void> _persistirImpuestos(
+    List<Map<String, dynamic>> impuestos,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefsKey, jsonEncode(impuestos));
+    } catch (_) {}
   }
 
   void _onThemeChanged() {
@@ -90,14 +134,30 @@ class _ConfiguracionImpuestosState extends State<ConfiguracionImpuestos> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _impuestos.length,
-        itemBuilder: (context, index) {
-          final impuesto = _impuestos[index];
-          return _buildImpuestoCard(impuesto, palette);
-        },
-      ),
+      body: _cargando
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF8B5CF6)),
+            )
+          : _impuestos.isEmpty
+          ? Center(
+              child: Text(
+                'No hay impuestos configurados',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _impuestos.length,
+              itemBuilder: (context, index) {
+                final impuesto = _impuestos[index];
+                return _buildImpuestoCard(impuesto, palette);
+              },
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddImpuestoDialog(),
         backgroundColor: const Color(0xFF8B5CF6),
@@ -293,7 +353,7 @@ class _ConfiguracionImpuestosState extends State<ConfiguracionImpuestos> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: tipo,
+              initialValue: tipo,
               decoration: InputDecoration(
                 labelText: 'Tipo',
                 labelStyle: TextStyle(
@@ -330,15 +390,33 @@ class _ConfiguracionImpuestosState extends State<ConfiguracionImpuestos> {
           ),
           ElevatedButton(
             onPressed: () {
+              final nombre = nombreController.text.trim();
+              final tasa = double.tryParse(tasaController.text);
+              if (nombre.isEmpty || tasa == null || tasa < 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Ingrese un nombre y una tasa validos'),
+                    backgroundColor: Color(0xFFEF4444),
+                  ),
+                );
+                return;
+              }
               setState(() {
                 _impuestos.add({
-                  'id': DateTime.now().toString(),
-                  'nombre': nombreController.text,
-                  'tasa': double.tryParse(tasaController.text) ?? 0.0,
+                  'id': DateTime.now().microsecondsSinceEpoch.toString(),
+                  'nombre': nombre,
+                  'tasa': tasa,
                   'tipo': tipo,
-                  'descripcion': descripcionController.text,
+                  'descripcion': descripcionController.text.trim(),
                 });
               });
+              _persistirImpuestos(_impuestos);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Impuesto guardado'),
+                  backgroundColor: Color(0xFF10B981),
+                ),
+              );
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(

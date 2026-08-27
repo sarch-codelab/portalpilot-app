@@ -153,8 +153,7 @@ pp-w/
 ├── supabase/
 │   ├── schema.sql            # Esquema multi-tenant
 │   ├── migracion_sync.sql    # Migración de sincronización (idempotente)
-│   ├── crear_tabla_productos.sql
-│   └── migracion_matriculas.sql
+│   └── crear_tabla_productos.sql
 ├── test/                     # Tests unitarios (flutter test)
 ├── web/                      # Build web + PWA
 ├── docs/                     # Documentación (setup, instalación)
@@ -233,7 +232,7 @@ Esquema **multi-tenant** en PostgreSQL (Supabase):
 - **`empresas`** — tenant principal; plan, módulos habilitados, configuración.
 - **`usuarios`** — extiende `auth.users`; rol global (`owner`/`admin`/`user`).
 - **`empresa_modulos` / `usuario_modulos`** — módulos por empresa y por usuario.
-- **Tablas de negocio** (`productos`, `facturas`, `clientes`, `ventas`, `transacciones`, `matriculas`, `notas`, …) con columna de tenant `empresa_codigo`.
+- **Tablas de negocio** (`productos`, `facturas`, `clientes`, `ventas`, `transacciones`, …) con columna de tenant `empresa_codigo`.
 
 **Garantía anti-duplicados** en `productos`:
 
@@ -260,7 +259,6 @@ Un único handler (`api/[...slug].js`) despacha por ruta (optimizado para el pla
 | `/api/transacciones` | — | Contabilidad |
 | `/api/compras` · `/api/proveedores` | — | Comercial |
 | `/api/cotizaciones` · `/api/ordenes-compra` | — | Cotizaciones |
-| `/api/matriculas` · `/api/matriculas/stats` · `/api/notas` | — | Educación |
 | `/api/ai/groq` | — | Asistente IA |
 
 ---

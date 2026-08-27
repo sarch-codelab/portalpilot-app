@@ -7,6 +7,7 @@ import 'package:portal_pilot_app/Modules/Facturacion/factura_list.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/clientes/cliente_form.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/reportes/reportes.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/sar_config_screen.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
@@ -73,32 +74,41 @@ class _FacturacionHomeState extends State<FacturacionHome> {
       _fechaLimite = row.fechaLimiteEmision?.toIso8601String() ?? '';
     });
 
-    final facturasJson = prefs.getString('facturas') ?? '[]';
-    final List<dynamic> facturas = jsonDecode(facturasJson);
+    // Cargar resumen de facturas desde el backend
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/facturas/resumen');
+      if (result != null && api.isSuccess(result)) {
+        final resumen = result['resumen'] ?? result;
+        final hoy = DateTime.now();
 
-    final hoy = DateTime.now();
-    int fHoy = 0;
-    double tHoy = 0.0;
+        // También cargar lista para计算 facturasHoy
+        final listResult = await api.get('/api/facturas', queryParams: {'limit': '200'});
+        int fHoy = 0;
+        double tHoy = 0.0;
+        if (listResult != null && api.isSuccess(listResult)) {
+          final facturas = listResult['facturas'] ?? [];
+          for (final f in (facturas is List ? facturas : [])) {
+            final fecha = DateTime.tryParse(f['created_at'] ?? '') ?? DateTime.now();
+            if (fecha.year == hoy.year && fecha.month == hoy.month && fecha.day == hoy.day) {
+              fHoy++;
+              tHoy += (f['total'] as num?)?.toDouble() ?? 0.0;
+            }
+          }
+        }
 
-    for (final f in facturas) {
-      final fecha = DateTime.tryParse(f['fecha'] ?? '') ?? DateTime.now();
-      if (fecha.year == hoy.year &&
-          fecha.month == hoy.month &&
-          fecha.day == hoy.day) {
-        fHoy++;
-        tHoy += (f['total'] as num?)?.toDouble() ?? 0.0;
+        if (mounted) {
+          setState(() {
+            _facturasHoy = fHoy;
+            _totalHoy = tHoy;
+            _totalFacturas = (resumen['total_facturas'] as num?)?.toInt() ?? 0;
+            _montoTotal = (resumen['total_facturado'] as num?)?.toDouble() ?? 0.0;
+          });
+        }
       }
+    } catch (e) {
+      debugPrint('⚠️ Error cargando facturas del backend: $e');
     }
-
-    setState(() {
-      _facturasHoy = fHoy;
-      _totalHoy = tHoy;
-      _totalFacturas = facturas.length;
-      _montoTotal = facturas.fold(
-        0.0,
-        (sum, f) => sum + ((f['total'] as num?)?.toDouble() ?? 0.0),
-      );
-    });
   }
 
   @override

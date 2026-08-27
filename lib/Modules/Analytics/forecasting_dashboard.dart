@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class ForecastingDashboard extends StatefulWidget {
@@ -10,10 +11,38 @@ class ForecastingDashboard extends StatefulWidget {
 }
 
 class _ForecastingDashboardState extends State<ForecastingDashboard> {
+  Map<String, dynamic> _kpis = {};
+  List<dynamic> _usage7d = [];
+  List<dynamic> _gastosCategoria = [];
+  bool _cargando = true;
+
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    if (mounted) setState(() => _cargando = true);
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/dashboard/summary');
+      if (api.isSuccess(result)) {
+        if (mounted) {
+          setState(() {
+            _kpis = result['kpis'] ?? {};
+            _usage7d = result['usage7d'] ?? [];
+            _gastosCategoria = result['gastosCategoria'] ?? [];
+            _cargando = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _cargando = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _cargando = false);
+    }
   }
 
   void _onThemeChanged() {
@@ -66,57 +95,74 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildForecastCard(
-            'Ventas Mensuales',
-            'L.1,450,000',
-            '+16.0%',
-            const Color(0xFF10B981),
-            Icons.trending_up_rounded,
-          ),
-          const SizedBox(height: 12),
-          _buildForecastCard(
-            'Inventario Requerido',
-            'L.420,000',
-            '+8.5%',
-            const Color(0xFF6366F1),
-            Icons.inventory_2_rounded,
-          ),
-          const SizedBox(height: 12),
-          _buildForecastCard(
-            'Demanda Estimada',
-            '+12.3%',
-            '+2.1%',
-            const Color(0xFFF59E0B),
-            Icons.people_rounded,
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeader('PROYECCIONES POR CANAL'),
-          const SizedBox(height: 12),
-          _buildChannelForecast(
-            'Canal Tradicional',
-            'L.520,000',
-            '+18.5%',
-            const Color(0xFFF59E0B),
-          ),
-          const SizedBox(height: 12),
-          _buildChannelForecast(
-            'Canal Moderno',
-            'L.720,000',
-            '+14.2%',
-            const Color(0xFF10B981),
-          ),
-          const SizedBox(height: 12),
-          _buildChannelForecast(
-            'Membresías',
-            'L.210,000',
-            '+25.0%',
-            const Color(0xFF8B5CF6),
-          ),
-        ],
-      ),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFEC4899)))
+          : _kpis.isEmpty
+              ? Center(
+                  child: Text(
+                    'No hay datos disponibles',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                    ),
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildForecastCard(
+                      'Ingresos del Mes',
+                      'L.${(_kpis['ingresoMes'] ?? 0).toStringAsFixed(0)}',
+                      'Gastos: L.${(_kpis['gastoMes'] ?? 0).toStringAsFixed(0)}',
+                      const Color(0xFF10B981),
+                      Icons.trending_up_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildForecastCard(
+                      'Inventario',
+                      '${_kpis['productosCount'] ?? 0} productos',
+                      '${_kpis['lowStock'] ?? 0} con stock bajo',
+                      const Color(0xFF6366F1),
+                      Icons.inventory_2_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildForecastCard(
+                      'Transacciones Hoy',
+                      '${_kpis['transaccionesHoy'] ?? 0}',
+                      'Movimientos del día',
+                      const Color(0xFFF59E0B),
+                      Icons.receipt_long_rounded,
+                    ),
+                    if (_gastosCategoria.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _buildSectionHeader('GASTOS POR CATEGORÍA'),
+                      const SizedBox(height: 12),
+                      ...(_gastosCategoria.take(4).map((g) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildChannelForecast(
+                          g['categoria'] ?? 'Otro',
+                          'L.${(g['monto'] ?? 0).toStringAsFixed(0)}',
+                          '',
+                          const Color(0xFFF59E0B),
+                        ),
+                      ))),
+                    ],
+                    if (_usage7d.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _buildSectionHeader('ACTIVIDAD ÚLTIMOS 7 DÍAS'),
+                      const SizedBox(height: 12),
+                      ...(_usage7d.map((d) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _buildChannelForecast(
+                          d['label'] ?? '',
+                          '${d['facturas'] ?? 0} facturas',
+                          '${d['transacciones'] ?? 0} transacciones',
+                          const Color(0xFF10B981),
+                        ),
+                      ))),
+                    ],
+                  ],
+                ),
     );
   }
 

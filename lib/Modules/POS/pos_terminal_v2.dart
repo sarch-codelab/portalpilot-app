@@ -11,8 +11,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/pos_service.dart';
@@ -133,18 +133,14 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       final empresaCodigo = _auth.empresaCodigo;
       debugPrint('📡 Intentando descargar productos de Supabase para empresa: $empresaCodigo');
       
-      final url = Uri.parse('https://portalpilot-app.vercel.app/api/productos?empresaCodigo=$empresaCodigo');
-      debugPrint('🌐 URL: $url');
+      final api = ApiService.instance;
+      final result = await api.get('/api/productos');
       
-      final response = await http.get(url);
-      debugPrint('📥 Status code: ${response.statusCode}');
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> productosData = jsonDecode(response.body);
-        debugPrint('📦 Productos recibidos: ${productosData.length}');
+      if (result != null && api.isSuccess(result)) {
+        final productosData = result['productos'] ?? [];
+        debugPrint('📦 Productos recibidos: ${(productosData as List).length}');
         
         if (productosData.isNotEmpty) {
-          // Guardar en base de datos local
           await _localDb.upsertProductosLocal(
             empresaId: empresaCodigo,
             productos: productosData.cast<Map<String, dynamic>>(),
@@ -152,7 +148,6 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           );
           debugPrint('✅ Productos guardados en base local');
           
-          // Actualizar UI
           final productos = await _localDb.getProductos(empresaCodigo);
           debugPrint('📊 Productos en base local después de guardar: ${productos.length}');
           
@@ -169,9 +164,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           }
         }
       } else {
-        debugPrint('❌ Error en API: ${response.statusCode} - ${response.body}');
+        final error = result != null ? api.getError(result) : 'Sin respuesta';
+        debugPrint('❌ Error en API: $error');
         if (mounted) {
-          _mostrarSnackBar('Error de API: ${response.statusCode}', isError: true);
+          _mostrarSnackBar('Error de API: $error', isError: true);
         }
       }
     } catch (e) {
@@ -340,24 +336,27 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         },
       );
 
+      // Enviar venta al backend
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final lista = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('ventas_pos') ?? '[]'));
-        lista.add({
-          'fecha': DateTime.now().toIso8601String(),
-          'total': total,
-          'cantidad_items': carritoConPromos.fold<int>(0, (s, i) => s + i.cantidad),
-          'metodo_pago': _metodoPago,
-          'estado': 'Completada',
+        final api = ApiService.instance;
+        await api.post('/api/pos/ventas', body: {
           'items': carritoConPromos.map((i) => {
+            'producto_id': i.productoId,
             'nombre': i.nombre,
             'cantidad': i.cantidad,
-            'precio': i.precioUnitario,
+            'precio_unitario': i.precioUnitario,
+            'descuento': i.descuento,
+            'isv_rate': i.isvRate,
           }).toList(),
+          'subtotal': subtotal,
+          'isv': isv15 + isv18,
+          'descuento': descuentoItems,
+          'total': total,
+          'metodo_pago': _metodoPago,
+          'numero_venta': venta.correlativo ?? '',
         });
-        await prefs.setString('ventas_pos', jsonEncode(lista));
       } catch (e) {
-        debugPrint('⚠️ No se pudo guardar historial en SharedPreferences: $e');
+        debugPrint('⚠️ No se pudo sincronizar venta con backend: $e');
       }
 
       if (_hardwareService.isPrinterConnected) {

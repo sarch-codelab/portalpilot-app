@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class CobrosEfectivo extends StatefulWidget {
@@ -10,34 +11,32 @@ class CobrosEfectivo extends StatefulWidget {
 }
 
 class _CobrosEfectivoState extends State<CobrosEfectivo> {
-  List<Map<String, dynamic>> _cobros = [
-    {
-      'id': '1',
-      'cliente': 'Pulpería Doña María',
-      'monto': 1200.00,
-      'fecha': '2026-08-09',
-      'estado': 'completado',
-    },
-    {
-      'id': '2',
-      'cliente': 'Mercadito San José',
-      'monto': 850.00,
-      'fecha': '2026-08-09',
-      'estado': 'pendiente',
-    },
-    {
-      'id': '3',
-      'cliente': 'Abarrotería El Vecino',
-      'monto': 560.00,
-      'fecha': '2026-08-08',
-      'estado': 'completado',
-    },
-  ];
+  List<dynamic> _cobros = [];
+  bool _cargando = true;
 
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    if (mounted) setState(() => _cargando = true);
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/ventas-fiadas');
+      if (result != null && api.isSuccess(result)) {
+        if (mounted) setState(() {
+          _cobros = result['ventas'] ?? [];
+          _cargando = false;
+        });
+      } else {
+        if (mounted) setState(() => _cargando = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _cargando = false);
+    }
   }
 
   void _onThemeChanged() {
@@ -156,7 +155,7 @@ class _CobrosEfectivoState extends State<CobrosEfectivo> {
               ),
               const SizedBox(height: 4),
               Text(
-                'L.$total.toStringAsFixed(2)',
+                'L.${total.toStringAsFixed(2)}',
                 style: GoogleFonts.syne(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,

@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class CierresMensuales extends StatefulWidget {
@@ -10,10 +15,118 @@ class CierresMensuales extends StatefulWidget {
 }
 
 class _CierresMensualesState extends State<CierresMensuales> {
+  List<dynamic> _transacciones = [];
+  bool _cargando = true;
+  Map<String, dynamic> _kpis = {};
+  double _tasaISV = 0.15;
+  double _tasaISR = 0.05;
+
+  static const List<String> _nombresMeses = [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ];
+
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/dashboard/summary');
+      if (api.isSuccess(result)) {
+        _kpis = Map<String, dynamic>.from(result['kpis'] ?? {});
+      }
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString('transacciones') ?? '[]';
+      _transacciones = jsonDecode(json) as List<dynamic>;
+      _cargarTasasImpuestos(prefs);
+    } catch (_) {}
+    if (mounted) setState(() => _cargando = false);
+  }
+
+  void _cargarTasasImpuestos(SharedPreferences prefs) {
+    try {
+      final json = prefs.getString('impuestos_config');
+      if (json == null) return;
+      final impuestos = jsonDecode(json) as List<dynamic>;
+      for (final impuesto in impuestos) {
+        if (impuesto is! Map) continue;
+        final nombre = (impuesto['nombre'] ?? '').toString().toUpperCase();
+        final tasa = (impuesto['tasa'] as num?)?.toDouble();
+        if (tasa == null) continue;
+        if (nombre.contains('ISV')) _tasaISV = tasa / 100;
+        if (nombre.contains('ISR')) _tasaISR = tasa / 100;
+      }
+    } catch (_) {}
+  }
+
+  List<Map<String, dynamic>> _generarMeses() {
+    final ahora = DateTime.now();
+    return List.generate(6, (i) {
+      final fecha = DateTime(ahora.year, ahora.month - i);
+      return {
+        'fecha': fecha,
+        'nombre': '${_nombresMeses[fecha.month - 1]} ${fecha.year}',
+        'actual': i == 0,
+      };
+    });
+  }
+
+  Map<String, double> _calcularResumenMes(DateTime mes) {
+    double ingresos = 0;
+    double gastos = 0;
+    for (final t in _transacciones) {
+      if (t is! Map) continue;
+      final fecha = DateTime.tryParse(t['fecha']?.toString() ?? '');
+      if (fecha == null || fecha.year != mes.year || fecha.month != mes.month) {
+        continue;
+      }
+      final monto = (t['monto'] as num?)?.toDouble() ?? 0.0;
+      if ((t['tipo'] ?? '').toString().toLowerCase() == 'ingreso') {
+        ingresos += monto;
+      } else {
+        gastos += monto;
+      }
+    }
+    final ahora = DateTime.now();
+    if (mes.year == ahora.year &&
+        mes.month == ahora.month &&
+        ingresos == 0 &&
+        gastos == 0) {
+      ingresos = (_kpis['ingresoMes'] as num?)?.toDouble() ?? 0.0;
+      gastos = (_kpis['gastoMes'] as num?)?.toDouble() ?? 0.0;
+    }
+    return {
+      'ingresos': ingresos,
+      'gastos': gastos,
+      'ganancia': ingresos - gastos,
+      'isv': ingresos * _tasaISV,
+      'isr': ingresos * _tasaISR,
+    };
+  }
+
+  String _formatoLempiras(double valor) {
+    final negativo = valor < 0;
+    final partes = valor.abs().toStringAsFixed(2).split('.');
+    final enteros = partes[0].replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
+    return 'L.${negativo ? '-' : ''}$enteros.${partes[1]}';
   }
 
   void _onThemeChanged() {
@@ -66,24 +179,26 @@ class _CierresMensualesState extends State<CierresMensuales> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildMonthCard('Agosto 2026', true, const Color(0xFF10B981)),
-          const SizedBox(height: 12),
-          _buildMonthCard('Julio 2026', true, const Color(0xFF10B981)),
-          const SizedBox(height: 12),
-          _buildMonthCard('Junio 2026', true, const Color(0xFF10B981)),
-          const SizedBox(height: 12),
-          _buildMonthCard('Mayo 2026', true, const Color(0xFF10B981)),
-          const SizedBox(height: 12),
-          _buildMonthCard('Abril 2026', false, const Color(0xFFF59E0B)),
-        ],
-      ),
+      body: _cargando
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF8B5CF6)),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                for (final mesInfo in _generarMeses()) ...[
+                  _buildMonthCard(mesInfo),
+                  const SizedBox(height: 12),
+                ],
+              ],
+            ),
     );
   }
 
-  Widget _buildMonthCard(String mes, bool cerrado, Color color) {
+  Widget _buildMonthCard(Map<String, dynamic> mesInfo) {
+    final mes = mesInfo['nombre'] as String;
+    final cerrado = !(mesInfo['actual'] as bool);
+    final color = cerrado ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -130,7 +245,7 @@ class _CierresMensualesState extends State<CierresMensuales> {
           ),
           ElevatedButton.icon(
             onPressed: () {
-              _showMonthDetails(mes);
+              _showMonthDetails(mesInfo);
             },
             icon: const Icon(Icons.visibility_rounded, size: 16),
             label: const Text('Ver'),
@@ -145,7 +260,9 @@ class _CierresMensualesState extends State<CierresMensuales> {
     );
   }
 
-  void _showMonthDetails(String mes) {
+  void _showMonthDetails(Map<String, dynamic> mesInfo) {
+    final mes = mesInfo['nombre'] as String;
+    final resumen = _calcularResumenMes(mesInfo['fecha'] as DateTime);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -162,11 +279,23 @@ class _CierresMensualesState extends State<CierresMensuales> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildDetailRow('Ingresos', 'L.1,250,000'),
-            _buildDetailRow('Gastos', 'L.850,000'),
-            _buildDetailRow('Ganancia Neta', 'L.400,000'),
-            _buildDetailRow('ISV Pagado', 'L.187,500'),
-            _buildDetailRow('ISR Retenido', 'L.62,500'),
+            _buildDetailRow(
+              'Ingresos',
+              _formatoLempiras(resumen['ingresos']!),
+            ),
+            _buildDetailRow('Gastos', _formatoLempiras(resumen['gastos']!)),
+            _buildDetailRow(
+              'Ganancia Neta',
+              _formatoLempiras(resumen['ganancia']!),
+            ),
+            _buildDetailRow(
+              'ISV Pagado (${(_tasaISV * 100).toStringAsFixed(1)}%)',
+              _formatoLempiras(resumen['isv']!),
+            ),
+            _buildDetailRow(
+              'ISR Retenido (${(_tasaISR * 100).toStringAsFixed(1)}%)',
+              _formatoLempiras(resumen['isr']!),
+            ),
           ],
         ),
         actions: [
@@ -180,12 +309,7 @@ class _CierresMensualesState extends State<CierresMensuales> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Reporte generado'),
-                  backgroundColor: Color(0xFF10B981),
-                ),
-              );
+              _generarReporte(mes, resumen);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF8B5CF6),
@@ -196,6 +320,23 @@ class _CierresMensualesState extends State<CierresMensuales> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _generarReporte(String mes, Map<String, double> resumen) {
+    final buffer = StringBuffer()
+      ..writeln('=== CIERRE MENSUAL - $mes ===')
+      ..writeln('Ingresos: ${_formatoLempiras(resumen['ingresos']!)}')
+      ..writeln('Gastos: ${_formatoLempiras(resumen['gastos']!)}')
+      ..writeln('Ganancia Neta: ${_formatoLempiras(resumen['ganancia']!)}')
+      ..writeln('ISV Pagado: ${_formatoLempiras(resumen['isv']!)}')
+      ..writeln('ISR Retenido: ${_formatoLempiras(resumen['isr']!)}');
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Reporte copiado al portapapeles'),
+        backgroundColor: Color(0xFF10B981),
       ),
     );
   }

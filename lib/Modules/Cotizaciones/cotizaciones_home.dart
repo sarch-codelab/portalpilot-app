@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Modules/Comercial/comercial_home.dart';
 
 /// Pantalla principal del módulo de Cotizaciones
 class CotizacionesHome extends StatefulWidget {
@@ -87,65 +88,7 @@ class _CotizacionesHomeState extends State<CotizacionesHome> {
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF43F5E).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.request_quote_rounded,
-                size: 80,
-                color: const Color(0xFFF43F5E),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Módulo de Cotizaciones',
-              style: GoogleFonts.syne(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: appThemeNotifier.isDark ? Colors.white : Colors.black,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Cotizaciones a clientes, conversión a ventas',
-              style: GoogleFonts.dmSans(
-                fontSize: 16,
-                color: appThemeNotifier.isDark
-                    ? const Color(0xFFA3A3A3)
-                    : const Color(0xFF6B7280),
-              ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Funcionalidad en desarrollo'),
-                    backgroundColor: const Color(0xFFF43F5E),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Nueva Cotización'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF43F5E),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      body: const ComercialHome(),
     );
   }
 }

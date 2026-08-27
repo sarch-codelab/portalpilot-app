@@ -10,26 +10,7 @@ class Segmentacion extends StatefulWidget {
 }
 
 class _SegmentacionState extends State<Segmentacion> {
-  List<Map<String, dynamic>> _segmentos = [
-    {
-      'id': '1',
-      'nombre': 'Clientes Premium',
-      'criterio': 'Compra > L.10,000 mensual',
-      'clientes': 125,
-    },
-    {
-      'id': '2',
-      'nombre': 'Nuevos Clientes',
-      'criterio': 'Registrados < 30 dias',
-      'clientes': 85,
-    },
-    {
-      'id': '3',
-      'nombre': 'Inactivos',
-      'criterio': 'Sin compra > 90 dias',
-      'clientes': 200,
-    },
-  ];
+  final List<Map<String, dynamic>> _segmentos = [];
 
   @override
   void initState() {
@@ -87,14 +68,49 @@ class _SegmentacionState extends State<Segmentacion> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _segmentos.length,
-        itemBuilder: (context, index) {
-          final segmento = _segmentos[index];
-          return _buildSegmentoCard(segmento, palette);
-        },
-      ),
+      body: _segmentos.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.donut_small_rounded,
+                    size: 64,
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF525252)
+                        : const Color(0xFFD1D5DB),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No hay segmentos creados',
+                    style: GoogleFonts.syne(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          appThemeNotifier.isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Crea tu primer segmento de clientes',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _segmentos.length,
+              itemBuilder: (context, index) {
+                final segmento = _segmentos[index];
+                return _buildSegmentoCard(segmento, palette);
+              },
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddSegmentoDialog(),
         backgroundColor: const Color(0xFFF59E0B),

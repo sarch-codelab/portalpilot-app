@@ -10,29 +10,7 @@ class LeadsOpportunities extends StatefulWidget {
 }
 
 class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
-  List<Map<String, dynamic>> _leads = [
-    {
-      'id': '1',
-      'nombre': 'Supermercado Norte',
-      'contacto': 'Juan Pérez',
-      'estado': 'nuevo',
-      'valor': 0,
-    },
-    {
-      'id': '2',
-      'nombre': 'Pulpería Centro',
-      'contacto': 'María García',
-      'estado': 'calificado',
-      'valor': 25000,
-    },
-    {
-      'id': '3',
-      'nombre': 'Tienda Express',
-      'contacto': 'Carlos López',
-      'estado': 'negociacion',
-      'valor': 15000,
-    },
-  ];
+  final List<Map<String, dynamic>> _leads = [];
 
   @override
   void initState() {
@@ -90,14 +68,49 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _leads.length,
-        itemBuilder: (context, index) {
-          final lead = _leads[index];
-          return _buildLeadCard(lead, palette);
-        },
-      ),
+      body: _leads.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.person_search_rounded,
+                    size: 64,
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF525252)
+                        : const Color(0xFFD1D5DB),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No hay leads registrados',
+                    style: GoogleFonts.syne(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          appThemeNotifier.isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Presiona "Nuevo Lead" para agregar el primero',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _leads.length,
+              itemBuilder: (context, index) {
+                final lead = _leads[index];
+                return _buildLeadCard(lead, palette);
+              },
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddLeadDialog(),
         backgroundColor: const Color(0xFF8B5CF6),
@@ -119,6 +132,7 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
         : lead['estado'] == 'calificado'
         ? const Color(0xFFF59E0B)
         : const Color(0xFF6366F1);
+    final valor = (lead['valor'] as num?)?.toDouble() ?? 0.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -171,7 +185,7 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
               Expanded(
                 child: _buildInfoRow(
                   'Valor Potencial',
-                  'L.${lead['valor'].toStringAsFixed(0)}',
+                  'L.${valor.toStringAsFixed(0)}',
                 ),
               ),
             ],

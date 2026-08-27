@@ -45,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textMuted = Color(0xFFA3A3A3);
-  static const Color textDark = Color(0xFF525252);
+  static const Color textDark = Color(0xFF737373);
 
   static const Color errorRed = Color(0xFFEF4444);
 
@@ -55,10 +55,10 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
     _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 3000),
       vsync: this,
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
+    _pulseAnimation = Tween<double>(begin: 0.4, end: 0.7).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _loadSavedData();
@@ -341,22 +341,22 @@ class _LoginScreenState extends State<LoginScreen>
       builder: (context, constraints) {
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildBrandLogo(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               Text(
                 'Portal Pilot',
                 style: GoogleFonts.syne(
-                  fontSize: 28,
+                  fontSize: 24,
                   fontWeight: FontWeight.w900,
                   color: textPrimary,
-                  letterSpacing: -0.8,
+                  letterSpacing: -0.6,
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 16),
               _buildAuthCard(),
             ],
           ),
@@ -502,21 +502,21 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildAuthCard() {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: borderLight),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 60,
-            offset: const Offset(0, 25),
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 40,
+            offset: const Offset(0, 16),
           ),
           BoxShadow(
-            color: accentPurple.withValues(alpha: 0.06),
-            blurRadius: 40,
-            spreadRadius: -10,
+            color: accentPurple.withValues(alpha: 0.04),
+            blurRadius: 28,
+            spreadRadius: -8,
           ),
         ],
       ),
@@ -537,16 +537,16 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildTabs() {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: bgTertiary,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderLight),
       ),
       child: Row(
         children: [
           Expanded(child: _buildTabButton('login', 'Iniciar Sesión')),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Expanded(child: _buildTabButton('register', 'Crear Cuenta')),
         ],
       ),
@@ -558,8 +558,8 @@ class _LoginScreenState extends State<LoginScreen>
     return GestureDetector(
       onTap: () => setState(() => _selectedTab = tab),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           gradient: isActive
               ? const LinearGradient(
@@ -569,13 +569,13 @@ class _LoginScreenState extends State<LoginScreen>
                 )
               : null,
           color: isActive ? null : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: accentPurple.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: accentPurple.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ]
               : [],
@@ -584,10 +584,10 @@ class _LoginScreenState extends State<LoginScreen>
           label,
           textAlign: TextAlign.center,
           style: GoogleFonts.dmSans(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
             color: isActive ? textPrimary : textMuted,
-            letterSpacing: 0.3,
+            letterSpacing: 0.2,
           ),
         ),
       ),
@@ -653,17 +653,20 @@ class _LoginScreenState extends State<LoginScreen>
                         value: true,
                         onChanged: (_) {},
                         activeColor: accentPurple,
+                        checkColor: textPrimary,
                         side: BorderSide(color: borderLight),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Text(
                       'Recordarme',
                       style:
-                          GoogleFonts.dmSans(fontSize: 12, color: textMuted),
+                          GoogleFonts.dmSans(fontSize: 11, color: textMuted),
                     ),
                   ],
                 ),
@@ -686,7 +689,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           const SizedBox(height: 22),
           _buildPrimaryButton(
-            label: 'Iniciar Sesión',
+            label: 'Entrar',
             icon: Icons.chevron_right_rounded,
             isLoading: _isLoading,
             onPressed: _handleLogin,
@@ -821,7 +824,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.dmSans(fontSize: 14, color: textDark),
+              hintStyle: GoogleFonts.dmSans(fontSize: 14, color: const Color(0xFF525252)),
               prefixIcon: Icon(prefixIcon, color: textMuted, size: 18),
               suffixIcon: suffixIcon,
               border: InputBorder.none,
@@ -850,12 +853,12 @@ class _LoginScreenState extends State<LoginScreen>
           end: Alignment.bottomRight,
           colors: [accentPurple, accentPurpleDark],
         ),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: accentPurple.withValues(alpha: 0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: accentPurple.withValues(alpha: 0.25),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -864,9 +867,9 @@ class _LoginScreenState extends State<LoginScreen>
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
         child: isLoading
@@ -885,14 +888,14 @@ class _LoginScreenState extends State<LoginScreen>
                   Text(
                     label,
                     style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                       color: textPrimary,
-                      letterSpacing: 0.3,
+                      letterSpacing: 0.2,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Icon(icon, size: 18, color: textPrimary),
+                  const SizedBox(width: 6),
+                  Icon(icon, size: 16, color: textPrimary),
                 ],
               ),
       ),

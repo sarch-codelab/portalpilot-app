@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 class NivelesMembresia extends StatefulWidget {
   const NivelesMembresia({super.key});
@@ -10,43 +11,48 @@ class NivelesMembresia extends StatefulWidget {
 }
 
 class _NivelesMembresiaState extends State<NivelesMembresia> {
-  List<Map<String, dynamic>> _niveles = [
-    {
-      'id': '1',
-      'nombre': 'Bronce',
-      'puntos_minimos': 0,
-      'descuento': 2,
-      'beneficios': ['2% descuento', 'Promociones básicas'],
-    },
-    {
-      'id': '2',
-      'nombre': 'Plata',
-      'puntos_minimos': 1000,
-      'descuento': 3,
-      'beneficios': [
-        '3% descuento',
-        'Promociones exclusivas',
-        'Acceso prioritario',
-      ],
-    },
-    {
-      'id': '3',
-      'nombre': 'Oro',
-      'puntos_minimos': 2500,
-      'descuento': 5,
-      'beneficios': [
-        '5% descuento',
-        'Promociones VIP',
-        'Acceso prioritario',
-        'Servicio especial',
-      ],
-    },
-  ];
+  List<Map<String, dynamic>> _niveles = [];
+  bool _cargando = true;
 
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarNiveles();
+  }
+
+  Future<void> _cargarNiveles() async {
+    if (mounted) setState(() => _cargando = true);
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/membresias/planes');
+      if (api.isSuccess(result)) {
+        final data = result['planes'] ?? result['data'] ?? [];
+        if (data is List && data.isNotEmpty && mounted) {
+          setState(() {
+            _niveles = data.map<Map<String, dynamic>>((p) {
+              final plan = Map<String, dynamic>.from(p);
+              return {
+                'id': plan['id']?.toString() ?? '',
+                'nombre':
+                    plan['nombre'] ?? plan['name'] ?? 'Sin nombre',
+                'puntos_minimos':
+                    plan['puntos_minimos'] ?? plan['puntosMinimos'] ?? 0,
+                'descuento': plan['descuento'] ?? 0,
+                'beneficios': (plan['beneficios'] is List)
+                    ? List<String>.from(plan['beneficios'])
+                    : <String>[],
+              };
+            }).toList();
+            _cargando = false;
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error cargando planes de membresía: $e');
+    }
+    if (mounted) setState(() => _cargando = false);
   }
 
   void _onThemeChanged() {
@@ -99,14 +105,31 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _niveles.length,
-        itemBuilder: (context, index) {
-          final nivel = _niveles[index];
-          return _buildNivelCard(nivel, palette);
-        },
-      ),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFCD7F32)))
+          : _niveles.isEmpty
+          ? Center(
+              child: Text(
+                'No hay niveles de membresía',
+                style: GoogleFonts.dmSans(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+              ),
+            )
+          : RefreshIndicator(
+              color: const Color(0xFFCD7F32),
+              onRefresh: _cargarNiveles,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _niveles.length,
+                itemBuilder: (context, index) {
+                  final nivel = _niveles[index];
+                  return _buildNivelCard(nivel, palette);
+                },
+              ),
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           _showAddNivelDialog();

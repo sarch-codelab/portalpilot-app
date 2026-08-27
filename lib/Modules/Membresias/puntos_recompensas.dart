@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 class PuntosRecompensas extends StatefulWidget {
   const PuntosRecompensas({super.key});
@@ -10,34 +11,34 @@ class PuntosRecompensas extends StatefulWidget {
 }
 
 class _PuntosRecompensasState extends State<PuntosRecompensas> {
-  List<Map<String, dynamic>> _socios = [
-    {
-      'id': '1',
-      'nombre': 'Juan Pérez',
-      'puntos': 2450,
-      'nivel': 'Oro',
-      'beneficios': ['5% descuento', 'Acceso prioritario'],
-    },
-    {
-      'id': '2',
-      'nombre': 'María García',
-      'puntos': 1200,
-      'nivel': 'Plata',
-      'beneficios': ['3% descuento', 'Promociones exclusivas'],
-    },
-    {
-      'id': '3',
-      'nombre': 'Carlos López',
-      'puntos': 850,
-      'nivel': 'Bronce',
-      'beneficios': ['2% descuento'],
-    },
-  ];
+  List<dynamic> _socios = [];
+  bool _cargando = true;
 
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    if (mounted) setState(() => _cargando = true);
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/membresias/socios');
+      if (api.isSuccess(result)) {
+        if (mounted) {
+          setState(() {
+            _socios = result['socios'] ?? [];
+            _cargando = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _cargando = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _cargando = false);
+    }
   }
 
   void _onThemeChanged() {
@@ -90,14 +91,32 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _socios.length,
-        itemBuilder: (context, index) {
-          final socio = _socios[index];
-          return _buildSocioCard(socio, palette);
-        },
-      ),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B5CF6)))
+          : _socios.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.card_giftcard_rounded, size: 64,
+                        color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+                      const SizedBox(height: 16),
+                      Text('No hay socios registrados',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                        )),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _socios.length,
+                  itemBuilder: (context, index) {
+                    final socio = _socios[index];
+                    return _buildSocioCard(socio, palette);
+                  },
+                ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           _showAddPointsDialog();
@@ -115,12 +134,14 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
     );
   }
 
-  Widget _buildSocioCard(Map<String, dynamic> socio, ThemePalette palette) {
-    final nivelColor = socio['nivel'] == 'Oro'
+  Widget _buildSocioCard(dynamic socio, ThemePalette palette) {
+    final nivel = socio['nivel'] ?? socio['plan_nombre'] ?? 'Básico';
+    final puntos = socio['puntos_acumulados'] ?? socio['puntos'] ?? 0;
+    final nivelColor = nivel.toString().toLowerCase().contains('oro')
         ? const Color(0xFFF59E0B)
-        : socio['nivel'] == 'Plata'
+        : nivel.toString().toLowerCase().contains('plata')
         ? const Color(0xFF9CA3AF)
-        : const Color(0xFFCD7F32);
+        : const Color(0xFF8B5CF6);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -141,7 +162,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                socio['nombre'],
+                socio['nombre'] ?? 'Sin nombre',
                 style: GoogleFonts.syne(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -155,7 +176,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  socio['nivel'],
+                  nivel,
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -170,7 +191,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${socio['puntos']} puntos',
+                '$puntos puntos',
                 style: GoogleFonts.syne(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
@@ -179,7 +200,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
               ),
               ElevatedButton.icon(
                 onPressed: () {
-                  _showRedeemDialog(socio);
+                  _showRedeemDialog(socio, puntos);
                 },
                 icon: const Icon(Icons.redeem_rounded, size: 16),
                 label: const Text('Canjear'),
@@ -209,7 +230,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                 ),
               ),
               const SizedBox(height: 4),
-              ...(socio['beneficios'] as List<String>).map(
+              ...((socio['beneficios'] as List?) ?? const <dynamic>[]).map(
                 (beneficio) => Padding(
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Row(
@@ -311,7 +332,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
     );
   }
 
-  void _showRedeemDialog(Map<String, dynamic> socio) {
+  void _showRedeemDialog(dynamic socio, int puntosDisponibles) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -326,7 +347,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
           ),
         ),
         content: Text(
-          'Tienes ${socio['puntos']} puntos disponibles. ¿Cuántos deseas canjear?',
+          'Tienes $puntosDisponibles puntos disponibles. ¿Cuántos deseas canjear?',
           style: GoogleFonts.dmSans(
             color: appThemeNotifier.isDark
                 ? const Color(0xFFA3A3A3)

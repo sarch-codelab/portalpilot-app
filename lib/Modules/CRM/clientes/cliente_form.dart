@@ -3,9 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:portal_pilot_app/Shared/services/sync_service.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
+import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 
 class ClienteForm extends StatefulWidget {
   final Map<String, dynamic>? clienteExistente;
@@ -27,6 +28,9 @@ class _ClienteFormState extends State<ClienteForm> {
   final _direccionCtrl = TextEditingController();
   final _notasCtrl = TextEditingController();
   String _fuente = 'Directo';
+  bool _showAIInsights = false;
+  bool _aiLoading = false;
+  String _aiInsights = '';
 
   @override
   void initState() {
@@ -54,15 +58,38 @@ class _ClienteFormState extends State<ClienteForm> {
     super.dispose();
   }
 
+  Future<void> _fetchAIInsights() async {
+    if (widget.clienteExistente == null) return;
+    setState(() { _aiLoading = true; _aiInsights = ''; _showAIInsights = true; });
+    try {
+      final c = widget.clienteExistente!;
+      final msg = 'Analiza al cliente: ${_nombreCtrl.text} ${_apellidoCtrl.text}. '
+          'DNI: ${_dniCtrl.text}. Email: ${_emailCtrl.text}. Teléfono: ${_telefonoCtrl.text}. '
+          'Empresa: ${_empresaCtrl.text}. Cargo: ${_cargoCtrl.text}. '
+          'Proporciona: 1) Resumen del perfil, 2) Potencial de venta, 3) Recomendaciones de seguimiento, 4) Riesgos.';
+      final result = await AIManager.instance.crmCustomer(msg, customerId: c['id']?.toString());
+      if (mounted) {
+        setState(() {
+          _aiLoading = false;
+          _aiInsights = result.success ? result.text : (result.error ?? 'No se pudo generar el análisis');
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _aiLoading = false; _aiInsights = 'Error de conexión: $e'; });
+    }
+  }
+
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
     final prefs = await SharedPreferences.getInstance();
     final list = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('clientes') ?? '[]'));
     final id = widget.clienteExistente?['id'] ?? DateTime.now().millisecondsSinceEpoch.toString();
     final dni = _dniCtrl.text.trim();
+    final nombre = _nombreCtrl.text.trim();
+    final apellido = _apellidoCtrl.text.trim();
     final cliente = {
       'id': id,
-      'nombre': _nombreCtrl.text.trim(), 'apellido': _apellidoCtrl.text.trim(),
+      'nombre': nombre, 'apellido': apellido,
       'dni': dni,
       'email': _emailCtrl.text.trim(), 'telefono': _telefonoCtrl.text.trim(),
       'empresa': _empresaCtrl.text.trim(), 'cargo': _cargoCtrl.text.trim(),
@@ -70,6 +97,28 @@ class _ClienteFormState extends State<ClienteForm> {
       'fuente': _fuente, 'activo': true,
       'created_at': widget.clienteExistente?['created_at'] ?? DateTime.now().toIso8601String(),
     };
+
+    // Guardar en backend
+    try {
+      final api = ApiService.instance;
+      final body = {
+        'nombre': '$nombre $apellido'.trim(),
+        'rtn': dni,
+        'email': _emailCtrl.text.trim(),
+        'telefono': _telefonoCtrl.text.trim(),
+        'direccion': _direccionCtrl.text.trim(),
+        'notas': _notasCtrl.text.trim(),
+      };
+      if (widget.clienteExistente != null) {
+        await api.put('/api/clientes/$id', body: body);
+      } else {
+        await api.post('/api/clientes', body: body);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error guardando cliente en backend: $e');
+    }
+
+    // Guardar en caché local
     if (widget.clienteExistente != null) {
       final idx = list.indexWhere((c) => c['id'] == cliente['id']);
       if (idx != -1) list[idx] = cliente;
@@ -78,26 +127,7 @@ class _ClienteFormState extends State<ClienteForm> {
     }
     await prefs.setString('clientes', jsonEncode(list));
 
-    // Encolar sincronización con el backend (nuevo cliente)
     if (widget.clienteExistente == null) {
-      final empresaCodigo = prefs.getString('empresa_codigo') ?? 'ROOT';
-      await SyncService.instance.enqueueSync(
-        tabla: 'clientes',
-        operacion: SyncOperation.insert,
-        datos: {
-          'empresa_codigo': empresaCodigo,
-          'cliente': {
-            'id': id,
-            'nombre': '${_nombreCtrl.text.trim()} ${_apellidoCtrl.text.trim()}'.trim(),
-            'dni': dni.isEmpty ? null : dni,
-            'direccion': _direccionCtrl.text.trim(),
-            'telefono': _telefonoCtrl.text.trim(),
-            'email': _emailCtrl.text.trim(),
-            'notas': _notasCtrl.text.trim(),
-          },
-        },
-        empresaId: empresaCodigo,
-      );
       Logger().audit(
         'crear',
         'cliente',
@@ -151,6 +181,11 @@ class _ClienteFormState extends State<ClienteForm> {
             const SizedBox(height: 10),
             _buildField(_notasCtrl, 'Notas', Icons.notes_rounded, maxLines: 3),
             const SizedBox(height: 30),
+            if (esEdicion) ...[
+              const SizedBox(height: 10),
+              _buildAISection(),
+            ],
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity, height: 50,
               child: ElevatedButton.icon(
@@ -211,6 +246,60 @@ class _ClienteFormState extends State<ClienteForm> {
             items: ['Directo', 'Referido', 'Web', 'Redes Sociales', 'Otro'].map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
             onChanged: (v) => setState(() => _fuente = v!),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAISection() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _showAIInsights ? const Color(0xFF8B5CF6).withValues(alpha: 0.4) : const Color(0xFF262626)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.psychology_rounded, color: Color(0xFF8B5CF6), size: 16),
+              ),
+              const SizedBox(width: 10),
+              Text('Análisis IA del Cliente', style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
+              const Spacer(),
+              if (!_showAIInsights)
+                TextButton.icon(
+                  onPressed: _aiLoading ? null : _fetchAIInsights,
+                  icon: _aiLoading
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF8B5CF6)))
+                      : const Icon(Icons.auto_awesome, color: Color(0xFF8B5CF6), size: 14),
+                  label: Text(_aiLoading ? 'Analizando...' : 'Analizar', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF8B5CF6))),
+                ),
+            ],
+          ),
+          if (_showAIInsights) ...[
+            const SizedBox(height: 12),
+            if (_aiLoading)
+              const LinearProgressIndicator(color: Color(0xFF8B5CF6))
+            else if (_aiInsights.isNotEmpty)
+              Text(_aiInsights, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFE5E5E5), height: 1.6)),
+            if (_showAIInsights && !_aiLoading)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => setState(() { _showAIInsights = false; _aiInsights = ''; }),
+                  child: Text('Cerrar', style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+                ),
+              ),
+          ],
         ],
       ),
     );

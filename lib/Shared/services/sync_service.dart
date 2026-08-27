@@ -227,6 +227,9 @@ class SyncService {
         case 'notas':
           success = await _syncNotas(datos, operacion);
           break;
+        case 'empresas':
+          success = await _syncEmpresa(datos, operacion);
+          break;
         default:
           // Cualquier otra tabla (proveedores, cotizaciones, ordenes_compra,
           // compras, transacciones, matriculas, empleados, nomina, rutas,
@@ -366,6 +369,19 @@ class SyncService {
       empresaCodigo: empresaCodigo,
       clave: clave,
       datos: datosNotas,
+    );
+  }
+
+  Future<bool> _syncEmpresa(Map<String, dynamic> datos, SyncOperation op) async {
+    final empresaCodigo = datos['empresa_codigo'] as String?;
+    if (empresaCodigo == null) return false;
+
+    // Usa la ruta genérica /api/sync con el codigo de empresa para idempotencia.
+    return await PortalPilotDB.syncRows(
+      tabla: 'empresas',
+      empresaCodigo: empresaCodigo,
+      rows: [datos],
+      operacion: op.name,
     );
   }
 

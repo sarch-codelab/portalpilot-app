@@ -33,7 +33,15 @@ class _VentaFormState extends State<VentaForm> {
       'fecha': DateTime.now().toIso8601String(),
     });
     await prefs.setString('ventas_crm', jsonEncode(list));
-    if (mounted) Navigator.pop(context);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Venta guardada correctamente', style: GoogleFonts.dmSans()),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+      Navigator.pop(context);
+    }
   }
 
   @override

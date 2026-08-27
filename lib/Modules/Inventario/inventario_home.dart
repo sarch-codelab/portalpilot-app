@@ -8,8 +8,7 @@ import 'package:portal_pilot_app/Modules/Inventario/kardex.dart';
 import 'package:portal_pilot_app/Modules/Inventario/bodegas.dart';
 import 'package:portal_pilot_app/Modules/CanalModerno/canal_moderno_home.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
-import 'package:portal_pilot_app/Shared/services/db_service.dart';
-import 'package:portal_pilot_app/Shared/services/sync_service.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 class InventarioHome extends StatefulWidget {
   const InventarioHome({super.key});
@@ -43,27 +42,47 @@ class _InventarioHomeState extends State<InventarioHome> {
   }
 
   Future<void> _cargarDatos() async {
-    final prefs = await SharedPreferences.getInstance();
-    final productosJson = prefs.getString('productos') ?? '[]';
-    final bodegasJson = prefs.getString('bodegas') ?? '["General"]';
-    final List<dynamic> productos = jsonDecode(productosJson);
-    final List<dynamic> bodegas = jsonDecode(bodegasJson);
+    List<Map<String, dynamic>> productos = [];
+    List<Map<String, dynamic>> bodegas = [];
 
-    final legacySynced = prefs.getBool('productos_legacy_synced') ?? false;
-    if (!legacySynced) {
-      final empresa = PortalPilotDB.empresaCodigo ?? 'ROOT';
-      if (productos.isNotEmpty) {
-        await SyncService.instance.enqueueSync(
-          tabla: 'productos',
-          operacion: SyncOperation.insert,
-          datos: {
-            'empresa_codigo': empresa,
-            'productos': productos.cast<Map<String, dynamic>>(),
-          },
-          empresaId: empresa,
-        );
+    // Try loading from backend API first
+    try {
+      final api = ApiService.instance;
+      final productosRes = await api.get('/api/productos');
+      if (api.isSuccess(productosRes)) {
+        final data = productosRes['productos'] ?? productosRes['data'];
+        if (data is List) {
+          productos = data.cast<Map<String, dynamic>>();
+        }
       }
-      await prefs.setBool('productos_legacy_synced', true);
+    } catch (e) {
+      debugPrint('[Inventario] API load failed, falling back to local: $e');
+    }
+
+    // Fallback to SharedPreferences (legacy)
+    if (productos.isEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      final productosJson = prefs.getString('productos') ?? '[]';
+      final List<dynamic> localProductos = jsonDecode(productosJson);
+      productos = localProductos.cast<Map<String, dynamic>>();
+    }
+
+    // Load bodegas from backend
+    try {
+      final api = ApiService.instance;
+      final bodegasRes = await api.get('/api/bodegas');
+      if (api.isSuccess(bodegasRes)) {
+        final data = bodegasRes['bodegas'] ?? bodegasRes['data'];
+        if (data is List) {
+          bodegas = data.cast<Map<String, dynamic>>();
+        }
+      }
+    } catch (e) {
+      debugPrint('[Inventario] Bodegas API failed: $e');
+    }
+
+    if (bodegas.isEmpty) {
+      bodegas = [{'nombre': 'General'}];
     }
 
     int stockBajo = 0;
@@ -78,8 +97,8 @@ class _InventarioHomeState extends State<InventarioHome> {
     }
 
     setState(() {
-      _productos = List<Map<String, dynamic>>.from(productos);
-      _bodegas = List<String>.from(bodegas).map((b) => {'nombre': b}).toList();
+      _productos = productos;
+      _bodegas = bodegas;
       _totalProductos = productos.length;
       _stockBajo = stockBajo;
       _valorInventario = valor;

@@ -1,10 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
-/// Reportes del POS: KPIs, ventas por método de pago, top productos
-/// y ventas de los últimos 7 días. Datos reales de `ventas_pos`.
 class PosReportes extends StatefulWidget {
   const PosReportes({super.key});
 
@@ -14,6 +13,8 @@ class PosReportes extends StatefulWidget {
 
 class _PosReportesState extends State<PosReportes> {
   List<Map<String, dynamic>> _ventas = [];
+  bool _cargando = true;
+  String? _error;
 
   @override
   void initState() {
@@ -22,22 +23,62 @@ class _PosReportesState extends State<PosReportes> {
   }
 
   Future<void> _cargar() async {
-    final prefs = await SharedPreferences.getInstance();
-    final ventasJson = prefs.getString('ventas_pos') ?? '[]';
-    final List<dynamic> ventas = jsonDecode(ventasJson);
-    if (mounted) {
-      setState(() => _ventas = List<Map<String, dynamic>>.from(ventas));
+    if (mounted) setState(() { _cargando = true; _error = null; });
+
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/pos/ventas', queryParams: {'limit': '200'});
+
+      if (result != null && api.isSuccess(result)) {
+        final ventas = result['ventas'] ?? [];
+        if (mounted) {
+          setState(() {
+            _ventas = List<Map<String, dynamic>>.from(
+              (ventas is List) ? ventas.map((v) => Map<String, dynamic>.from(v)) : [],
+            );
+            _cargando = false;
+          });
+        }
+      } else {
+        // API failed — fall back to SharedPreferences
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final ventasJson = prefs.getString('ventas_pos') ?? '[]';
+          final ventasList = List<Map<String, dynamic>>.from(jsonDecode(ventasJson).map((v) => Map<String, dynamic>.from(v)));
+          if (mounted) {
+            setState(() {
+              _ventas = ventasList;
+              _cargando = false;
+            });
+          }
+        } catch (_) {
+          if (mounted) {
+            setState(() {
+              _error = 'Error cargando ventas';
+              _cargando = false;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error cargando reportes POS: $e');
+      if (mounted) {
+        setState(() {
+          _error = 'Error de conexión';
+          _cargando = false;
+        });
+      }
     }
   }
 
-  double get _totalIngresos => _ventas.fold<double>(0, (s, v) => s + ((v['total'] as num?)?.toDouble() ?? 0));
+  double get _totalIngresos => _ventas.fold<double>(0, (s, v) => s + ((v['monto'] as num?)?.toDouble() ?? 0));
 
   double get _totalHoy {
     final hoy = DateTime.now();
     return _ventas.fold<double>(0, (s, v) {
-      final f = DateTime.tryParse(v['fecha'] ?? '');
+      final f = DateTime.tryParse(v['fecha'] ?? v['created_at'] ?? '');
       if (f != null && f.year == hoy.year && f.month == hoy.month && f.day == hoy.day) {
-        return s + ((v['total'] as num?)?.toDouble() ?? 0);
+        return s + ((v['monto'] as num?)?.toDouble() ?? 0);
       }
       return s;
     });
@@ -49,22 +90,9 @@ class _PosReportesState extends State<PosReportes> {
     final map = <String, double>{};
     for (final v in _ventas) {
       final metodo = (v['metodo_pago'] ?? 'efectivo').toString();
-      map[metodo] = (map[metodo] ?? 0) + ((v['total'] as num?)?.toDouble() ?? 0);
+      map[metodo] = (map[metodo] ?? 0) + ((v['monto'] as num?)?.toDouble() ?? 0);
     }
     return map;
-  }
-
-  Map<String, int> get _topProductos {
-    final map = <String, int>{};
-    for (final v in _ventas) {
-      final items = List<Map<String, dynamic>>.from(v['items'] ?? []);
-      for (final item in items) {
-        final nombre = (item['nombre'] ?? 'Producto').toString();
-        map[nombre] = (map[nombre] ?? 0) + ((item['cantidad'] as num?)?.toInt() ?? 1);
-      }
-    }
-    final sorted = map.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    return {for (final e in sorted.take(5)) e.key: e.value};
   }
 
   List<Map<String, dynamic>> get _ventasPorDia {
@@ -74,12 +102,12 @@ class _PosReportesState extends State<PosReportes> {
       map['${d.day}/${d.month}'] = 0.0;
     }
     for (final v in _ventas) {
-      final f = DateTime.tryParse(v['fecha'] ?? '');
+      final f = DateTime.tryParse(v['fecha'] ?? v['created_at'] ?? '');
       if (f == null) continue;
       final diff = DateTime.now().difference(DateTime(f.year, f.month, f.day)).inDays;
       if (diff >= 0 && diff <= 6) {
         final key = '${f.day}/${f.month}';
-        map[key] = (map[key] ?? 0) + ((v['total'] as num?)?.toDouble() ?? 0);
+        map[key] = (map[key] ?? 0) + ((v['monto'] as num?)?.toDouble() ?? 0);
       }
     }
     return map.entries.map((e) => {'dia': e.key, 'total': e.value}).toList();
@@ -87,7 +115,6 @@ class _PosReportesState extends State<PosReportes> {
 
   @override
   Widget build(BuildContext context) {
-    final top = _topProductos;
     final porMetodo = _porMetodo;
     final maxMetodo = porMetodo.values.isEmpty ? 1.0 : porMetodo.values.reduce((a, b) => a > b ? a : b);
     final maxDia = _ventasPorDia.fold<double>(0, (m, d) => ((d['total'] as num?)?.toDouble() ?? 0) > m ? (d['total'] as num?)!.toDouble() : m);
@@ -121,25 +148,36 @@ class _PosReportesState extends State<PosReportes> {
         onRefresh: _cargar,
         color: const Color(0xFFF97316),
         backgroundColor: const Color(0xFF1A1A1A),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildKpis(),
-            const SizedBox(height: 16),
-            _buildSection('VENTAS ÚLTIMOS 7 DÍAS'),
-            const SizedBox(height: 10),
-            _buildGraficoBarras(maxDia),
-            const SizedBox(height: 20),
-            _buildSection('TOP PRODUCTOS'),
-            const SizedBox(height: 10),
-            if (top.isEmpty) _buildEmpty('Aún no hay ventas registradas') else _buildTopProductos(top),
-            const SizedBox(height: 20),
-            _buildSection('MÉTODO DE PAGO'),
-            const SizedBox(height: 10),
-            if (porMetodo.isEmpty) _buildEmpty('Sin datos de método de pago') else _buildPorMetodo(porMetodo, maxMetodo),
-            const SizedBox(height: 30),
-          ],
-        ),
+        child: _cargando
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)))
+            : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, color: const Color(0xFFEF4444), size: 48),
+                        const SizedBox(height: 12),
+                        Text(_error!, style: GoogleFonts.dmSans(color: const Color(0xFFEF4444))),
+                        const SizedBox(height: 12),
+                        TextButton(onPressed: _cargar, child: const Text('Reintentar')),
+                      ],
+                    ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      _buildKpis(),
+                      const SizedBox(height: 16),
+                      _buildSection('VENTAS ÚLTIMOS 7 DÍAS'),
+                      const SizedBox(height: 10),
+                      _buildGraficoBarras(maxDia),
+                      const SizedBox(height: 20),
+                      _buildSection('MÉTODO DE PAGO'),
+                      const SizedBox(height: 10),
+                      if (porMetodo.isEmpty) _buildEmpty('Sin datos de método de pago') else _buildPorMetodo(porMetodo, maxMetodo),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
       ),
     );
   }
@@ -231,47 +269,6 @@ class _PosReportesState extends State<PosReportes> {
     );
   }
 
-  Widget _buildTopProductos(Map<String, int> top) {
-    final max = top.values.isEmpty ? 1 : top.values.reduce((a, b) => a > b ? a : b);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF262626)),
-      ),
-      child: Column(
-        children: top.entries.map((e) {
-          final pct = e.value / max;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 140,
-                  child: Text(e.key, style: GoogleFonts.dmSans(fontSize: 12, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: pct,
-                      minHeight: 8,
-                      backgroundColor: const Color(0xFF262626),
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF97316)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text('${e.value}', style: GoogleFonts.dmMono(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFFF97316))),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
   Widget _buildPorMetodo(Map<String, double> porMetodo, double max) {
     const labels = {
       'efectivo': 'Efectivo',
@@ -332,6 +329,5 @@ class _PosReportesState extends State<PosReportes> {
   }
 
   String _formatNumber(double n) => n.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-
   String _formatCompact(double n) => n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : n.toStringAsFixed(0);
 }

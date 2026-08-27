@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 class KardexScreen extends StatefulWidget {
   const KardexScreen({super.key});
@@ -14,6 +15,7 @@ class _KardexScreenState extends State<KardexScreen> {
   List<Map<String, dynamic>> _movimientos = [];
   List<Map<String, dynamic>> _productos = [];
   String _filtroTipo = 'Todos';
+  bool _cargando = true;
 
   @override
   void initState() {
@@ -22,11 +24,34 @@ class _KardexScreenState extends State<KardexScreen> {
   }
 
   Future<void> _cargarDatos() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _movimientos = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('kardex') ?? '[]'));
-      _productos = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('productos') ?? '[]'));
-    });
+    if (mounted) setState(() => _cargando = true);
+
+    try {
+      final api = ApiService.instance;
+
+      final movResult = await api.get('/api/kardex', queryParams: {'limit': '200'});
+      final prodResult = await api.get('/api/productos', queryParams: {'limit': '500'});
+
+      if (movResult != null && api.isSuccess(movResult)) {
+        final movs = movResult['movimientos'] ?? [];
+        _movimientos = (movs is List) ? movs.map((m) => Map<String, dynamic>.from(m)).toList() : [];
+      }
+
+      if (prodResult != null && api.isSuccess(prodResult)) {
+        final prods = prodResult['productos'] ?? [];
+        _productos = (prods is List) ? prods.map((p) => Map<String, dynamic>.from(p)).toList() : [];
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error cargando kardex: $e');
+      // Fallback a SharedPreferences
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        _movimientos = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('kardex') ?? '[]'));
+        _productos = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('productos') ?? '[]'));
+      } catch (_) {}
+    }
+
+    if (mounted) setState(() => _cargando = false);
   }
 
   void _agregarMovimiento() {
@@ -172,41 +197,35 @@ class _KardexScreenState extends State<KardexScreen> {
                           final cant = int.tryParse(cantidadController.text) ?? 0;
                           if (cant <= 0) return;
 
-                          final prefs = await SharedPreferences.getInstance();
-                          final kardex = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('kardex') ?? '[]'));
-                          final productos = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('productos') ?? '[]'));
-
-                          final prodIdx = productos.indexWhere((p) => p['id'] == productoId);
-                          if (prodIdx < 0) return;
-
-                          final prod = productos[prodIdx];
-                          final stockActual = (prod['stock_actual'] as num?)?.toInt() ?? 0;
-
-                          if (tipo == 'salida' && cant > stockActual) {
-                            if (!ctx.mounted) return;
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              SnackBar(content: Text('Stock insuficiente (disponible: $stockActual)', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFEF4444)),
-                            );
-                            return;
+                          // Registrar en backend
+                          try {
+                            final api = ApiService.instance;
+                            await api.post('/api/kardex', body: {
+                              'producto_id': productoId,
+                              'tipo_movimiento': tipo,
+                              'cantidad': cant,
+                              'referencia': motivo,
+                              'notas': referenciaController.text,
+                            });
+                          } catch (e) {
+                            debugPrint('⚠️ Error guardando kardex en backend: $e');
+                            // Fallback a SharedPreferences
+                            try {
+                              final prefs = await SharedPreferences.getInstance();
+                              final kardex = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('kardex') ?? '[]'));
+                              kardex.add({
+                                'id': DateTime.now().millisecondsSinceEpoch.toString(),
+                                'producto_id': productoId,
+                                'tipo_movimiento': tipo,
+                                'cantidad': cant,
+                                'referencia': motivo,
+                                'notas': referenciaController.text,
+                                'created_at': DateTime.now().toIso8601String(),
+                              });
+                              await prefs.setString('kardex', jsonEncode(kardex));
+                            } catch (_) {}
                           }
 
-                          kardex.add({
-                            'id': DateTime.now().millisecondsSinceEpoch.toString(),
-                            'producto_id': productoId,
-                            'producto_nombre': prod['nombre'],
-                            'tipo': tipo,
-                            'motivo': motivo,
-                            'cantidad': cant,
-                            'stock_anterior': stockActual,
-                            'stock_nuevo': tipo == 'entrada' ? stockActual + cant : stockActual - cant,
-                            'referencia': referenciaController.text,
-                            'fecha': DateTime.now().toIso8601String(),
-                          });
-
-                          productos[prodIdx]['stock_actual'] = tipo == 'entrada' ? stockActual + cant : stockActual - cant;
-
-                          await prefs.setString('kardex', jsonEncode(kardex));
-                          await prefs.setString('productos', jsonEncode(productos));
                           if (ctx.mounted) Navigator.pop(ctx);
                           _cargarDatos();
                         },
@@ -229,8 +248,8 @@ class _KardexScreenState extends State<KardexScreen> {
   Widget build(BuildContext context) {
     final filtrados = _filtroTipo == 'Todos'
         ? _movimientos
-        : _movimientos.where((m) => m['tipo'] == _filtroTipo.toLowerCase()).toList();
-    filtrados.sort((a, b) => (b['fecha'] ?? '').compareTo(a['fecha'] ?? ''));
+        : _movimientos.where((m) => (m['tipo_movimiento'] ?? m['tipo'] ?? '') == _filtroTipo.toLowerCase()).toList();
+    filtrados.sort((a, b) => (b['created_at'] ?? b['fecha'] ?? '').compareTo(a['created_at'] ?? a['fecha'] ?? ''));
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
@@ -280,56 +299,66 @@ class _KardexScreenState extends State<KardexScreen> {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: filtrados.isEmpty
-                ? Center(child: Text('No hay movimientos registrados', style: GoogleFonts.dmSans(color: const Color(0xFF525252))))
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: filtrados.length,
-                    itemBuilder: (_, i) {
-                      final m = filtrados[i];
-                      final esEntrada = m['tipo'] == 'entrada';
-                      final color = esEntrada ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-                      final fecha = DateTime.tryParse(m['fecha'] ?? '');
+            child: _cargando
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFFF59E0B)))
+                : filtrados.isEmpty
+                    ? Center(child: Text('No hay movimientos registrados', style: GoogleFonts.dmSans(color: const Color(0xFF525252))))
+                    : RefreshIndicator(
+                        onRefresh: _cargarDatos,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: filtrados.length,
+                          itemBuilder: (_, i) {
+                            final m = filtrados[i];
+                            final tipoMov = m['tipo_movimiento'] ?? m['tipo'] ?? '';
+                            final esEntrada = tipoMov == 'entrada';
+                            final color = esEntrada ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+                            final fecha = DateTime.tryParse(m['created_at'] ?? m['fecha'] ?? '');
+                            final producto = m['productos'];
+                            final nombre = producto != null ? producto['nombre'] : (m['producto_nombre'] ?? '');
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: const Color(0xFF141414), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF262626))),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                              child: Icon(esEntrada ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, color: color, size: 18),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(color: const Color(0xFF141414), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF262626))),
+                              child: Row(
                                 children: [
-                                  Text(m['producto_nombre'] ?? '', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${m['motivo'] ?? ''}  •  Stock: ${m['stock_anterior']} → ${m['stock_nuevo']}',
-                                    style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                    child: Icon(esEntrada ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, color: color, size: 18),
                                   ),
-                                  if (fecha != null)
-                                    Text(
-                                      '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}  ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}',
-                                      style: GoogleFonts.dmSans(fontSize: 10, color: const Color(0xFF525252)),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(nombre, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${m['referencia'] ?? m['notas'] ?? ''}',
+                                          style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (fecha != null)
+                                          Text(
+                                            '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}  ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}',
+                                            style: GoogleFonts.dmSans(fontSize: 10, color: const Color(0xFF525252)),
+                                          ),
+                                      ],
                                     ),
+                                  ),
+                                  Text(
+                                    '${esEntrada ? '+' : '-'}${m['cantidad']} uds',
+                                    style: GoogleFonts.dmMono(fontSize: 14, fontWeight: FontWeight.w700, color: color),
+                                  ),
                                 ],
                               ),
-                            ),
-                            Text(
-                              '${esEntrada ? '+' : '-'}${m['cantidad']} uds',
-                              style: GoogleFonts.dmMono(fontSize: 14, fontWeight: FontWeight.w700, color: color),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
+                      ),
           ),
           const SizedBox(height: 80),
         ],

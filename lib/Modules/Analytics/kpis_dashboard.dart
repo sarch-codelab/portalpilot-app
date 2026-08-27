@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 class KPIsDashboard extends StatefulWidget {
   const KPIsDashboard({super.key});
@@ -10,10 +11,40 @@ class KPIsDashboard extends StatefulWidget {
 }
 
 class _KPIsDashboardState extends State<KPIsDashboard> {
+  Map<String, dynamic> _kpis = {};
+  bool _cargando = true;
+
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    if (mounted) {
+      setState(() => _cargando = true);
+    }
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/dashboard/summary');
+      if (api.isSuccess(result)) {
+        if (mounted) {
+          setState(() {
+            _kpis = result['kpis'] ?? {};
+            _cargando = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() => _cargando = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _cargando = false);
+      }
+    }
   }
 
   void _onThemeChanged() {
@@ -66,66 +97,78 @@ class _KPIsDashboardState extends State<KPIsDashboard> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildKPICard(
-            'Ventas Totales',
-            'L.1,250,000',
-            '+15.3%',
-            const Color(0xFF10B981),
-            Icons.trending_up_rounded,
-          ),
-          const SizedBox(height: 12),
-          _buildKPICard(
-            'Márgenes',
-            '15.0%',
-            '+2.1%',
-            const Color(0xFF6366F1),
-            Icons.percent_rounded,
-          ),
-          const SizedBox(height: 12),
-          _buildKPICard(
-            'Ticket Promedio',
-            'L.148',
-            '+8.5%',
-            const Color(0xFFF59E0B),
-            Icons.receipt_long_rounded,
-          ),
-          const SizedBox(height: 12),
-          _buildKPICard(
-            'Satisfacción Cliente',
-            '92%',
-            '+3.2%',
-            const Color(0xFFEC4899),
-            Icons.sentiment_satisfied_rounded,
-          ),
-          const SizedBox(height: 12),
-          _buildKPICard(
-            'Rotación Inventario',
-            '4.2x',
-            '+0.8x',
-            const Color(0xFF8B5CF6),
-            Icons.sync_rounded,
-          ),
-          const SizedBox(height: 12),
-          _buildKPICard(
-            'Retención Clientes',
-            '78%',
-            '+5.4%',
-            const Color(0xFF14B8A6),
-            Icons.people_rounded,
-          ),
-          const SizedBox(height: 12),
-          _buildKPICard(
-            'Costo Operativo',
-            'L.850,000',
-            '-3.2%',
-            const Color(0xFFEF4444),
-            Icons.account_balance_wallet_rounded,
-          ),
-        ],
-      ),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
+          : _kpis.isEmpty
+              ? Center(
+                  child: Text(
+                    'No hay datos disponibles',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                    ),
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildKPICard(
+                      'Facturas Emitidas',
+                      '${_kpis['facturasCount'] ?? 0}',
+                      'Total: L.${(_kpis['facturasTotal'] ?? 0).toStringAsFixed(0)}',
+                      const Color(0xFF10B981),
+                      Icons.receipt_long_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildKPICard(
+                      'Ingresos del Mes',
+                      'L.${(_kpis['ingresoMes'] ?? 0).toStringAsFixed(0)}',
+                      'Gastos: L.${(_kpis['gastoMes'] ?? 0).toStringAsFixed(0)}',
+                      const Color(0xFF6366F1),
+                      Icons.trending_up_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildKPICard(
+                      'Balance del Mes',
+                      'L.${(_kpis['balanceMes'] ?? 0).toStringAsFixed(0)}',
+                      (_kpis['balanceMes'] ?? 0) >= 0 ? ' positivo' : ' negativo',
+                      (_kpis['balanceMes'] ?? 0) >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                      Icons.account_balance_wallet_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildKPICard(
+                      'Transacciones Hoy',
+                      '${_kpis['transaccionesHoy'] ?? 0}',
+                      'Hoy',
+                      const Color(0xFFF59E0B),
+                      Icons.point_of_sale_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildKPICard(
+                      'Productos en Inventario',
+                      '${_kpis['productosCount'] ?? 0}',
+                      '${_kpis['lowStock'] ?? 0} con stock bajo',
+                      const Color(0xFF8B5CF6),
+                      Icons.inventory_2_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildKPICard(
+                      'Usuarios Activos',
+                      '${_kpis['usuariosActivos'] ?? 0}',
+                      'Cuenta activa',
+                      const Color(0xFF14B8A6),
+                      Icons.people_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildKPICard(
+                      'Facturas Pendientes',
+                      '${_kpis['facturasPendientes'] ?? 0}',
+                      'Por cobrar',
+                      const Color(0xFFEF4444),
+                      Icons.pending_actions_rounded,
+                    ),
+                  ],
+                ),
     );
   }
 

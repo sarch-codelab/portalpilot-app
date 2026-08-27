@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_form.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_detalle.dart';
-import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 
 class FacturaList extends StatefulWidget {
@@ -41,23 +41,26 @@ class _FacturaListState extends State<FacturaList> {
       _aplicarFiltros();
     });
 
-    // Dispara la cola de sincronización offline (pendientes -> Supabase).
     try {
       await LocalDatabaseService.instance.forceSyncNow();
     } catch (_) {}
 
+    // Cargar facturas desde el backend
     try {
-      final empresa = prefs.getString('company_code') ?? '';
-      if (empresa.isEmpty) return;
-      final remotas = await PortalPilotDB.getFacturas(empresa);
-      if (remotas.isNotEmpty) {
-        final sincronizadas = _fusionarFacturas(locales, remotas);
-        await prefs.setString('facturas', jsonEncode(sincronizadas));
-        if (mounted) {
-          setState(() {
-            _facturas = sincronizadas;
-            _aplicarFiltros();
-          });
+      final api = ApiService.instance;
+      final result = await api.get('/api/facturas', queryParams: {'limit': '200'});
+      if (result != null && api.isSuccess(result)) {
+        final remotas = result['facturas'] ?? [];
+        if (remotas is List && remotas.isNotEmpty) {
+          final remotasMaps = remotas.map((r) => Map<String, dynamic>.from(r)).toList();
+          final sincronizadas = _fusionarFacturas(locales, remotasMaps);
+          await prefs.setString('facturas', jsonEncode(sincronizadas));
+          if (mounted) {
+            setState(() {
+              _facturas = sincronizadas;
+              _aplicarFiltros();
+            });
+          }
         }
       }
     } catch (_) {}
@@ -140,19 +143,14 @@ class _FacturaListState extends State<FacturaList> {
 
     await prefs.setString('facturas', jsonEncode(facturas));
 
+    // Anular en backend
     try {
-      final prefsEmpresa = await SharedPreferences.getInstance();
-      final empresa = prefsEmpresa.getString('company_code') ?? '';
+      final api = ApiService.instance;
       final serverId = facturas.firstWhere(
         (f) => f['id'] == id,
         orElse: () => {},
-      )['server_id'];
-      if (empresa.isNotEmpty && serverId != null) {
-        await PortalPilotDB.anularFactura(
-          id: serverId.toString(),
-          empresaCodigo: empresa,
-        );
-      }
+      )['server_id'] ?? id;
+      await api.patch('/api/facturas/$serverId', body: {'estado': 'anulada'});
     } catch (_) {}
 
     _cargarFacturas();

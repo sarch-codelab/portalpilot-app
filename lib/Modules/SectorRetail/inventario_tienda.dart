@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class InventarioTienda extends StatefulWidget {
@@ -10,31 +11,37 @@ class InventarioTienda extends StatefulWidget {
 }
 
 class _InventarioTiendaState extends State<InventarioTienda> {
-  List<Map<String, dynamic>> _tiendas = [
-    {
-      'id': '1',
-      'nombre': 'Pulpería Centro',
-      'tipo': 'tradicional',
-      'stock_total': 450,
-    },
-    {
-      'id': '2',
-      'nombre': 'Supermercado Norte',
-      'tipo': 'moderno',
-      'stock_total': 1200,
-    },
-    {
-      'id': '3',
-      'nombre': 'Pulpería Sur',
-      'tipo': 'tradicional',
-      'stock_total': 320,
-    },
-  ];
+  List<dynamic> _tiendas = [];
+  bool _cargando = true;
 
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarTiendas();
+  }
+
+  Future<void> _cargarTiendas() async {
+    try {
+      final api = ApiService.instance;
+      var res = await api.get('/api/bodegas');
+      if (!api.isSuccess(res)) {
+        res = await api.get('/api/sucursales');
+      }
+      if (api.isSuccess(res)) {
+        final data = res['bodegas'] ?? res['sucursales'] ?? res['data'];
+        if (data is List && data.isNotEmpty && mounted) {
+          setState(() {
+            _tiendas = data;
+            _cargando = false;
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('[InventarioTienda] Error cargando tiendas: $e');
+    }
+    if (mounted) setState(() => _cargando = false);
   }
 
   void _onThemeChanged() {
@@ -87,14 +94,53 @@ class _InventarioTiendaState extends State<InventarioTienda> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _tiendas.length,
-        itemBuilder: (context, index) {
-          final tienda = _tiendas[index];
-          return _buildTiendaCard(tienda, palette);
-        },
-      ),
+      body: _cargando
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF10B981)),
+            )
+          : _tiendas.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.storefront_rounded,
+                    size: 64,
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF525252)
+                        : const Color(0xFFD1D5DB),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No hay tiendas registradas',
+                    style: GoogleFonts.syne(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          appThemeNotifier.isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Agrega tu primera tienda para comenzar',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _tiendas.length,
+              itemBuilder: (context, index) {
+                final tienda = Map<String, dynamic>.from(_tiendas[index] as Map);
+                return _buildTiendaCard(tienda, palette);
+              },
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           _showAddTiendaDialog();
@@ -113,9 +159,11 @@ class _InventarioTiendaState extends State<InventarioTienda> {
   }
 
   Widget _buildTiendaCard(Map<String, dynamic> tienda, ThemePalette palette) {
-    final color = tienda['tipo'] == 'tradicional'
+    final tipo = '${tienda['tipo'] ?? 'general'}';
+    final color = tipo == 'tradicional'
         ? const Color(0xFFF59E0B)
         : const Color(0xFF10B981);
+    final stockTotal = (tienda['stock_total'] as num?)?.toInt() ?? 0;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -149,7 +197,7 @@ class _InventarioTiendaState extends State<InventarioTienda> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  tienda['tipo'].toUpperCase(),
+                  tipo.toUpperCase(),
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -173,7 +221,7 @@ class _InventarioTiendaState extends State<InventarioTienda> {
                 ),
               ),
               Text(
-                '${tienda['stock_total']} unidades',
+                '$stockTotal unidades',
                 style: GoogleFonts.syne(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -184,7 +232,7 @@ class _InventarioTiendaState extends State<InventarioTienda> {
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
-            value: tienda['stock_total'] / 1500,
+            value: (stockTotal / 1500).clamp(0.0, 1.0),
             backgroundColor: appThemeNotifier.isDark
                 ? const Color(0xFF262626)
                 : const Color(0xFFE5E7EB),

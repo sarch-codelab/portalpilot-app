@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ConfiguracionSeguridad extends StatefulWidget {
   const ConfiguracionSeguridad({super.key});
@@ -10,7 +11,7 @@ class ConfiguracionSeguridad extends StatefulWidget {
 }
 
 class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
-  bool _2FAHabilitado = true;
+  bool _2FAHabilitado = false;
   bool _sesionUnica = true;
   bool _bloqueoIntentos = true;
   int _intentosMaximos = 5;
@@ -20,6 +21,24 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarConfig();
+  }
+
+  Future<void> _cargarConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) setState(() {
+      _2FAHabilitado = prefs.getBool('seg_2fa') ?? false;
+      _sesionUnica = prefs.getBool('seg_sesion_unica') ?? true;
+      _bloqueoIntentos = prefs.getBool('seg_bloqueo') ?? true;
+      _intentosMaximos = prefs.getInt('seg_intentos') ?? 5;
+      _tiempoBloqueo = prefs.getInt('seg_tiempo') ?? 15;
+    });
+  }
+
+  Future<void> _guardarConfig(String key, dynamic value) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (value is bool) await prefs.setBool(key, value);
+    if (value is int) await prefs.setInt(key, value);
   }
 
   void _onThemeChanged() {
@@ -80,7 +99,7 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
             'Autenticacion de Dos Factores (2FA)',
             'Proteccion adicional para iniciar sesion',
             _2FAHabilitado,
-            (value) => setState(() => _2FAHabilitado = value),
+            (value) { setState(() => _2FAHabilitado = value); _guardarConfig('seg_2fa', value); },
           ),
           const SizedBox(height: 12),
           _buildSecurityCard(
@@ -88,7 +107,7 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
             'Sesion Unica',
             'Permitir solo una sesion activa por usuario',
             _sesionUnica,
-            (value) => setState(() => _sesionUnica = value),
+            (value) { setState(() => _sesionUnica = value); _guardarConfig('seg_sesion_unica', value); },
           ),
           const SizedBox(height: 12),
           _buildSecurityCard(
@@ -96,7 +115,7 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
             'Bloqueo por Intentos',
             'Bloquear cuenta tras intentos fallidos',
             _bloqueoIntentos,
-            (value) => setState(() => _bloqueoIntentos = value),
+            (value) { setState(() => _bloqueoIntentos = value); _guardarConfig('seg_bloqueo', value); },
           ),
           const SizedBox(height: 20),
           if (_bloqueoIntentos) ...[
@@ -302,9 +321,9 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
           ),
           ElevatedButton(
             onPressed: () {
-              setState(
-                () => _intentosMaximos = int.tryParse(controller.text) ?? 5,
-              );
+              final val = int.tryParse(controller.text) ?? 5;
+              setState(() => _intentosMaximos = val);
+              _guardarConfig('seg_intentos', val);
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
@@ -365,9 +384,9 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
           ),
           ElevatedButton(
             onPressed: () {
-              setState(
-                () => _tiempoBloqueo = int.tryParse(controller.text) ?? 15,
-              );
+              final val = int.tryParse(controller.text) ?? 15;
+              setState(() => _tiempoBloqueo = val);
+              _guardarConfig('seg_tiempo', val);
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(

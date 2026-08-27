@@ -56,6 +56,27 @@ class LocalDatabaseService {
     await _db.into(_db.empresas).insertOnConflictUpdate(empresa);
   }
 
+  // Helper to create EmpresasCompanion from onboarding selections
+  EmpresasCompanion empresaFromOnboarding(String areaNegocio, String empresaCodigo) {
+    return EmpresasCompanion(
+      id: const Value.absent(), // Let DB generate UUID
+      codigo: Value(empresaCodigo),
+      nombre: Value('Portal Pilot Empresa'),
+      rtn: Value(''),
+      direccion: Value(''),
+      telefono: Value(''),
+      email: Value(''),
+      logoUrl: const Value.absent(),
+      bannerUrl: const Value.absent(),
+      plan: Value('Starter'), // Plan por defecto para Honduras
+      areaNegocio: Value(areaNegocio), // **This is the key field**
+      config: const Value.absent(),
+      activa: Value(true),
+      createdAt: Value(DateTime.now()),
+      updatedAt: Value(DateTime.now()),
+    );
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // USUARIOS
   // ═══════════════════════════════════════════════════════════════

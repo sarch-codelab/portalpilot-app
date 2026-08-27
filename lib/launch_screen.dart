@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Auth/login.dart';
+import 'package:portal_pilot_app/onboarding/onboarding_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -97,10 +99,13 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _navigateToLogin() async {
     if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    final completed = prefs.getBool('onboarding_completed') ?? false;
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const LoginScreen(),
+            completed ? const LoginScreen() : const OnboardingScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },

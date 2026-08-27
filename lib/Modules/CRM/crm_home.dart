@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:portal_pilot_app/Modules/CRM/clientes/cliente_form.dart';
 import 'package:portal_pilot_app/Modules/CRM/clientes/cliente_list.dart';
 import 'package:portal_pilot_app/Modules/CRM/ventas/ventas_home.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class CrmHome extends StatefulWidget {
@@ -40,17 +41,36 @@ class _CrmHomeState extends State<CrmHome> {
 
   Future<void> _cargarDatos() async {
     final prefs = await SharedPreferences.getInstance();
-    final cliJson = prefs.getString('clientes') ?? '[]';
     final venJson = prefs.getString('ventas_crm') ?? '[]';
-    final List<dynamic> clientes = jsonDecode(cliJson);
     final List<dynamic> ventas = jsonDecode(venJson);
 
     int activos = 0;
     double ventasMes = 0, pendiente = 0;
     final ahora = DateTime.now();
 
-    for (final c in clientes) {
-      if (c['activo'] != false) activos++;
+    // Cargar clientes desde el backend
+    int totalClientes = 0;
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/clientes');
+      if (result != null && api.isSuccess(result)) {
+        final clientes = result['clientes'] ?? [];
+        if (clientes is List) {
+          totalClientes = clientes.length;
+          for (final c in clientes) {
+            if (c['activo'] != false) activos++;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error cargando clientes del backend: $e');
+      // Fallback a SharedPreferences
+      final cliJson = prefs.getString('clientes') ?? '[]';
+      final List<dynamic> clientes = jsonDecode(cliJson);
+      totalClientes = clientes.length;
+      for (final c in clientes) {
+        if (c['activo'] != false) activos++;
+      }
     }
 
     for (final v in ventas) {
@@ -69,7 +89,7 @@ class _CrmHomeState extends State<CrmHome> {
 
     setState(() {
       _ventas = List<Map<String, dynamic>>.from(ventas);
-      _totalClientes = clientes.length;
+      _totalClientes = totalClientes;
       _clientesActivos = activos;
       _ventasMes = ventasMes;
       _pendienteCobro = pendiente;

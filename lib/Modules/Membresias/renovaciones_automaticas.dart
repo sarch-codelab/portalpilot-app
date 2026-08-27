@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 class RenovacionesAutomaticas extends StatefulWidget {
   const RenovacionesAutomaticas({super.key});
@@ -11,37 +12,46 @@ class RenovacionesAutomaticas extends StatefulWidget {
 }
 
 class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
-  List<Map<String, dynamic>> _membresias = [
-    {
-      'id': '1',
-      'socio': 'Juan Pérez',
-      'plan': 'Oro',
-      'vencimiento': '2026-08-15',
-      'auto_renovar': true,
-      'metodo_pago': 'Tarjeta',
-    },
-    {
-      'id': '2',
-      'socio': 'María García',
-      'plan': 'Plata',
-      'vencimiento': '2026-08-20',
-      'auto_renovar': true,
-      'metodo_pago': 'Transferencia',
-    },
-    {
-      'id': '3',
-      'socio': 'Carlos López',
-      'plan': 'Bronce',
-      'vencimiento': '2026-08-25',
-      'auto_renovar': false,
-      'metodo_pago': 'Efectivo',
-    },
-  ];
+  List<Map<String, dynamic>> _membresias = [];
+  bool _cargando = true;
 
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarMembresias();
+  }
+
+  Future<void> _cargarMembresias() async {
+    if (mounted) setState(() => _cargando = true);
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/membresias/socios');
+      if (api.isSuccess(result)) {
+        final data = result['socios'] ?? [];
+        if (data is List && mounted) {
+          setState(() {
+            _membresias = data.map<Map<String, dynamic>>((s) {
+              final socio = Map<String, dynamic>.from(s);
+              return {
+                'id': socio['id']?.toString() ?? '',
+                'socio': socio['nombre'] ?? 'Sin nombre',
+                'plan': socio['nivel'] ?? socio['plan_nombre'] ?? 'Básico',
+                'vencimiento':
+                    socio['vencimiento'] ?? socio['fecha_vencimiento'] ?? 'N/A',
+                'auto_renovar': socio['auto_renovar'] ?? false,
+                'metodo_pago': socio['metodo_pago'] ?? 'Efectivo',
+              };
+            }).toList();
+            _cargando = false;
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error cargando renovaciones: $e');
+    }
+    if (mounted) setState(() => _cargando = false);
   }
 
   void _onThemeChanged() {
@@ -94,14 +104,31 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _membresias.length,
-        itemBuilder: (context, index) {
-          final membresia = _membresias[index];
-          return _buildMembresiaCard(membresia, palette);
-        },
-      ),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF3B82F6)))
+          : _membresias.isEmpty
+          ? Center(
+              child: Text(
+                'No hay membresías registradas',
+                style: GoogleFonts.dmSans(
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+              ),
+            )
+          : RefreshIndicator(
+              color: const Color(0xFF3B82F6),
+              onRefresh: _cargarMembresias,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _membresias.length,
+                itemBuilder: (context, index) {
+                  final membresia = _membresias[index];
+                  return _buildMembresiaCard(membresia, palette);
+                },
+              ),
+            ),
     );
   }
 
@@ -109,9 +136,6 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
     Map<String, dynamic> membresia,
     ThemePalette palette,
   ) {
-    final renovarColor = membresia['auto_renovar']
-        ? const Color(0xFF10B981)
-        : const Color(0xFF6B7280);
     final planColor = membresia['plan'] == 'Oro'
         ? const Color(0xFFF59E0B)
         : membresia['plan'] == 'Plata'
@@ -193,7 +217,7 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
                     membresia['auto_renovar'] = value;
                   });
                 },
-                activeColor: const Color(0xFF10B981),
+                activeThumbColor: const Color(0xFF10B981),
               ),
             ],
           ),

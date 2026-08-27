@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class ConciliacionBancaria extends StatefulWidget {
@@ -10,34 +14,126 @@ class ConciliacionBancaria extends StatefulWidget {
 }
 
 class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
-  List<Map<String, dynamic>> _transacciones = [
-    {
-      'id': '1',
-      'tipo': 'Ingreso',
-      'descripcion': 'Venta #1024',
-      'monto': 2500.00,
-      'estado': 'Conciliado',
-    },
-    {
-      'id': '2',
-      'tipo': 'Egreso',
-      'descripcion': 'Pago Proveedor',
-      'monto': 1200.00,
-      'estado': 'Pendiente',
-    },
-    {
-      'id': '3',
-      'tipo': 'Ingreso',
-      'descripcion': 'Venta #1025',
-      'monto': 850.00,
-      'estado': 'Conciliado',
-    },
-  ];
+  List<Map<String, dynamic>> _transacciones = [];
+  bool _cargando = true;
 
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    List<Map<String, dynamic>> cargadas = [];
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/transacciones');
+      if (api.isSuccess(result)) {
+        final data = result['transacciones'] ?? result['data'];
+        if (data is List) {
+          cargadas = data
+              .whereType<Map>()
+              .map((t) => _normalizarTransaccion(Map<String, dynamic>.from(t)))
+              .toList();
+        }
+      }
+    } catch (_) {}
+    if (cargadas.isEmpty) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final json = prefs.getString('transacciones') ?? '[]';
+        final locales = jsonDecode(json) as List<dynamic>;
+        cargadas = locales
+            .whereType<Map>()
+            .map((t) => _normalizarTransaccion(Map<String, dynamic>.from(t)))
+            .toList();
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    setState(() {
+      _transacciones = cargadas;
+      _cargando = false;
+    });
+  }
+
+  Map<String, dynamic> _normalizarTransaccion(Map<String, dynamic> t) {
+    final tipoRaw = (t['tipo'] ?? '').toString().toLowerCase();
+    final esEgreso =
+        tipoRaw == 'egreso' || tipoRaw == 'gasto' || tipoRaw == 'compra';
+    return {
+      'id':
+          (t['id'] ?? t['server_id'] ?? DateTime.now().microsecondsSinceEpoch)
+              .toString(),
+      'tipo': esEgreso ? 'Egreso' : 'Ingreso',
+      'descripcion':
+          (t['descripcion'] ?? t['concepto'] ?? 'Transaccion').toString(),
+      'monto': (t['monto'] as num?)?.toDouble() ?? 0.0,
+      'estado': (t['estado'] ?? 'Pendiente').toString(),
+    };
+  }
+
+  Future<bool> _guardarTransaccion(
+    String descripcion,
+    String montoTexto,
+    String tipo,
+  ) async {
+    final monto = double.tryParse(montoTexto) ?? 0.0;
+    if (descripcion.trim().isEmpty || monto <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ingrese una descripcion y un monto validos'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return false;
+    }
+    final nueva = {
+      'id': DateTime.now().microsecondsSinceEpoch.toString(),
+      'tipo': tipo,
+      'descripcion': descripcion.trim(),
+      'monto': monto,
+      'estado': 'Pendiente',
+    };
+    setState(() {
+      _transacciones.add(nueva);
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString('transacciones') ?? '[]';
+      final locales = jsonDecode(json) as List<dynamic>;
+      locales.add({
+        'id': nueva['id'],
+        'tipo': tipo == 'Ingreso' ? 'ingreso' : 'gasto',
+        'descripcion': nueva['descripcion'],
+        'monto': monto,
+        'fecha': DateTime.now().toIso8601String(),
+        'estado': 'Pendiente',
+      });
+      await prefs.setString('transacciones', jsonEncode(locales));
+    } catch (_) {}
+    try {
+      final api = ApiService.instance;
+      await api.post('/api/transacciones', body: {
+        'empresa_codigo': api.empresaCodigo,
+        'transaccion': {
+          'tipo': tipo == 'Ingreso' ? 'ingreso' : 'gasto',
+          'descripcion': nueva['descripcion'],
+          'monto': monto,
+          'fecha': DateTime.now().toIso8601String(),
+          'estado': 'Pendiente',
+        },
+      });
+    } catch (_) {}
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Transaccion guardada'),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
+    }
+    return true;
   }
 
   void _onThemeChanged() {
@@ -90,14 +186,30 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _transacciones.length,
-        itemBuilder: (context, index) {
-          final transaccion = _transacciones[index];
-          return _buildTransaccionCard(transaccion, palette);
-        },
-      ),
+      body: _cargando
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
+            )
+          : _transacciones.isEmpty
+          ? Center(
+              child: Text(
+                'No hay transacciones registradas',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: appThemeNotifier.isDark
+                      ? const Color(0xFFA3A3A3)
+                      : const Color(0xFF6B7280),
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _transacciones.length,
+              itemBuilder: (context, index) {
+                final transaccion = _transacciones[index];
+                return _buildTransaccionCard(transaccion, palette);
+              },
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddTransaccionDialog(),
         backgroundColor: const Color(0xFF3B82F6),
@@ -268,7 +380,7 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: tipo,
+              initialValue: tipo,
               decoration: InputDecoration(
                 labelText: 'Tipo',
                 labelStyle: TextStyle(
@@ -303,17 +415,15 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _transacciones.add({
-                  'id': DateTime.now().toString(),
-                  'tipo': tipo,
-                  'descripcion': descripcionController.text,
-                  'monto': double.tryParse(montoController.text) ?? 0.0,
-                  'estado': 'Pendiente',
-                });
-              });
-              Navigator.pop(context);
+            onPressed: () async {
+              final guardado = await _guardarTransaccion(
+                descripcionController.text,
+                montoController.text,
+                tipo,
+              );
+              if (guardado && context.mounted) {
+                Navigator.pop(context);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF3B82F6),

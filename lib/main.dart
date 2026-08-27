@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 import 'package:portal_pilot_app/Shared/services/window_manager.dart';
-import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/launch_screen.dart';
+import 'onboarding/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,11 +46,13 @@ class PortalPilotApp extends StatefulWidget {
 
 class _PortalPilotAppState extends State<PortalPilotApp> {
   bool _windowRestored = false;
+  bool _onboardingCompleted = false;
 
   @override
   void initState() {
     super.initState();
     _initWindow();
+    _checkOnboarding();
   }
 
   Future<void> _initWindow() async {
@@ -59,6 +65,14 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
       }
     } else {
       if (mounted) setState(() => _windowRestored = true);
+    }
+  }
+
+  Future<void> _checkOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    final completed = prefs.getBool('onboarding_completed') ?? false;
+    if (mounted) {
+      setState(() => _onboardingCompleted = completed);
     }
   }
 

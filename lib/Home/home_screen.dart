@@ -20,6 +20,7 @@ import 'package:portal_pilot_app/Modules/SectorRetail/sector_retail_home.dart';
 import 'package:portal_pilot_app/Modules/CanalTradicional/canal_tradicional_home.dart';
 import 'package:portal_pilot_app/Modules/Settings/settings_home.dart';
 import 'package:portal_pilot_app/Modules/Analytics/analytics_home.dart';
+import 'package:portal_pilot_app/Modules/Soporte/soporte_home.dart';
 import 'package:portal_pilot_app/Modules/SupplyChain/supply_chain_home.dart';
 import 'package:portal_pilot_app/Modules/CRMAdvanced/crm_advanced_home.dart';
 import 'package:portal_pilot_app/Modules/FiscalAdvanced/fiscal_advanced_home.dart';
@@ -641,9 +642,13 @@ class _HomeScreenState extends State<HomeScreen>
             Expanded(
               child: _buildQuickActionCard(
                 'Soporte',
-                'Centro de ayuda',
+                'Centro de ayuda con IA',
                 Icons.help_outline_rounded,
                 const Color(0xFF3B82F6),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SoporteHome()),
+                ),
               ),
             ),
           ],
@@ -656,49 +661,53 @@ class _HomeScreenState extends State<HomeScreen>
     String title,
     String subtitle,
     IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111111),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x29FFFFFF)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+    Color color, {
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111111),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0x29FFFFFF)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 18),
             ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    color: const Color(0xFFA3A3A3),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: const Color(0xFFA3A3A3),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

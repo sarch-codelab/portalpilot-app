@@ -1,13 +1,16 @@
 // lib/Modules/Educacion/educacion_home.dart
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Modules/Educacion/matricula/matricula_form.dart' show RegistroEstudiantilScreen;
 import 'package:portal_pilot_app/Modules/Educacion/ia/edu_ia.dart' show CopilotScreen;
 import 'package:portal_pilot_app/Modules/Educacion/notas/notas_screen.dart' show NotasScreen;
 import 'package:portal_pilot_app/Modules/Educacion/asistencia/asistencia_screen.dart' show AsistenciaScreen;
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/db_service.dart';
 
 // ═══════════════════════════════════════════════════════════
 // EDUCACION SCREEN - Dashboard principal del área de Educación
@@ -30,6 +33,10 @@ class _EducacionScreenState extends State<EducacionScreen>
   String _userRol = '';
   String _userArea = '';
   String _userRango = '';
+
+  // Estadísticas reales (-1 / null = sin datos disponibles)
+  int _alumnosActivos = -1;
+  double? _asistenciaHoy;
 
   @override
   void initState() {
@@ -58,7 +65,55 @@ class _EducacionScreenState extends State<EducacionScreen>
     await AuthController.instance.restore();
     if (mounted) {
       setState(() => _loadUserDataFromAuth());
+      _cargarEstadisticas();
     }
+  }
+
+  /// Calcula estadísticas reales desde la BD local y el registro de asistencia.
+  Future<void> _cargarEstadisticas() async {
+    int alumnosActivos = -1;
+    double? asistenciaHoy;
+
+    // Alumnos activos: matrículas registradas en PortalPilotDB
+    try {
+      final stats = await PortalPilotDB.getEstadisticasMatriculas(
+        AuthController.instance.empresaCodigo,
+      );
+      final total = (stats['total'] as num?)?.toInt() ?? 0;
+      if (total > 0) {
+        alumnosActivos = (stats['activas'] as num?)?.toInt() ?? 0;
+      }
+    } catch (_) {
+      alumnosActivos = -1;
+    }
+
+    // Asistencia de hoy: registro local de asistencias
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString('asistencias_registro') ?? '[]';
+      final List<dynamic> registros = jsonDecode(json);
+      final now = DateTime.now();
+      final hoy =
+          '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+      final deHoy = registros
+          .where((r) => (r is Map ? r['fecha'] : '')?.toString() == hoy)
+          .toList();
+      if (deHoy.isNotEmpty) {
+        final presentes = deHoy.where((r) {
+          final estado = r is Map ? '${r['estado'] ?? ''}' : '';
+          return estado == 'Presente' || estado == 'Tardanza';
+        }).length;
+        asistenciaHoy = presentes / deHoy.length * 100;
+      }
+    } catch (_) {
+      asistenciaHoy = null;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _alumnosActivos = alumnosActivos;
+      _asistenciaHoy = asistenciaHoy;
+    });
   }
 
   void _loadUserDataFromAuth() {
@@ -492,6 +547,16 @@ class _EducacionScreenState extends State<EducacionScreen>
   }
 
   Widget _buildQuickStats(ThemePalette p) {
+    final alumnosValor = _alumnosActivos >= 0 ? '$_alumnosActivos' : 'Sin datos';
+    final alumnosSub = _alumnosActivos >= 0
+        ? 'Matrículas activas'
+        : 'No hay datos disponibles';
+    final asistenciaValor = _asistenciaHoy != null
+        ? '${_asistenciaHoy!.toStringAsFixed(1)}%'
+        : 'Sin datos';
+    final asistenciaSub = _asistenciaHoy != null
+        ? 'Registro de hoy'
+        : 'No hay datos disponibles';
     return Container(
       constraints: const BoxConstraints(maxWidth: 900),
       child: Row(
@@ -499,8 +564,8 @@ class _EducacionScreenState extends State<EducacionScreen>
           Expanded(
             child: _buildStatCard(
               'Alumnos Activos',
-              '1,247',
-              '+42 este mes',
+              alumnosValor,
+              alumnosSub,
               Icons.people_alt_rounded,
               p.successGreen,
               p,
@@ -510,8 +575,8 @@ class _EducacionScreenState extends State<EducacionScreen>
           Expanded(
             child: _buildStatCard(
               'Asistencia Hoy',
-              '96.2%',
-              'Excelente',
+              asistenciaValor,
+              asistenciaSub,
               Icons.how_to_reg_rounded,
               p.accentPurple,
               p,
@@ -521,8 +586,8 @@ class _EducacionScreenState extends State<EducacionScreen>
           Expanded(
             child: _buildStatCard(
               'Próximos Eventos',
-              '3',
-              'Esta semana',
+              'Sin datos',
+              'No hay datos disponibles',
               Icons.event_rounded,
               p.warningAmber,
               p,

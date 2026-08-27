@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class Promociones extends StatefulWidget {
@@ -10,34 +11,34 @@ class Promociones extends StatefulWidget {
 }
 
 class _PromocionesState extends State<Promociones> {
-  List<Map<String, dynamic>> _promociones = [
-    {
-      'id': '1',
-      'nombre': '2x1 Arroz',
-      'tipo': 'bundle',
-      'descuento': 50,
-      'activo': true,
-    },
-    {
-      'id': '2',
-      'nombre': 'Descuento Frijol >5kg',
-      'tipo': 'volumen',
-      'descuento': 15,
-      'activo': true,
-    },
-    {
-      'id': '3',
-      'nombre': 'Combo Familia',
-      'tipo': 'combo',
-      'descuento': 20,
-      'activo': false,
-    },
-  ];
+  List<Map<String, dynamic>> _promociones = [];
+  bool _cargando = true;
 
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarPromociones();
+  }
+
+  Future<void> _cargarPromociones() async {
+    try {
+      final api = ApiService.instance;
+      final res = await api.get('/api/promociones');
+      if (api.isSuccess(res)) {
+        final data = res['promociones'] ?? res['data'];
+        if (data is List && mounted) {
+          setState(() {
+            _promociones = data.cast<Map<String, dynamic>>();
+            _cargando = false;
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('[Promociones] Error cargando promociones: $e');
+    }
+    if (mounted) setState(() => _cargando = false);
   }
 
   void _onThemeChanged() {
@@ -90,14 +91,53 @@ class _PromocionesState extends State<Promociones> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _promociones.length,
-        itemBuilder: (context, index) {
-          final promo = _promociones[index];
-          return _buildPromoCard(promo, palette);
-        },
-      ),
+      body: _cargando
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFF59E0B)),
+            )
+          : _promociones.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.local_offer_rounded,
+                    size: 64,
+                    color: appThemeNotifier.isDark
+                        ? const Color(0xFF525252)
+                        : const Color(0xFFD1D5DB),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No hay promociones registradas',
+                    style: GoogleFonts.syne(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          appThemeNotifier.isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Crea tu primera promoción para comenzar',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: appThemeNotifier.isDark
+                          ? const Color(0xFFA3A3A3)
+                          : const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _promociones.length,
+              itemBuilder: (context, index) {
+                final promo = _promociones[index];
+                return _buildPromoCard(promo, palette);
+              },
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           _showAddPromoDialog();
@@ -116,6 +156,9 @@ class _PromocionesState extends State<Promociones> {
   }
 
   Widget _buildPromoCard(Map<String, dynamic> promo, ThemePalette palette) {
+    final activo = promo['activo'] == true;
+    final tipo = '${promo['tipo'] ?? 'general'}';
+    final descuento = (promo['descuento'] as num?)?.toInt() ?? 0;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -133,16 +176,14 @@ class _PromocionesState extends State<Promociones> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: promo['activo']
+              color: activo
                   ? const Color(0xFF10B981).withValues(alpha: 0.1)
                   : const Color(0xFFEF4444).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              promo['activo']
-                  ? Icons.check_circle_rounded
-                  : Icons.cancel_rounded,
-              color: promo['activo']
+              activo ? Icons.check_circle_rounded : Icons.cancel_rounded,
+              color: activo
                   ? const Color(0xFF10B981)
                   : const Color(0xFFEF4444),
               size: 24,
@@ -176,7 +217,7 @@ class _PromocionesState extends State<Promociones> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        promo['tipo'].toUpperCase(),
+                        tipo.toUpperCase(),
                         style: GoogleFonts.dmSans(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
@@ -186,7 +227,7 @@ class _PromocionesState extends State<Promociones> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${promo['descuento']}% descuento',
+                      '$descuento% descuento',
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
                         color: appThemeNotifier.isDark
@@ -200,7 +241,7 @@ class _PromocionesState extends State<Promociones> {
             ),
           ),
           Switch(
-            value: promo['activo'],
+            value: activo,
             onChanged: (value) {
               setState(() {
                 promo['activo'] = value;

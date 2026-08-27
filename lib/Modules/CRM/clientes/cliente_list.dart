@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Modules/CRM/clientes/cliente_form.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 class ClienteList extends StatefulWidget {
   const ClienteList({super.key});
@@ -20,6 +21,25 @@ class _ClienteListState extends State<ClienteList> {
   void initState() { super.initState(); _cargar(); }
 
   Future<void> _cargar() async {
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/clientes');
+      if (api.isSuccess(result)) {
+        final clientes = result['clientes'] ?? [];
+        final list = (clientes is List) ? clientes.map((c) => Map<String, dynamic>.from(c)).toList() : <Map<String, dynamic>>[];
+        // Guardar en SharedPreferences como caché
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('clientes', jsonEncode(list));
+        setState(() {
+          _clientes = list;
+          _filtrados = List.from(_clientes);
+        });
+        return;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error cargando clientes del backend: $e');
+    }
+    // Fallback a SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _clientes = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('clientes') ?? '[]'));
@@ -38,6 +58,14 @@ class _ClienteListState extends State<ClienteList> {
   }
 
   Future<void> _eliminar(String id) async {
+    // Eliminar del backend
+    try {
+      final api = ApiService.instance;
+      await api.delete('/api/clientes/$id');
+    } catch (e) {
+      debugPrint('⚠️ Error eliminando cliente del backend: $e');
+    }
+    // Eliminar de caché local
     final prefs = await SharedPreferences.getInstance();
     final list = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('clientes') ?? '[]'));
     list.removeWhere((c) => c['id'] == id);
@@ -111,7 +139,23 @@ class _ClienteListState extends State<ClienteList> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ])),
-                              IconButton(icon: const Icon(Icons.delete_rounded, color: Color(0xFFEF4444), size: 18), onPressed: () => _eliminar(c['id'])),
+                              IconButton(
+                                icon: const Icon(Icons.delete_rounded, color: Color(0xFFEF4444), size: 18),
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Eliminar cliente'),
+                                      content: Text('¿Eliminar ${c['nombre']}?'),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirm == true) _eliminar(c['id']);
+                                },
+                              ),
                             ],
                           ),
                         ),

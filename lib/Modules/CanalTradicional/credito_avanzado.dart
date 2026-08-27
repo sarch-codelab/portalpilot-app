@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 class CreditoAvanzado extends StatefulWidget {
@@ -10,37 +11,32 @@ class CreditoAvanzado extends StatefulWidget {
 }
 
 class _CreditoAvanzadoState extends State<CreditoAvanzado> {
-  List<Map<String, dynamic>> _clientes = [
-    {
-      'id': '1',
-      'nombre': 'Pulpería Doña María',
-      'limite': 5000.00,
-      'usado': 2340.00,
-      'disponible': 2660.00,
-      'estado': 'activo',
-    },
-    {
-      'id': '2',
-      'nombre': 'Mercadito San José',
-      'limite': 3500.00,
-      'usado': 3500.00,
-      'disponible': 0.00,
-      'estado': 'sobre_limite',
-    },
-    {
-      'id': '3',
-      'nombre': 'Abarrotería El Vecino',
-      'limite': 2000.00,
-      'usado': 890.00,
-      'disponible': 1110.00,
-      'estado': 'activo',
-    },
-  ];
+  List<dynamic> _clientes = [];
+  bool _cargando = true;
 
   @override
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    if (mounted) setState(() => _cargando = true);
+    try {
+      final api = ApiService.instance;
+      final result = await api.get('/api/clientes');
+      if (result != null && api.isSuccess(result)) {
+        if (mounted) setState(() {
+          _clientes = result['clientes'] ?? [];
+          _cargando = false;
+        });
+      } else {
+        if (mounted) setState(() => _cargando = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _cargando = false);
+    }
   }
 
   void _onThemeChanged() {
@@ -118,11 +114,12 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
     );
   }
 
-  Widget _buildClienteCard(Map<String, dynamic> cliente, ThemePalette palette) {
-    final estadoColor = cliente['estado'] == 'activo'
-        ? const Color(0xFF10B981)
-        : const Color(0xFFEF4444);
-    final porcentaje = cliente['usado'] / cliente['limite'];
+  Widget _buildClienteCard(dynamic cliente, ThemePalette palette) {
+    final limite = (cliente['limite_credito'] ?? 0).toDouble();
+    final usado = (cliente['saldo_pendiente'] ?? 0).toDouble();
+    final disponible = limite - usado;
+    final estadoColor = usado > 0 ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
+    final porcentaje = limite > 0 ? usado / limite : 0.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -143,7 +140,7 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                cliente['nombre'],
+                  cliente['nombre'] ?? 'Sin nombre',
                 style: GoogleFonts.syne(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -157,7 +154,7 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  cliente['estado'].toUpperCase(),
+                  '${usado > 0 ? "CON SALDO" : "SIN SALDO"}',
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -170,33 +167,29 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
           const SizedBox(height: 16),
           _buildCreditRow(
             'Límite',
-            cliente['limite'],
+            limite,
             const Color(0xFF3B82F6),
           ),
           const SizedBox(height: 8),
           _buildCreditRow(
             'Usado',
-            cliente['usado'],
-            cliente['estado'] == 'activo'
-                ? const Color(0xFFF59E0B)
-                : const Color(0xFFEF4444),
+            usado,
+            usado > 0 ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
           ),
           const SizedBox(height: 8),
           _buildCreditRow(
             'Disponible',
-            cliente['disponible'],
+            disponible,
             const Color(0xFF10B981),
           ),
           const SizedBox(height: 12),
           LinearProgressIndicator(
-            value: porcentaje,
+            value: porcentaje.clamp(0.0, 1.0),
             backgroundColor: appThemeNotifier.isDark
                 ? const Color(0xFF262626)
                 : const Color(0xFFE5E7EB),
             valueColor: AlwaysStoppedAnimation<Color>(
-              cliente['estado'] == 'activo'
-                  ? const Color(0xFFF59E0B)
-                  : const Color(0xFFEF4444),
+              usado > 0 ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
             ),
           ),
         ],
@@ -218,7 +211,7 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
           ),
         ),
         Text(
-          'L.$valor.toStringAsFixed(2)',
+          'L.${valor.toStringAsFixed(2)}',
           style: GoogleFonts.syne(
             fontSize: 14,
             fontWeight: FontWeight.w600,

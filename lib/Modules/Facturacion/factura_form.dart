@@ -6,7 +6,7 @@ import 'package:portal_pilot_app/Modules/Facturacion/factura_detalle.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/sar_config_screen.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/canal_tradicional_service.dart';
-import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/factura_pdf_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
@@ -585,15 +585,33 @@ class _FacturaFormState extends State<FacturaForm> {
 
     await prefs.setString('facturas', jsonEncode(facturas));
 
+    // Enviar factura al backend
     try {
-      final empresa = prefs.getString('company_code') ?? '';
-      if (empresa.isNotEmpty) {
-        await PortalPilotDB.insertFactura(
-          factura: factura,
-          empresaCodigo: empresa,
+      final api = ApiService.instance;
+      final body = {
+        'correlativo': correlativo,
+        'cliente_nombre': _clienteNombreController.text,
+        'cliente_rtn': _clienteRTNController.text,
+        'cliente_email': '',
+        'subtotal': _subtotal,
+        'isv': _isv15 + _isv18,
+        'descuento': _descuento,
+        'total': _total,
+        'tipo_documento': _tipoDocumento,
+        'metodo_pago': _condicionPagoController.text,
+        'notas': factura['notas'] ?? '',
+      };
+      if (esEdicion && widget.facturaExistente?['id'] != null) {
+        await api.patch(
+          '/api/facturas/${widget.facturaExistente!['id']}',
+          body: body,
         );
+      } else {
+        await api.post('/api/facturas', body: body);
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('⚠️ No se pudo sincronizar factura con backend: $e');
+    }
 
     try {
       await LocalDatabaseService.instance.insertFacturaLocal(
