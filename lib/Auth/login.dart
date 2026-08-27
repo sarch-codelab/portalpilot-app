@@ -64,9 +64,23 @@ class _LoginScreenState extends State<LoginScreen>
     _loadSavedData();
   }
 
+  String? _onboardingBusiness;
+  String? _onboardingCustomer;
+  String? _onboardingOperation;
+
   Future<void> _loadSavedData() async {
     final prefs = await SharedPreferences.getInstance();
     _emailController.text = prefs.getString('saved_email') ?? '';
+    final b = prefs.getString('business_type');
+    final c = prefs.getString('customer_type');
+    final o = prefs.getString('operation_type');
+    if (mounted && (b != null || c != null || o != null)) {
+      setState(() {
+        _onboardingBusiness = b;
+        _onboardingCustomer = c;
+        _onboardingOperation = o;
+      });
+    }
   }
 
   @override
@@ -188,14 +202,34 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _handleRegister() async {
-    _notificationManager.showNotification(
-      'Redirigiendo al portal de registro...',
-      NotificationType.info,
-    );
+    final prefs = await SharedPreferences.getInstance();
+    final b = prefs.getString('business_type') ?? _onboardingBusiness ?? '';
+    final c = prefs.getString('customer_type') ?? _onboardingCustomer ?? '';
+    final o = prefs.getString('operation_type') ?? _onboardingOperation ?? '';
 
-    await Future.delayed(const Duration(milliseconds: 800));
+    if (b.isNotEmpty || c.isNotEmpty || o.isNotEmpty) {
+      _notificationManager.showNotification(
+        'Tus selecciones ($b, $c, $o) se enviarán pre-seleccionadas',
+        NotificationType.info,
+      );
+      await Future.delayed(const Duration(milliseconds: 600));
+    } else {
+      _notificationManager.showNotification(
+        'Redirigiendo al portal de registro...',
+        NotificationType.info,
+      );
+      await Future.delayed(const Duration(milliseconds: 800));
+    }
 
-    final uri = Uri.parse(String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portalpilot-app.vercel.app') + '/login.html');
+    final base = String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portalpilot-app.vercel.app');
+    final uri = Uri.parse('$base/login.html').replace(queryParameters: {
+      if (b.isNotEmpty) 'business_type': b,
+      if (c.isNotEmpty) 'customer_type': c,
+      if (o.isNotEmpty) 'operation_type': o,
+      if (b.isNotEmpty || c.isNotEmpty || o.isNotEmpty) 'onboarding': '1',
+      if (b.isNotEmpty || c.isNotEmpty || o.isNotEmpty) 'prefilled': '1',
+    });
+
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
@@ -700,6 +734,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildRegisterForm() {
+    final hasOnboarding = _onboardingBusiness != null || _onboardingCustomer != null || _onboardingOperation != null;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -748,7 +783,9 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Configura tu cuenta empresarial en nuestro portal externo con verificación corporativa.',
+                hasOnboarding
+                    ? 'Tus selecciones del onboarding ya están guardadas. Solo completa lo que falta.'
+                    : 'Configura tu cuenta empresarial en nuestro portal externo con verificación corporativa.',
                 style: GoogleFonts.dmSans(
                   fontSize: 13,
                   color: textMuted,
@@ -759,15 +796,100 @@ class _LoginScreenState extends State<LoginScreen>
             ],
           ),
         ),
+        if (hasOnboarding) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: bgTertiary,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: accentPurple.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: accentPurple.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.check_circle_rounded, color: accentPurple, size: 14),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'TUS SELECCIONES',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: accentPurple,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: accentPurple.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'PRE-SELECCIONADO',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: accentPurple,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                if (_onboardingBusiness != null) _buildPrefilledRow(Icons.storefront_rounded, 'Negocio', _onboardingBusiness!),
+                if (_onboardingCustomer != null) ...[
+                  const SizedBox(height: 8),
+                  _buildPrefilledRow(Icons.groups_rounded, 'Cliente', _onboardingCustomer!),
+                ],
+                if (_onboardingOperation != null) ...[
+                  const SizedBox(height: 8),
+                  _buildPrefilledRow(Icons.hub_rounded, 'Operación', _onboardingOperation!),
+                ],
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: accentPurple.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, size: 12, color: textMuted),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Se enviarán al portal. Solo completa los campos restantes.',
+                          style: GoogleFonts.dmSans(fontSize: 11, color: textMuted, fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         _buildPrimaryButton(
-          label: 'Comenzar Registro',
+          label: hasOnboarding ? 'Continuar Registro' : 'Comenzar Registro',
           icon: Icons.open_in_new_rounded,
           onPressed: _handleRegister,
         ),
         const SizedBox(height: 14),
         Text(
-          'Serás redirigido a portalpilot-app.vercel.app',
+          hasOnboarding ? 'Se abrirá portalpilot-app.vercel.app con tus datos' : 'Serás redirigido a portalpilot-app.vercel.app',
           style: GoogleFonts.spaceGrotesk(
             fontSize: 11,
             color: textDark,
@@ -777,6 +899,45 @@ class _LoginScreenState extends State<LoginScreen>
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+
+  Widget _buildPrefilledRow(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgSecondary,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderLight),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: accentPurple.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 14, color: accentPurple),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: GoogleFonts.spaceGrotesk(fontSize: 9, fontWeight: FontWeight.w700, color: textDark, letterSpacing: 1),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: textPrimary),
+              ),
+            ],
+          ),
+          const Spacer(),
+          const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF10B981)),
+        ],
+      ),
     );
   }
 
