@@ -12,12 +12,13 @@ module.exports = async function handler(req, res) {
   const prompt = body.prompt || 'Identifica este producto y devuelve un JSON con: nombre, marca, categoria, descripcion, presentacion, unidad_medida, confianza (0-1). Si no puedes determinar algo, deja el campo como null. Responde SOLO con el JSON.';
   if (!image) return res.status(400).json({ error: 'Falta image (base64)', reply: null });
   if (!image.startsWith('data:')) image = `data:image/jpeg;base64,${String(image).replace(/\s+/g, '')}`;
-  // Probar modelos de visión en orden de preferencia
+  // Probar modelos de visión en orden de preferencia (Groq deprecó 11b/90b, usar Llama 4)
   const visionModels = [
     body.model || null,
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'meta-llama/llama-4-maverick-17b-128e-instruct',
     'llama-3.2-11b-vision-preview',
     'llama-3.2-90b-vision-preview',
-    'meta-llama/llama-4-maverick-17b-128e-instruct',
   ].filter(Boolean);
   let lastError = null;
   for (const model of visionModels) {
@@ -38,8 +39,8 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
       }
       // Si es error de modelo no encontrado, probar siguiente modelo
-      const errMsg = data.error?.message || '';
-      if (errMsg.includes('does not exist') || errMsg.includes('model_not_found') || r.status === 404) {
+      const errMsg = (data.error?.message || '').toLowerCase();
+      if (errMsg.includes('does not exist') || errMsg.includes('model_not_found') || errMsg.includes('decommissioned') || r.status === 404) {
         lastError = data;
         continue;
       }
