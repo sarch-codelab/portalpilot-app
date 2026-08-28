@@ -32,7 +32,9 @@ module.exports = async function handler(req, res) {
       });
       const data = await r.json();
       if (r.ok && data.choices) {
-        const reply = data.choices?.[0]?.message?.content || '';
+        let reply = data.choices?.[0]?.message?.content || '';
+        // Qwen devuelve <think>...</think> antes del JSON real - limpiar
+        reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
         return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
       }
       // Si es error de modelo no encontrado, probar siguiente modelo

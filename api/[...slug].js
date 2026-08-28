@@ -416,7 +416,8 @@ function aiVisionHandler(req, res) {
         });
         const data = await r.json();
         if (r.ok && data.choices) {
-          const reply = data.choices?.[0]?.message?.content || '';
+          let reply = data.choices?.[0]?.message?.content || '';
+          reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
           return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
         }
         const msg = data.error?.message || '';
