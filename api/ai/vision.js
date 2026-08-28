@@ -12,11 +12,16 @@ module.exports = async function handler(req, res) {
   const prompt = body.prompt || 'Identifica este producto y devuelve un JSON con: nombre, marca, categoria, descripcion, presentacion, unidad_medida, confianza (0-1). Si no puedes determinar algo, deja el campo como null. Responde SOLO con el JSON.';
   if (!image) return res.status(400).json({ error: 'Falta image (base64)', reply: null });
   if (!image.startsWith('data:')) image = `data:image/jpeg;base64,${String(image).replace(/\s+/g, '')}`;
-  // Groq vision models (2026): solo Qwen soporta vision actualmente
-  const visionModels = [
-    body.model || 'qwen/qwen3.6-27b',
-    'qwen/qwen3.8-27b',
-  ].filter((m, i, a) => a.indexOf(m) === i);
+  // Auto-descubrimiento de modelos de visión vivos (Groq depreca modelos con frecuencia)
+  const { pickModels } = require('../_modelPicker.js');
+  const requestedModel = body.model || '';
+  let visionModels;
+  try {
+    const live = await pickModels(key, requestedModel);
+    visionModels = live.vision.length ? live.vision : [requestedModel || 'qwen/qwen3.6-27b', 'qwen/qwen3.8-27b'];
+  } catch {
+    visionModels = [requestedModel || 'qwen/qwen3.6-27b', 'qwen/qwen3.8-27b'];
+  }
   let lastError = null;
   for (const model of visionModels) {
     try {

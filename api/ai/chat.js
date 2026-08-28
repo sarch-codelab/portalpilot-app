@@ -11,11 +11,16 @@
   const message = body.message || body.prompt || body.query || '';
   const systemPrompt = body.systemPrompt || 'Eres un asistente Ãºtil de Portal Pilot.';
   if (!message) return res.status(400).json({ error: 'Falta message', reply: null });
-  // Modelos de chat disponibles en Free/Dev plan de Groq (2026)
-  const chatModels = [
-    body.model || body.modelId || 'openai/gpt-oss-20b',
-    'openai/gpt-oss-120b',
-  ].filter((m, i, a) => m && a.indexOf(m) === i);
+  // Auto-descubrimiento de modelos de chat vivos (Groq depreca modelos con frecuencia)
+  const { pickModels } = require('../_modelPicker.js');
+  const requested = body.model || body.modelId || '';
+  let chatModels;
+  try {
+    const live = await pickModels(key, requested);
+    chatModels = live.chat.length ? live.chat : [requested || 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+  } catch {
+    chatModels = [requested || 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+  }
   let lastError = null;
   for (const model of chatModels) {
     try {

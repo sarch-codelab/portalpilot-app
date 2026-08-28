@@ -223,6 +223,8 @@ async function comparePassword(inputPassword, storedPassword) {
 // Helper functions para Supabase
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+const { pickModels } = require('./_modelPicker.js');
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
@@ -346,7 +348,7 @@ function aiGroqHandler(req, res) {
 // AI Gateway handlers (vision, chat, barcode, dashboard...)
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-function aiChatHandler(req, res) {
+async function aiChatHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
@@ -358,50 +360,51 @@ function aiChatHandler(req, res) {
   const message = body.message || body.prompt || body.query || '';
   const systemPrompt = body.systemPrompt || 'Eres un asistente Ãºtil de Portal Pilot.';
   if (!message) return res.status(400).json({ error: 'Falta message', reply: null });
-  // Modelos de chat disponibles en Free/Dev plan de Groq (2026)
-  const chatModels = [
-    body.model || body.modelId || 'openai/gpt-oss-20b',
-    'openai/gpt-oss-120b',
-  ].filter((m, i, a) => m && a.indexOf(m) === i);
-  (async () => {
-    let lastError = null;
-    for (const model of chatModels) {
-      try {
-        const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: message },
-            ],
-            max_tokens: body.maxTokens || 1500,
-            temperature: body.temperature ?? 0.7,
-          }),
-        });
-        const data = await r.json();
-        if (r.ok && data.choices) {
-          const reply = data.choices?.[0]?.message?.content || '';
-          return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
-        }
-        const msg = data.error?.message || '';
-        // Model not found/decommissioned -> siguiente modelo
-        if (msg.includes('does not exist') || msg.includes('model_not_found') || msg.includes('decommissioned') || r.status === 404) {
-          lastError = msg;
-          continue;
-        }
-        return res.status(r.status || 502).json({ error: msg || 'Error Groq', reply: null, details: data });
-      } catch (e) {
-        lastError = e.message;
+  const requested = body.model || body.modelId || '';
+  let chatModels;
+  try {
+    const live = await pickModels(key, requested);
+    chatModels = live.chat.length ? live.chat : [requested || 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+  } catch {
+    chatModels = [requested || 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+  }
+  let lastError = null;
+  for (const model of chatModels) {
+    try {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: message },
+          ],
+          max_tokens: body.maxTokens || 1500,
+          temperature: body.temperature ?? 0.7,
+        }),
+      });
+      const data = await r.json();
+      if (r.ok && data.choices) {
+        const reply = data.choices?.[0]?.message?.content || '';
+        return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
+      }
+      const msg = data.error?.message || '';
+      // Model not found/decommissioned -> siguiente modelo
+      if (msg.includes('does not exist') || msg.includes('model_not_found') || msg.includes('decommissioned') || r.status === 404) {
+        lastError = msg;
         continue;
       }
+      return res.status(r.status || 502).json({ error: msg || 'Error Groq', reply: null, details: data });
+    } catch (e) {
+      lastError = e.message;
+      continue;
     }
-    return res.status(502).json({ error: lastError || 'Todos los modelos de chat fallaron', reply: null });
-  })().catch((err) => res.status(500).json({ error: err.message, reply: null }));
+  }
+  return res.status(502).json({ error: lastError || 'Todos los modelos de chat fallaron', reply: null });
 }
 
-function aiVisionHandler(req, res) {
+async function aiVisionHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
@@ -414,13 +417,16 @@ function aiVisionHandler(req, res) {
   const prompt = body.prompt || 'Identifica este producto y devuelve un JSON con: nombre, marca, categoria, descripcion, presentacion, unidad_medida, confianza (0-1). Si no puedes determinar algo, deja el campo como null. Responde SOLO con el JSON.';
   if (!image) return res.status(400).json({ error: 'Falta image (base64)', reply: null });
   if (!image.startsWith('data:')) image = `data:image/jpeg;base64,${image.replace(/\s+/g, '')}`;
-  // Groq vision models (2026): solo Qwen soporta vision actualmente
-  const visionModels = [
-    body.model || 'qwen/qwen3.6-27b',
-    'qwen/qwen3.8-27b',
-  ];
-  (async () => {
-    let lastError = null;
+  // Modelos de visión disponibles (auto-descubrimiento contra la API de Groq)
+  const requestedModel = body.model || '';
+  let visionModels;
+  try {
+    const live = await pickModels(key, requestedModel);
+    visionModels = live.vision.length ? live.vision : [requestedModel || 'qwen/qwen3.6-27b', 'qwen/qwen3.8-27b'];
+  } catch {
+    visionModels = [requestedModel || 'qwen/qwen3.6-27b', 'qwen/qwen3.8-27b'];
+  }
+  let lastError = null;
     for (const model of visionModels) {
       try {
         const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -446,13 +452,12 @@ function aiVisionHandler(req, res) {
           continue;
         }
         return res.status(r.status || 502).json({ error: msg || 'Error Groq Vision', reply: null, details: data });
-      } catch (e) {
-        lastError = e.message;
-        continue;
-      }
+} catch (e) {
+      lastError = e.message;
+      continue;
     }
-    return res.status(502).json({ error: lastError || 'Todos los modelos de visiÃ³n fallaron', reply: null });
-  })().catch((err) => res.status(500).json({ error: err.message, reply: null }));
+  }
+  return res.status(502).json({ error: lastError || 'Todos los modelos de visiÃ³n fallaron', reply: null });
 }
 
 async function aiBarcodeHandler(req, res) {
