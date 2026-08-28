@@ -395,11 +395,10 @@ function aiVisionHandler(req, res) {
   const prompt = body.prompt || 'Identifica este producto y devuelve un JSON con: nombre, marca, categoria, descripcion, presentacion, unidad_medida, confianza (0-1). Si no puedes determinar algo, deja el campo como null. Responde SOLO con el JSON.';
   if (!image) return res.status(400).json({ error: 'Falta image (base64)', reply: null });
   if (!image.startsWith('data:')) image = `data:image/jpeg;base64,${image.replace(/\s+/g, '')}`;
-  // Fallback por si Groq depreca un modelo: prueba en orden hasta que uno funcione
+  // Groq vision models (2026): solo Qwen soporta vision actualmente
   const visionModels = [
-    body.model || 'meta-llama/llama-4-scout-17b-16e-instruct',
-    'meta-llama/llama-4-maverick-17b-128e-instruct',
-    'llama-3.2-11b-vision-preview',
+    body.model || 'qwen/qwen3.6-27b',
+    'qwen/qwen3.8-27b',
   ];
   (async () => {
     let lastError = null;
