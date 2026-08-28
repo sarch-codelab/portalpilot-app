@@ -134,7 +134,7 @@ class AIManager {
   Future<AIResponse> generate({
     required String prompt,
     String? contextoAdicional,
-    String modelId = 'llama-3.3-70b-versatile',
+    String modelId = 'openai/gpt-oss-20b',
     int maxTokens = 1500,
     double temperature = 0.7,
   }) async {

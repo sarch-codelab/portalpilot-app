@@ -1,5 +1,5 @@
-// Despachador único de la API móvil (plan Hobby: máx 12 funciones).
-// El handler de login está integrado directamente para evitar problemas de despliegue.
+﻿// Despachador Ãºnico de la API mÃ³vil (plan Hobby: mÃ¡x 12 funciones).
+// El handler de login estÃ¡ integrado directamente para evitar problemas de despliegue.
 
 const routes = {
   'login': loginHandler,
@@ -38,11 +38,11 @@ module.exports = async function handler(req, res) {
     pathname = (req.url || '').split('?')[0].replace(/^\/api\//, '').replace(/\/+$/g, '').replace(/^\/+|\/+$/g, '');
   }
   if (!pathname && req.url) {
-    // fallback por si req.query.slug no está poblado
+    // fallback por si req.query.slug no estÃ¡ poblado
     pathname = req.url.split('?')[0].replace(/^\/api\//, '').replace(/\/+$/g, '').replace(/^\/+|\/+$/g, '');
   }
 
-  // Soporte para rutas dinámicas con prefijo (ej: ai/barcode/12345)
+  // Soporte para rutas dinÃ¡micas con prefijo (ej: ai/barcode/12345)
   let route = routes[pathname];
   if (!route && pathname.startsWith('ai/barcode/')) {
     route = aiBarcodeHandler;
@@ -61,9 +61,9 @@ module.exports = async function handler(req, res) {
   return route(req, res);
 };
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Handler de Login (integrado para evitar problemas de despliegue)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function loginHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -76,11 +76,11 @@ function loginHandler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Método no permitido' });
+    res.status(405).json({ error: 'MÃ©todo no permitido' });
     return;
   }
 
-  // ── Parsear body ──────────────────────────────────────────────────────────
+  // â”€â”€ Parsear body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const parseBody = (value) => {
     if (!value) return {};
     if (Buffer.isBuffer(value)) {
@@ -98,7 +98,7 @@ function loginHandler(req, res) {
   const password = (body.password || '').toString().trim();
 
   if (!email || !password) {
-    res.status(400).json({ error: 'Email y contraseña son requeridos.' });
+    res.status(400).json({ error: 'Email y contraseÃ±a son requeridos.' });
     return;
   }
 
@@ -110,7 +110,7 @@ function loginHandler(req, res) {
   const jwtSecret = process.env.JWT_SECRET || 'portalpilot_production_jwt_secret_key_2026_secure';
 
   if (!supabaseUrl || !supabaseKey) {
-    return res.status(503).json({ error: 'Supabase no está configurado en las variables de entorno de Vercel (SUPABASE_URL / SUPABASE_SERVICE_KEY).' });
+    return res.status(503).json({ error: 'Supabase no estÃ¡ configurado en las variables de entorno de Vercel (SUPABASE_URL / SUPABASE_SERVICE_KEY).' });
   }
 
   const restBase = `${supabaseUrl}/rest/v1`;
@@ -125,7 +125,7 @@ function loginHandler(req, res) {
     .then(async (rows) => {
       const user = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
       if (!user) {
-        return res.status(401).json({ error: 'Credenciales inválidas. Usuario no registrado.' });
+        return res.status(401).json({ error: 'Credenciales invÃ¡lidas. Usuario no registrado.' });
       }
 
       let isMatch = false;
@@ -139,10 +139,10 @@ function loginHandler(req, res) {
       }
 
       if (!isMatch) {
-        return res.status(401).json({ error: 'Contraseña incorrecta.' });
+        return res.status(401).json({ error: 'ContraseÃ±a incorrecta.' });
       }
 
-      // Lookup tenant data (area, plan) — same as web portal
+      // Lookup tenant data (area, plan) â€” same as web portal
       let tenantData = null;
       if (user.empresa_codigo) {
         try {
@@ -157,7 +157,7 @@ function loginHandler(req, res) {
         } catch (_) {}
       }
 
-      const userArea = tenantData?.area || user.area || 'Área Comercial';
+      const userArea = tenantData?.area || user.area || 'Ãrea Comercial';
       const userPlan = tenantData?.plan || 'pro';
 
       const token = jwt.sign(
@@ -196,32 +196,32 @@ function loginHandler(req, res) {
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Comparación de contraseñas: soporta bcrypt y texto plano
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ComparaciÃ³n de contraseÃ±as: soporta bcrypt y texto plano
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function comparePassword(inputPassword, storedPassword) {
   if (!storedPassword) return false;
   
-  // Verificar si la contraseña almacenada es un hash bcrypt
+  // Verificar si la contraseÃ±a almacenada es un hash bcrypt
   if (storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2y$')) {
     try {
-      // bcrypt está disponible en Node.js serverless de Vercel
+      // bcrypt estÃ¡ disponible en Node.js serverless de Vercel
       const bcrypt = require('bcryptjs');
       return await bcrypt.compare(inputPassword, storedPassword);
     } catch {
-      // Si bcryptjs no está disponible, comparar como texto plano
+      // Si bcryptjs no estÃ¡ disponible, comparar como texto plano
       console.warn('[login] bcryptjs no disponible, comparando texto plano');
       return inputPassword === storedPassword;
     }
   }
   
-  // Comparación de texto plano (sin hashing)
+  // ComparaciÃ³n de texto plano (sin hashing)
   return inputPassword === storedPassword;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Helper functions para Supabase
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
@@ -274,9 +274,9 @@ function fail(res, err) {
   res.status(code).json({ error: err?.message || 'Error interno del servidor.' });
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // AI Groq Handler
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function aiGroqHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -289,14 +289,14 @@ function aiGroqHandler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Método no permitido' });
+    res.status(405).json({ error: 'MÃ©todo no permitido' });
     return;
   }
 
   const key = process.env.GROQ_API_KEY;
   if (!key) {
     res.status(500).json({
-      error: 'Falta GROQ_API_KEY en Vercel. Configúralo en Project Settings → Environment Variables.',
+      error: 'Falta GROQ_API_KEY en Vercel. ConfigÃºralo en Project Settings â†’ Environment Variables.',
     });
     return;
   }
@@ -309,9 +309,9 @@ function aiGroqHandler(req, res) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: body.modelId || 'llama-3.3-70b-versatile',
+      model: body.modelId || 'openai/gpt-oss-20b',
       messages: [
-        { role: 'system', content: body.systemPrompt || 'Eres un asistente útil.' },
+        { role: 'system', content: body.systemPrompt || 'Eres un asistente Ãºtil.' },
         { role: 'user', content: body.prompt || '' },
       ],
       max_tokens: body.maxTokens || 1500,
@@ -332,7 +332,7 @@ function aiGroqHandler(req, res) {
       res.status(200).json({
         success: true,
         text: content,
-        modelId: body.modelId || 'llama-3.3-70b-versatile',
+        modelId: body.modelId || 'openai/gpt-oss-20b',
         provider: 'groq',
         tokensUsed: data.usage?.total_tokens || 0,
       });
@@ -342,44 +342,63 @@ function aiGroqHandler(req, res) {
     });
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // AI Gateway handlers (vision, chat, barcode, dashboard...)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function aiChatHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido', reply: null });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'MÃ©todo no permitido', reply: null });
   const key = process.env.GROQ_API_KEY;
   if (!key) return res.status(500).json({ error: 'Falta GROQ_API_KEY en Vercel', reply: null });
   const body = parseBody(req);
   const message = body.message || body.prompt || body.query || '';
-  const systemPrompt = body.systemPrompt || 'Eres un asistente útil de Portal Pilot.';
+  const systemPrompt = body.systemPrompt || 'Eres un asistente Ãºtil de Portal Pilot.';
   if (!message) return res.status(400).json({ error: 'Falta message', reply: null });
-  fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: body.model || body.modelId || 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message },
-      ],
-      max_tokens: body.maxTokens || 1500,
-      temperature: body.temperature ?? 0.7,
-    }),
-  })
-    .then(async (r) => {
-      const data = await r.json();
-      if (!r.ok || !data.choices) {
-        return res.status(r.status || 502).json({ error: data.error?.message || 'Error Groq', reply: null, details: data });
+  // Modelos de chat disponibles en Free/Dev plan de Groq (2026)
+  const chatModels = [
+    body.model || body.modelId || 'openai/gpt-oss-20b',
+    'openai/gpt-oss-120b',
+  ].filter((m, i, a) => m && a.indexOf(m) === i);
+  (async () => {
+    let lastError = null;
+    for (const model of chatModels) {
+      try {
+        const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: message },
+            ],
+            max_tokens: body.maxTokens || 1500,
+            temperature: body.temperature ?? 0.7,
+          }),
+        });
+        const data = await r.json();
+        if (r.ok && data.choices) {
+          const reply = data.choices?.[0]?.message?.content || '';
+          return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
+        }
+        const msg = data.error?.message || '';
+        // Model not found/decommissioned -> siguiente modelo
+        if (msg.includes('does not exist') || msg.includes('model_not_found') || msg.includes('decommissioned') || r.status === 404) {
+          lastError = msg;
+          continue;
+        }
+        return res.status(r.status || 502).json({ error: msg || 'Error Groq', reply: null, details: data });
+      } catch (e) {
+        lastError = e.message;
+        continue;
       }
-      const reply = data.choices?.[0]?.message?.content || '';
-      return res.status(200).json({ reply, model: data.model || body.model, provider: 'groq', usage: data.usage });
-    })
-    .catch((err) => res.status(500).json({ error: err.message, reply: null }));
+    }
+    return res.status(502).json({ error: lastError || 'Todos los modelos de chat fallaron', reply: null });
+  })().catch((err) => res.status(500).json({ error: err.message, reply: null }));
 }
 
 function aiVisionHandler(req, res) {
@@ -387,7 +406,7 @@ function aiVisionHandler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido', reply: null });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'MÃ©todo no permitido', reply: null });
   const key = process.env.GROQ_API_KEY;
   if (!key) return res.status(500).json({ error: 'Falta GROQ_API_KEY en Vercel', reply: null });
   const body = parseBody(req);
@@ -421,7 +440,7 @@ function aiVisionHandler(req, res) {
           return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
         }
         const msg = data.error?.message || '';
-        // Si es deprecación, prueba siguiente modelo
+        // Si es deprecaciÃ³n, prueba siguiente modelo
         if (msg.includes('decommissioned') || msg.includes('model_') || data.error?.code === 'model_decommissioned') {
           lastError = msg;
           continue;
@@ -432,7 +451,7 @@ function aiVisionHandler(req, res) {
         continue;
       }
     }
-    return res.status(502).json({ error: lastError || 'Todos los modelos de visión fallaron', reply: null });
+    return res.status(502).json({ error: lastError || 'Todos los modelos de visiÃ³n fallaron', reply: null });
   })().catch((err) => res.status(500).json({ error: err.message, reply: null }));
 }
 
@@ -441,14 +460,14 @@ async function aiBarcodeHandler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido' });
+  if (req.method !== 'GET') return res.status(405).json({ error: 'MÃ©todo no permitido' });
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
-  // Extraer código de la ruta ai/barcode/<code> o query ?code=
+  // Extraer cÃ³digo de la ruta ai/barcode/<code> o query ?code=
   const urlParts = (req.url || '').split('?')[0].split('/');
   let code = urlParts[urlParts.length - 1] || '';
   if (!code || code === 'barcode') code = (req.query?.code || '').toString();
   code = decodeURIComponent((code || '').toString().trim());
-  if (!code) return res.status(400).json({ found: false, products: [], source: 'error', message: 'Falta código de barras' });
+  if (!code) return res.status(400).json({ found: false, products: [], source: 'error', message: 'Falta cÃ³digo de barras' });
   try {
     const result = await supabaseRequest(`/productos?codigo=eq.${encodeURIComponent(code)}&select=*&limit=10`);
     if (result.status >= 400) return res.status(502).json({ found: false, products: [], source: 'supabase', message: result.body });
@@ -457,7 +476,7 @@ async function aiBarcodeHandler(req, res) {
       return ok(res, { found: true, products: rows, source: 'supabase' });
     }
     // Fallback sin empresa_codigo: busca global
-    return ok(res, { found: false, products: [], source: 'supabase', message: 'No encontrado en catálogo' });
+    return ok(res, { found: false, products: [], source: 'supabase', message: 'No encontrado en catÃ¡logo' });
   } catch (e) {
     return res.status(500).json({ found: false, products: [], source: 'error', message: e.message });
   }
@@ -468,9 +487,9 @@ function aiPosAnalyzeHandler(req, res) { return aiChatHandler(req, res); }
 function aiCrmHandler(req, res) { return aiChatHandler(req, res); }
 function aiSupportHandler(req, res) { return aiChatHandler(req, res); }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Placeholder handlers para otros endpoints
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function clientesHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -521,7 +540,7 @@ async function clientesHandler(req, res) {
       if (empresaId) payload.empresa_id = empresaId;
 
       let result = await supabaseRequest('/clientes', { method: 'POST', body: JSON.stringify(payload) });
-      // Si la columna dni aún no existe en la BD (migración pendiente), reintentar sin ella.
+      // Si la columna dni aÃºn no existe en la BD (migraciÃ³n pendiente), reintentar sin ella.
       if (result.status >= 400 && payload.dni != null && String(result.body || '').includes('dni')) {
         const fallback = { ...payload };
         delete fallback.dni;
@@ -539,7 +558,7 @@ async function clientesHandler(req, res) {
       return ok(res, { success: true });
     }
 
-    return res.status(405).json({ error: 'Método no permitido' });
+    return res.status(405).json({ error: 'MÃ©todo no permitido' });
   } catch (err) {
     return fail(res, err);
   }
@@ -644,7 +663,7 @@ async function facturasHandler(req, res) {
       return ok(res, { success: true, data: JSON.parse(result.body) });
     }
 
-    return res.status(405).json({ error: 'Método no permitido' });
+    return res.status(405).json({ error: 'MÃ©todo no permitido' });
   } catch (err) {
     return fail(res, err);
   }
@@ -751,7 +770,7 @@ async function productosHandler(req, res) {
       });
 
       // Upsert manual idempotente por (empresa_codigo, codigo):
-      // el on_conflict requiere un constraint UNIQUE que aún no existe en la tabla.
+      // el on_conflict requiere un constraint UNIQUE que aÃºn no existe en la tabla.
       const results = [];
       const errores = [];
       for (const payload of payloads) {
@@ -820,7 +839,7 @@ async function productosHandler(req, res) {
       return ok(res, { success: true }, 200);
     }
 
-    return res.status(405).json({ error: 'Método no permitido' });
+    return res.status(405).json({ error: 'MÃ©todo no permitido' });
   } catch (err) {
     return fail(res, err);
   }
@@ -851,7 +870,7 @@ async function ventasHandler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'MÃ©todo no permitido' });
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
 
   try {
@@ -969,9 +988,9 @@ async function procesarVentaSync(empresaCodigo, empresaId, ventas) {
   return { ok, errores, decrementados, correlativos };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Sync genérico por tabla (upsert idempotente fila por fila)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Sync genÃ©rico por tabla (upsert idempotente fila por fila)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // Tablas sincronizables desde la app (nombres de tabla locales = Supabase).
 const TABLAS_SYNC = new Set([
@@ -1025,7 +1044,7 @@ async function syncHandler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'MÃ©todo no permitido' });
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
 
   try {
@@ -1116,9 +1135,9 @@ async function syncHandler(req, res) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Handler de Storage (Supabase Storage: upload y delete de imágenes)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Handler de Storage (Supabase Storage: upload y delete de imÃ¡genes)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const MIME_EXT = {
   'image/jpeg': 'jpg',
@@ -1134,14 +1153,14 @@ async function storageHandler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'MÃ©todo no permitido' });
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
 
   try {
     const body = parseBody(req);
     const action = body.action === 'delete' ? 'delete' : 'upload';
 
-    // ── Eliminar imagen a partir de su URL pública ───────────────────────────
+    // â”€â”€ Eliminar imagen a partir de su URL pÃºblica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (action === 'delete') {
       const url = String(body.url || '');
       const prefix = `${SUPABASE_URL}/storage/v1/object/`;
@@ -1155,7 +1174,7 @@ async function storageHandler(req, res) {
       return ok(res, { deleted: del.status === 200 });
     }
 
-    // ── Subir imagen ──────────────────────────────────────────────────────────
+    // â”€â”€ Subir imagen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const bucket = String(body.bucket || 'productos').replace(/[^a-zA-Z0-9_-]/g, '');
     const folder = String(body.folder || '')
       .replace(/[^a-zA-Z0-9_/-]/g, '')
@@ -1171,18 +1190,18 @@ async function storageHandler(req, res) {
     try {
       buffer = Buffer.from(dataB64, 'base64');
     } catch {
-      return fail(res, { message: 'base64 inválido.', status: 400 });
+      return fail(res, { message: 'base64 invÃ¡lido.', status: 400 });
     }
-    if (buffer.length === 0) return fail(res, { message: 'Imagen vacía.', status: 400 });
+    if (buffer.length === 0) return fail(res, { message: 'Imagen vacÃ­a.', status: 400 });
     if (buffer.length > 3.5 * 1024 * 1024) {
-      return fail(res, { message: 'La imagen excede el límite de 3.5 MB.', status: 413 });
+      return fail(res, { message: 'La imagen excede el lÃ­mite de 3.5 MB.', status: 413 });
     }
 
     const ext = MIME_EXT[mime] || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
     const objectPath = folder ? `${folder}/${fileName}` : fileName;
 
-    // Asegurar que el bucket exista y sea público (ignorar si ya existe).
+    // Asegurar que el bucket exista y sea pÃºblico (ignorar si ya existe).
     await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
       method: 'POST',
       headers: {
