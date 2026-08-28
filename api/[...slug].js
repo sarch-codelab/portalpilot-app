@@ -395,33 +395,45 @@ function aiVisionHandler(req, res) {
   const prompt = body.prompt || 'Identifica este producto y devuelve un JSON con: nombre, marca, categoria, descripcion, presentacion, unidad_medida, confianza (0-1). Si no puedes determinar algo, deja el campo como null. Responde SOLO con el JSON.';
   if (!image) return res.status(400).json({ error: 'Falta image (base64)', reply: null });
   if (!image.startsWith('data:')) image = `data:image/jpeg;base64,${image.replace(/\s+/g, '')}`;
-  fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: body.model || 'meta-llama/llama-4-scout-17b-16e-instruct',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: image } },
-          ],
-        },
-      ],
-      max_tokens: body.maxTokens || 800,
-      temperature: 0.2,
-    }),
-  })
-    .then(async (r) => {
-      const data = await r.json();
-      if (!r.ok || !data.choices) {
-        return res.status(r.status || 502).json({ error: data.error?.message || 'Error Groq Vision', reply: null, details: data });
+  // Fallback por si Groq depreca un modelo: prueba en orden hasta que uno funcione
+  const visionModels = [
+    body.model || 'meta-llama/llama-4-scout-17b-16e-instruct',
+    'meta-llama/llama-4-maverick-17b-128e-instruct',
+    'llama-3.2-11b-vision-preview',
+  ];
+  (async () => {
+    let lastError = null;
+    for (const model of visionModels) {
+      try {
+        const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: image } }] }],
+            max_tokens: body.maxTokens || 800,
+            temperature: 0.2,
+          }),
+        });
+        const data = await r.json();
+        if (r.ok && data.choices) {
+          const reply = data.choices?.[0]?.message?.content || '';
+          return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
+        }
+        const msg = data.error?.message || '';
+        // Si es deprecación, prueba siguiente modelo
+        if (msg.includes('decommissioned') || msg.includes('model_') || data.error?.code === 'model_decommissioned') {
+          lastError = msg;
+          continue;
+        }
+        return res.status(r.status || 502).json({ error: msg || 'Error Groq Vision', reply: null, details: data });
+      } catch (e) {
+        lastError = e.message;
+        continue;
       }
-      const reply = data.choices?.[0]?.message?.content || '';
-      return res.status(200).json({ reply, model: data.model || 'meta-llama/llama-4-scout-17b-16e-instruct', provider: 'groq', usage: data.usage });
-    })
-    .catch((err) => res.status(500).json({ error: err.message, reply: null }));
+    }
+    return res.status(502).json({ error: lastError || 'Todos los modelos de visión fallaron', reply: null });
+  })().catch((err) => res.status(500).json({ error: err.message, reply: null }));
 }
 
 async function aiBarcodeHandler(req, res) {
