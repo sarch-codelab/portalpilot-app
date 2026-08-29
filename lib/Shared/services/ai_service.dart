@@ -67,6 +67,22 @@ class ProductIdentification {
   };
 }
 
+class UpsellSugerencia {
+  final String codigo;
+  final String nombre;
+  final String motivo;
+
+  UpsellSugerencia({required this.codigo, required this.nombre, required this.motivo});
+
+  factory UpsellSugerencia.fromJson(Map<String, dynamic> json) {
+    return UpsellSugerencia(
+      codigo: json['codigo']?.toString() ?? '',
+      nombre: json['nombre']?.toString() ?? '',
+      motivo: json['motivo']?.toString() ?? '',
+    );
+  }
+}
+
 class BarcodeLookupResult {
   final bool found;
   final List<Map<String, dynamic>> products;
@@ -345,12 +361,47 @@ class AIManager {
     return result;
   }
 
-  Future<AIResponse> posAnalysis(String message, {Map<String, String>? dateRange}) async {
+  Future<AIResponse> posAnalysis(String message, {Map<String, String>? dateRange, String? empresaCodigo}) async {
     final body = <String, dynamic>{'message': message};
     if (dateRange != null) body['dateRange'] = dateRange;
+    if (empresaCodigo != null && empresaCodigo.isNotEmpty) body['empresaCodigo'] = empresaCodigo;
     final result = await _callGateway('/api/ai/pos/analyze', body);
     await logUsage('pos_analysis', result);
     return result;
+  }
+
+  /// Recomendaciones de upsell/cross-sell basadas en el carrito actual.
+  /// El backend solo devuelve productos existentes en [catalogo] y que no
+  /// estén ya en [carrito]. Devuelve lista vacía si algo falla (no bloquea).
+  Future<List<UpsellSugerencia>> obtenerSugerenciasUpsell({
+    required List<Map<String, dynamic>> carrito,
+    required List<Map<String, dynamic>> catalogo,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    final apiRoot = const String.fromEnvironment('API_ROOT', defaultValue: _defaultAiApiRoot);
+    final url = Uri.parse('$apiRoot/api/ai/pos/upsell');
+
+    try {
+      final response = await http.post(url, headers: _headers, body: jsonEncode({
+        'carrito': carrito,
+        'catalogo': catalogo,
+      })).timeout(const Duration(seconds: 20));
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      if (response.statusCode != 200 || data['sugerencias'] == null) {
+        debugPrint('[AI] Upsell sin resultados: ${data['error'] ?? 'status ${response.statusCode}'}');
+        return [];
+      }
+      final arr = data['sugerencias'] as List<dynamic>? ?? [];
+      return arr
+          .whereType<Map>()
+          .map((e) => UpsellSugerencia.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (e) {
+      debugPrint('[AI] Error en upsell: $e');
+      return [];
+    }
   }
 
   Future<AIResponse> crmCustomer(String message, {String? customerId}) async {

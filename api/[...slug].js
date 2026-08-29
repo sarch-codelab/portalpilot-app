@@ -9,6 +9,7 @@ const routes = {
   'ai/barcode': aiBarcodeHandler,
   'ai/dashboard': aiDashboardHandler,
   'ai/pos/analyze': aiPosAnalyzeHandler,
+  'ai/pos/upsell': aiPosUpsellHandler,
   'ai/crm/customer': aiCrmHandler,
   'ai/support': aiSupportHandler,
   'clientes': clientesHandler,
@@ -488,7 +489,192 @@ async function aiBarcodeHandler(req, res) {
 }
 
 function aiDashboardHandler(req, res) { return aiChatHandler(req, res); }
-function aiPosAnalyzeHandler(req, res) { return aiChatHandler(req, res); }
+
+// Análisis de caja POS: enriquece el mensaje con el rango de fechas, el rol
+// especializado y los datos reales de ventas (facturas) de Supabase.
+async function aiPosAnalyzeHandler(req, res) {
+  const body = parseBody(req);
+  const dateRange = body.dateRange || {};
+  const desde = dateRange.desde || dateRange.from || body.desde || null;
+  const hasta = dateRange.hasta || dateRange.to || body.hasta || null;
+  const rango = (desde ? ` Desde: ${desde}.` : '') + (hasta ? ` Hasta: ${hasta}.` : '');
+
+  // Datos reales de la nube (facturas de venta) para enriquecer el análisis
+  let datosNube = null;
+  let consultaNubeOk = false;
+  const empresaCodigo = body.empresaCodigo || body.empresa_codigo || '';
+  if (configured() && empresaCodigo) {
+    try {
+      let path = `/facturas?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&select=*&order=created_at.desc&limit=2000`;
+      if (desde) path += `&created_at=gte.${encodeURIComponent(desde)}`;
+      if (hasta) path += `&created_at=lte.${encodeURIComponent(hasta)}T23:59:59.999Z`;
+      const result = await supabaseRequest(path);
+      consultaNubeOk = result.status < 400;
+      if (consultaNubeOk) {
+        const rows = JSON.parse(result.body || '[]');
+        if (Array.isArray(rows) && rows.length) {
+          let total = 0, efectivo = 0, tarjeta = 0, transferencia = 0, otras = 0;
+          const porProducto = {};
+          for (const f of rows) {
+            const t = Number(f.total) || 0;
+            total += t;
+            const notas = String(f.notas || '').toLowerCase();
+            if (notas.includes('efectivo')) efectivo += t;
+            else if (notas.includes('tarjeta')) tarjeta += t;
+            else if (notas.includes('transferencia')) transferencia += t;
+            else otras += t;
+            if (Array.isArray(f.items)) {
+              for (const it of f.items) {
+                const n = String(it.nombre || it.producto_nombre || '').trim();
+                if (n) porProducto[n] = (porProducto[n] || 0) + (Number(it.cantidad) || 1);
+              }
+            }
+          }
+          const cant = rows.length;
+          datosNube = {
+            fuente: 'facturas (Supabase)',
+            total_ventas: total,
+            total_transacciones: cant,
+            efectivo,
+            tarjeta,
+            transferencia,
+            otras,
+            ticket_promedio: cant ? total / cant : 0,
+            top_productos: Object.entries(porProducto)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([producto, cantidad]) => ({ producto, cantidad })),
+          };
+        }
+      }
+    } catch (e) {
+      console.log('[pos/analyze] Error obteniendo facturas:', e.message);
+    }
+  }
+
+  const base = (body.message || body.prompt || body.query || '').trim();
+  const contextoNube = datosNube
+    ? `\n\nDatos de ventas desde la nube (Supabase): ${JSON.stringify(datosNube)}`
+    : consultaNubeOk && empresaCodigo
+      ? `\n\nNo se encontraron facturas de venta en Supabase para el periodo${empresaCodigo ? ` (empresa ${empresaCodigo})` : ''}.`
+      : '';
+  const guarda = '\nSi no hay datos de ventas en el periodo (ni locales ni de la nube), dilo con claridad, da 2-3 causas probables y recomendaciones, y NO inventes cifras ni ejemplos de productos.';
+  const msg = base
+    ? `${base}${contextoNube}${rango}${guarda}\nAnaliza la caja del POS de ese periodo: total de ventas por m\u00e9todo de pago, ticket promedio, top de productos, posibles sobrantes/faltantes de caja y recomendaciones accionables. Si hay datos de la nube, priorizalos sobre los locales. Usa datos duros y formato con vi\u00f1etas.`
+    : `Genera el an\u00e1lisis de caja del POS del periodo actual.${contextoNube}${rango}${guarda}`;
+  req.body = {
+    ...body,
+    message: msg,
+    systemPrompt: body.systemPrompt || 'Eres el analista de caja del POS de Portal Pilot. Responde en espa\u00f1ol, conciso y con n\u00fameros claros. Usa L. (lempiras hondure\u00f1as) como moneda, formato "L 1,234.56". Nunca uses \u20AC, $ ni otra moneda.',
+  };
+  return aiChatHandler(req, res);
+}
+
+// Recomendaciones de upsell/cross-sell: recibe carrito + catálogo y
+// devuelve sugerencias accionables SOLO del catálogo enviado.
+async function aiPosUpsellHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'M\u00e9todo no permitido', reply: null });
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return res.status(500).json({ error: 'Falta GROQ_API_KEY en Vercel', reply: null });
+  const body = parseBody(req);
+
+  const carrito = Array.isArray(body.carrito) ? body.carrito : [];
+  const catalogo = Array.isArray(body.catalogo) ? body.catalogo : [];
+  if (carrito.length === 0) return res.status(400).json({ error: 'Falta carrito', reply: null });
+
+  const nombresEnCarrito = new Set(
+    carrito.map((c) => String(c.nombre || '').trim().toLowerCase()).filter(Boolean)
+  );
+
+  const prompt = [
+    'Eres un vendedor experto de punto de venta. Tu tarea es recomendar productos complementarios (upsell/cross-sell) para el ticket actual.',
+    'Reglas:',
+    '- Recomienda SOLO productos existentes en el cat\u00e1logo proporcionado.',
+    '- No repitas productos que ya est\u00e1n en el carrito.',
+    '- M\u00e1ximo 3 sugerencias, ordenadas por relevancia (la mejor primero).',
+    '- Un motivo corto y persuasivo por sugerencia (m\u00e1x 12 palabras).',
+    '- Responde \u00daNICAMENTE con JSON v\u00e1lido con este formato exacto:',
+    '{"sugerencias":[{"codigo":"CODIGO_DEL_CATALOGO","nombre":"Nombre del producto","motivo":"Motivo corto"}]}',
+    '',
+    'Carrito actual:',
+    JSON.stringify(carrito),
+    '',
+    'Cat\u00e1logo disponible:',
+    JSON.stringify(catalogo),
+  ].join('\n');
+
+  let models;
+  try {
+    const live = await pickModels(key, '');
+    models = live.chat.length ? live.chat : ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+  } catch {
+    models = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+  }
+
+  let lastError = null;
+  for (const model of models) {
+    try {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: 'Eres el motor de recomendaciones de Portal Pilot POS. Si el cat\u00e1logo est\u00e1 vac\u00edo o no hay productos candidatos, devuelve {"sugerencias":[]}.' },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: body.maxTokens || 600,
+          temperature: 0.3,
+        }),
+      });
+      const data = await r.json();
+      if (r.ok && data.choices) {
+        let reply = data.choices?.[0]?.message?.content || '';
+        reply = reply.replace(/ thinking[\s\S]*?<\/think>/gi, '').trim();
+        let sugerencias = [];
+        try {
+          const jsonStr = reply.trim();
+          const start = jsonStr.indexOf('{');
+          const end = jsonStr.lastIndexOf('}');
+          if (start >= 0 && end > start) {
+            const parsed = JSON.parse(jsonStr.substring(start, end + 1));
+            const arr = Array.isArray(parsed) ? parsed : (parsed.sugerencias || []);
+            sugerencias = arr
+              .filter((s) => s && s.codigo && !nombresEnCarrito.has(String(s.nombre || '').trim().toLowerCase()))
+              .slice(0, 3)
+              .map((s) => ({
+                codigo: String(s.codigo || ''),
+                nombre: String(s.nombre || ''),
+                motivo: String(s.motivo || ''),
+              }));
+          }
+        } catch (err) {
+          console.log('[pos/upsell] No se pudo parsear JSON del modelo:', err.message);
+        }
+        return res.status(200).json({ reply, sugerencias, model: data.model || model, provider: 'groq', usage: data.usage });
+      }
+      const msg = data.error?.message || '';
+      if (msg.includes('does not exist') || msg.includes('model_not_found') || msg.includes('decommissioned') || r.status === 404) {
+        lastError = msg;
+        continue;
+      }
+      return res.status(r.status || 502).json({ error: msg || 'Error Groq', reply: null, details: data, sugerencias: [] });
+    } catch (e) {
+      lastError = e.message;
+      continue;
+    }
+  }
+  return res.status(502).json({ error: lastError || 'Todos los modelos fallaron', reply: null, sugerencias: [] });
+}
+
+// Reexporta handlers para que las funciones individuales (api/ai/pos/upsell.js)
+// puedan reutilizarlos sin duplicar lógica.
+module.exports.aiPosUpsellHandler = aiPosUpsellHandler;
+module.exports.aiPosAnalyzeHandler = aiPosAnalyzeHandler;
 function aiCrmHandler(req, res) { return aiChatHandler(req, res); }
 function aiSupportHandler(req, res) { return aiChatHandler(req, res); }
 
@@ -747,7 +933,9 @@ async function productosHandler(req, res) {
     if (req.method === 'POST') {
       const body = parseBody(req);
       const empresaCodigo = body.empresa_codigo || '';
-      const productos = Array.isArray(body.productos) ? body.productos : [];
+      // Aceptar tanto lote ({"productos":[...]}) como un solo producto plano
+      let productos = Array.isArray(body.productos) ? body.productos : [];
+      if (productos.length === 0 && body.nombre) productos = [body];
       if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
       const empresaId = await resolverEmpresaId(empresaCodigo);
 
@@ -761,6 +949,11 @@ async function productosHandler(req, res) {
           nombre: (p.nombre || '').toString().slice(0, 120),
           descripcion: (p.descripcion || null)?.toString().slice(0, 200) || null,
           categoria: (p.categoria || null)?.toString().slice(0, 60) || null,
+          unidad_medida: (p.unidad_medida || 'Unidad').toString().slice(0, 50),
+          marca: (p.marca || null)?.toString().slice(0, 100) || null,
+          presentacion: (p.presentacion || null)?.toString().slice(0, 100) || null,
+          barcode: (p.barcode || null)?.toString().slice(0, 100) || null,
+          exento: p.exento === true,
           precio_compra: Number(p.precio_compra) || 0,
           precio_venta: Number(p.precio) || Number(p.precio_venta) || 0,
           stock_minimo: Number(p.stock_minimo) || 0,
@@ -976,7 +1169,9 @@ async function procesarVentaSync(empresaCodigo, empresaId, ventas) {
         descuento: Number(venta.descuento) || 0,
         total: Number(venta.total) || items.reduce((s, i) => s + (Number(i.precio) || 0) * (Number(i.cantidad) || 1), 0),
         estado: 'pagada',
-        notas: `Pago: ${venta.metodo_pago || 'efectivo'}`,
+        notas: (venta.notas && String(venta.notas).trim())
+          ? String(venta.notas).trim()
+          : `Pago: ${venta.metodo_pago || 'efectivo'}`,
       };
       if (empresaId) facturaPayload.empresa_id = empresaId;
 

@@ -14,13 +14,16 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/pos_service.dart';
 import 'package:portal_pilot_app/Shared/services/pos_hardware_service.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
+import 'package:portal_pilot_app/Shared/services/nfc_card_service.dart';
 import 'package:portal_pilot_app/Shared/widgets/sync_status_indicator.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class PosTerminalV2 extends StatefulWidget {
   const PosTerminalV2({super.key});
@@ -35,9 +38,17 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   final LocalDatabaseService _localDb = LocalDatabaseService.instance;
   final SyncService _syncService = SyncService.instance;
   final AuthController _auth = AuthController.instance;
+  final AIManager _aiService = AIManager.instance;
 
   final List<PosCarritoItem> _carrito = [];
   List<Producto> _productos = [];
+  final List<({Producto producto, String motivo})> _sugerenciasUpsell = [];
+  bool _sugerenciasCargando = false;
+  Timer? _upsellDebounce;
+  OverlayEntry? _toastPos;
+  bool _toastPosSticky = false;
+  TarjetaDetectada? _tarjetaDetectada;
+  bool _leyendoTarjeta = false;
   final _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isLoading = true;
@@ -63,6 +74,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     _searchController.dispose();
     _syncSubscription?.cancel();
     _scannerController?.dispose();
+    _upsellDebounce?.cancel();
+    _ocultarToastPos();
     super.dispose();
   }
 
@@ -251,6 +264,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       }
     });
     HapticFeedback.lightImpact();
+    _solicitarUpsell();
   }
 
   void _agregarPorCodigo(String codigo) {
@@ -281,7 +295,111 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   void _limpiarCarrito() {
-    setState(() => _carrito.clear());
+    _upsellDebounce?.cancel();
+    setState(() {
+      _carrito.clear();
+      _sugerenciasUpsell.clear();
+      _sugerenciasCargando = false;
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // UPSELl IA (sugerencias de productos complementarios)
+  // ═══════════════════════════════════════════════════════════════
+
+  void _solicitarUpsell() {
+    _upsellDebounce?.cancel();
+    if (_carrito.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _sugerenciasUpsell.clear();
+          _sugerenciasCargando = false;
+        });
+      }
+      return;
+    }
+    if (_productos.length < 2) return;
+    setState(() => _sugerenciasCargando = true);
+    _upsellDebounce = Timer(const Duration(milliseconds: 800), _buscarUpsell);
+  }
+
+  Future<void> _buscarUpsell() async {
+    try {
+      final enCarritoIds = _carrito.map((c) => c.productoId).toSet();
+      final candidatos = _productos
+          .where((p) => !enCarritoIds.contains(p.id) && (p.stockActual ?? 0) > 0)
+          .toList();
+      if (candidatos.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _sugerenciasUpsell.clear();
+            _sugerenciasCargando = false;
+          });
+        }
+        return;
+      }
+
+      final carritoPayload = _carrito.map((c) {
+        final prod = _productos.where((p) => p.id == c.productoId).firstOrNull;
+        return {
+          'codigo': c.codigo,
+          'nombre': c.nombre,
+          'cantidad': c.cantidad,
+          'precio': c.precioUnitario,
+          'categoria': prod?.categoria,
+        };
+      }).toList();
+
+      final catalogoPayload = candidatos.map((p) => {
+        'codigo': p.codigo ?? '',
+        'nombre': p.nombre ?? '',
+        'categoria': p.categoria,
+        'precio': p.precioVenta,
+        'stock': p.stockActual ?? 0,
+      }).toList();
+
+      final sugerencias = await _aiService.obtenerSugerenciasUpsell(
+        carrito: carritoPayload,
+        catalogo: catalogoPayload,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        if (_carrito.isEmpty) {
+          _sugerenciasUpsell.clear();
+        } else {
+          _sugerenciasUpsell
+            ..clear()
+            ..addAll(sugerencias.map((s) {
+              final p = _matchSugerencia(s, candidatos);
+              if (p == null) return null;
+              return (producto: p, motivo: s.motivo);
+            }).whereType<({Producto producto, String motivo})>().take(3));
+        }
+        _sugerenciasCargando = false;
+      });
+    } catch (e) {
+      debugPrint('[POS] Error al buscar upsell: $e');
+      if (mounted) {
+        setState(() {
+          _sugerenciasUpsell.clear();
+          _sugerenciasCargando = false;
+        });
+      }
+    }
+  }
+
+  Producto? _matchSugerencia(UpsellSugerencia s, List<Producto> candidatos) {
+    for (final p in candidatos) {
+      if ((p.codigo ?? '').isNotEmpty && (p.codigo ?? '') == s.codigo) return p;
+    }
+    final nombreNorm = s.nombre.trim().toLowerCase();
+    if (nombreNorm.isNotEmpty) {
+      for (final p in candidatos) {
+        if ((p.nombre ?? '').trim().toLowerCase() == nombreNorm) return p;
+      }
+    }
+    return null;
   }
 
   Future<void> _cobrar() async {
@@ -306,6 +424,13 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       
       final total = subtotal - descuentoItems + isv15 + isv18;
 
+      String? notasTarjeta;
+      if (_metodoPago == 'tarjeta' && _tarjetaDetectada != null) {
+        final t = _tarjetaDetectada!;
+        final tail4 = t.ultimos4 ?? t.uid.substring(t.uid.length - 4);
+        notasTarjeta = 'Pago: tarjeta · ${t.marca} ····$tail4 (chip NFC, sin cobro electrónico)';
+      }
+
       final venta = await _posService.registrarVenta(
         items: carritoConPromos.map((i) => PosVentaItemInput(
           productoId: i.productoId,
@@ -319,6 +444,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         )).toList(),
         metodoPago: _metodoPago,
         descuentoGlobal: 0,
+        notas: notasTarjeta,
       );
 
       if (venta == null) throw Exception('Error creando venta');
@@ -354,6 +480,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           'total': total,
           'metodo_pago': _metodoPago,
           'numero_venta': venta.correlativo ?? '',
+          'notas': notasTarjeta,
         });
       } catch (e) {
         debugPrint('⚠️ No se pudo sincronizar venta con backend: $e');
@@ -565,30 +692,296 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     );
   }
 
+  void _ocultarToastPos() {
+    _toastPos?.remove();
+    _toastPos = null;
+    _toastPosSticky = false;
+  }
+
+  void _autodescartarToastPos() {
+    if (!_toastPosSticky) _ocultarToastPos();
+  }
+
+  void _mostrarToastPos({
+    required Color color,
+    required Widget icono,
+    required String titulo,
+    String? subtitulo,
+    Duration duracion = const Duration(seconds: 3),
+  }) {
+    _ocultarToastPos();
+    _toastPosSticky = duracion == Duration.zero;
+    final entry = OverlayEntry(
+      builder: (ctx) => Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: -1.2, end: 0),
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
+              builder: (ctx, t, child) =>
+                  Transform.translate(offset: Offset(0, 36 * t), child: child),
+              child: Material(
+                elevation: 16,
+                shadowColor: color.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(16),
+                color: color,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(child: icono),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              titulo,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            if (subtitulo != null)
+                              Text(
+                                subtitulo,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context).insert(entry);
+    _toastPos = entry;
+    if (!_toastPosSticky) {
+      Timer(duracion, _autodescartarToastPos);
+    }
+  }
+
   void _mostrarSnackBar(String message, {bool isError = false}) {
-    final snackBar = SnackBar(
-      content: Row(
-        children: [
-          Icon(isError ? Icons.error_outline : Icons.check_circle_outline, color: Colors.white, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(message, style: GoogleFonts.dmSans(fontSize: 13, color: Colors.white)),
+    // Mismo diseño que producto_form.dart (toast overlay) — reemplaza SnackBar
+    final msg = message.length > 180 ? '${message.substring(0, 177)}...' : message;
+    _mostrarToastPos(
+      color: isError ? const Color(0xFFDC2626) : const Color(0xFF059669),
+      icono: Icon(
+        isError ? Icons.error_outline_rounded : Icons.check_circle_rounded,
+        color: Colors.white,
+        size: 22,
+      ),
+      titulo: msg,
+      duracion: Duration(seconds: isError ? 5 : 3),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ANÁLISIS DE CAJA CON IA
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> _mostrarAnalisisCaja() async {
+    // Contexto local (Reporte Z): solo se incluye si hay transacciones reales;
+    // si está en ceros, el backend usará las ventas de la nube (Supabase).
+    String contexto = '{}';
+    int totalTransaccionesLocal = 0;
+    try {
+      final reporte = await _posService.getReporteZ();
+      final arqueo = await _posService.getArqueoAbierto();
+      totalTransaccionesLocal = (reporte['total_transacciones'] as num?)?.toInt() ?? 0;
+      contexto = jsonEncode({
+        if (totalTransaccionesLocal > 0)
+          'reporte_z_local': {
+            'periodo': reporte['periodo'],
+            'total_ventas': reporte['total_ventas'],
+            'total_transacciones': reporte['total_transacciones'],
+            'efectivo': reporte['efectivo'],
+            'tarjeta': reporte['tarjeta'],
+            'transferencia': reporte['transferencia'],
+            'promedio_ticket': reporte['promedio_ticket'],
+            'top_productos': reporte['top_productos'],
+          },
+        'caja_abierta': arqueo != null,
+        'items_actuales_carrito': _carrito.length,
+      });
+    } catch (e) {
+      debugPrint('[POS] Error generando contexto de caja: $e');
+    }
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _DialogoCargandoAnalisis(),
+    );
+
+    final hoy = DateTime.now();
+    final desdeDias = hoy.subtract(const Duration(days: 29));
+    String fmt(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    final respuesta = await _aiService.posAnalysis(
+      'Analiza el estado de la caja del POS del periodo (ultimos 30 dias).\nDatos locales:\n$contexto\n'
+      'Incluye: total de ventas y desglose por m\u00e9todo de pago, ticket promedio, top productos, '
+      'salud del arqueo (sobrantes/faltantes) y 3 recomendaciones accionables.\n'
+      'Usa L. (lempiras) como moneda, formato "L 1,234.56". Nunca uses \u20AC.\n'
+      'Si no hay datos de ventas en el periodo, dilo con claridad y no inventes cifras ni ejemplos.',
+      dateRange: {'desde': fmt(desdeDias), 'hasta': fmt(hoy)},
+      empresaCodigo: _auth.empresaCodigo,
+    );
+
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    await _mostrarResultadoAnalisis(respuesta);
+  }
+
+  Future<void> _mostrarResultadoAnalisis(AIResponse r) async {
+    final ancho = math.min(MediaQuery.of(context).size.width * 0.92, 520.0);
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141414),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)]),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.auto_graph_rounded, color: Colors.white, size: 16),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'An\u00e1lisis de Caja',
+              style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: ancho,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!r.success)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDC2626).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          r.error ?? 'No se pudo generar el an\u00e1lisis',
+                          style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFFCA5A5)),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else ...[
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 360),
+                  child: SingleChildScrollView(
+                    child: MarkdownBody(
+                      data: r.text,
+                      selectable: true,
+                      styleSheet: MarkdownStyleSheet(
+                        p: GoogleFonts.dmSans(fontSize: 13, height: 1.65, color: const Color(0xFFE4E4E7)),
+                        strong: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                        em: GoogleFonts.dmSans(fontSize: 13, fontStyle: FontStyle.italic, color: const Color(0xFFE4E4E7)),
+                        h1: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, height: 1.4),
+                        h2: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white, height: 1.4),
+                        h3: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                        listBullet: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFE4E4E7)),
+                        blockquote: GoogleFonts.dmSans(fontSize: 13, fontStyle: FontStyle.italic, color: const Color(0xFFA1A1AA)),
+                        blockquoteDecoration: BoxDecoration(
+                          border: const Border(left: BorderSide(color: Color(0xFF8B5CF6), width: 3)),
+                          color: const Color(0xFF27272A).withValues(alpha: 0.5),
+                        ),
+                        code: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFF97316), backgroundColor: const Color(0xFF27272A)),
+                        codeblockDecoration: BoxDecoration(
+                          color: const Color(0xFF0F0F0F),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF27272A)),
+                        ),
+                        tableHead: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                        tableBody: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFE4E4E7)),
+                        tableBorder: TableBorder.all(color: const Color(0xFF27272A), width: 1),
+                        horizontalRuleDecoration: const BoxDecoration(
+                          border: Border(top: BorderSide(color: Color(0xFF27272A))),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Modelo: ${r.modelId}',
+                  style: GoogleFonts.dmSans(fontSize: 10, color: const Color(0xFF52525B)),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: r.text.isEmpty
+                ? null
+                : () {
+                    Clipboard.setData(ClipboardData(text: r.text));
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(ctx)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(const SnackBar(
+                          content: Text('An\u00e1lisis copiado al portapapeles'),
+                          backgroundColor: Color(0xFF059669),
+                          behavior: SnackBarBehavior.floating,
+                          margin: EdgeInsets.all(16),
+                        ));
+                    }
+                  },
+            icon: const Icon(Icons.copy_rounded, color: Color(0xFFA78BFA), size: 16),
+            label: Text('Copiar', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFFA78BFA))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cerrar', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
           ),
         ],
       ),
-      backgroundColor: isError
-          ? const Color(0xFFDC2626)
-          : const Color(0xFF059669),
-      behavior: SnackBarBehavior.floating,
-      margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      elevation: 8,
-      duration: Duration(seconds: isError ? 6 : 3),
     );
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(snackBar);
   }
 
   double get _subtotal => _carrito.fold<double>(0, (s, i) => s + i.precioUnitario * i.cantidad);
@@ -661,6 +1054,12 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           onPressed: _toggleScanner,
           tooltip: 'Escanear código',
         ),
+        const SizedBox(width: 4),
+        IconButton(
+          icon: const Icon(Icons.auto_graph_rounded, color: Color(0xFF8B5CF6), size: 20),
+          onPressed: _mostrarAnalisisCaja,
+          tooltip: 'Análisis de caja con IA',
+        ),
         if (_carrito.isNotEmpty)
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
@@ -669,6 +1068,193 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           ),
         const SizedBox(width: 8),
       ],
+    );
+  }
+
+  Widget? _buildUpsellStrip() {
+    if (_sugerenciasCargando) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141414),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF292524)),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(color: Color(0xFF8B5CF6), strokeWidth: 2),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Buscando sugerencias IA...',
+              style: GoogleFonts.dmSans(color: const Color(0xFFA1A1AA), fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_sugerenciasUpsell.isEmpty) return null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 8, 4),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)]),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 14),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Sugerencias IA',
+                style: GoogleFonts.syne(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFFA78BFA),
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () => setState(() => _sugerenciasUpsell.clear()),
+                icon: const Icon(Icons.close_rounded, color: Color(0xFF737373), size: 18),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Ocultar sugerencias',
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 92,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _sugerenciasUpsell.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final s = _sugerenciasUpsell[index];
+              return _buildUpsellCard(producto: s.producto, motivo: s.motivo);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUpsellCard({required Producto producto, required String motivo}) {
+    final tieneImagen = producto.imagenUrl != null && producto.imagenUrl!.isNotEmpty;
+    final esDataUrl = tieneImagen && producto.imagenUrl!.startsWith('data:');
+    Widget? imagen;
+    if (tieneImagen) {
+      if (esDataUrl) {
+        try {
+          final raw = producto.imagenUrl!.substring(producto.imagenUrl!.indexOf(',') + 1);
+          imagen = Image.memory(base64Decode(raw), width: 40, height: 40, fit: BoxFit.cover);
+        } catch (_) {
+          imagen = null;
+        }
+      } else {
+        imagen = Image.network(producto.imagenUrl!, width: 40, height: 40, fit: BoxFit.cover);
+      }
+    }
+
+    return GestureDetector(
+      onTap: () => _agregarAlCarrito(producto),
+      child: Container(
+        width: 220,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141414),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.35)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: imagen ??
+                    Container(
+                      color: const Color(0xFF262626),
+                      child: Center(
+                        child: Text(
+                          (producto.nombre ?? '?')[0].toUpperCase(),
+                          style: GoogleFonts.syne(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFF71717A),
+                          ),
+                        ),
+                      ),
+                    ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    producto.nombre ?? 'Sin nombre',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    motivo,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: const Color(0xFFA78BFA),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _posService.formatCurrency(producto.precioVenta),
+                    style: GoogleFonts.syne(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFFF97316),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.add_circle_rounded, color: Color(0xFF8B5CF6), size: 22),
+          ],
+        ),
+      ),
     );
   }
 
@@ -691,6 +1277,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           ),
           child: Column(
             children: [
+              if (_buildUpsellStrip() != null) _buildUpsellStrip()!,
               Expanded(child: _buildCarritoView()),
               if (_carrito.isNotEmpty) _buildCobrarBar(),
             ],
@@ -704,6 +1291,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     return Column(
       children: [
         _buildSearchBar(),
+        if (_buildUpsellStrip() != null) _buildUpsellStrip()!,
         Expanded(
           flex: 3,
           child: _buildProductList(),
@@ -1370,6 +1958,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
               _buildMetodoChip('mixto', 'Mixto', Icons.account_balance_wallet_rounded),
             ],
           ),
+          if (_metodoPago == 'tarjeta') ...[
+            const SizedBox(height: 10),
+            _buildTarjetaNfcPanel(),
+          ],
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -1405,7 +1997,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   Widget _buildMetodoChip(String metodo, String label, IconData icon) {
     final isSelected = _metodoPago == metodo;
     return GestureDetector(
-      onTap: () => setState(() => _metodoPago = metodo),
+      onTap: () => setState(() {
+        _metodoPago = metodo;
+        if (metodo != 'tarjeta') _tarjetaDetectada = null;
+      }),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1424,6 +2019,137 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         ),
       ),
     );
+  }
+
+  Widget _buildTarjetaNfcPanel() {
+    final t = _tarjetaDetectada;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: t != null
+            ? const Color(0xFF8B5CF6).withValues(alpha: 0.12)
+            : const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: t != null ? const Color(0xFF8B5CF6) : const Color(0xFF262626),
+        ),
+      ),
+      child: t != null
+          ? Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)]),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.credit_card_rounded, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Chip NFC detectado', style: GoogleFonts.dmSans(fontSize: 10.5, fontWeight: FontWeight.w700, color: const Color(0xFFA78BFA))),
+                      Text('${t.marca} ···· ${t.ultimos4Visibles}', style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                      Text('Solo detecci\u00f3n \u2014 no se cobr\u00f3 ning\u00fan monto', style: GoogleFonts.dmSans(fontSize: 10.5, color: const Color(0xFFA1A1AA))),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _tarjetaDetectada = null),
+                  icon: const Icon(Icons.close_rounded, color: Color(0xFFA1A1AA), size: 18),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                _leyendoTarjeta
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(color: Color(0xFF8B5CF6), strokeWidth: 2),
+                      )
+                    : const Icon(Icons.nfc_rounded, color: Color(0xFF8B5CF6), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _leyendoTarjeta
+                        ? 'Acercando la tarjeta al tel\u00e9fono...'
+                        : 'Pago por tarjeta: detecta el chip por NFC (sin cobro electr\u00f3nico)',
+                    style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFFA1A1AA)),
+                  ),
+                ),
+                if (!_leyendoTarjeta)
+                  TextButton(
+                    onPressed: _leerTarjeta,
+                    style: TextButton.styleFrom(foregroundColor: const Color(0xFF8B5CF6)),
+                    child: Text('LEER CHIP', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700)),
+                  ),
+              ],
+            ),
+    );
+  }
+
+  Future<void> _leerTarjeta() async {
+    if (_leyendoTarjeta) return;
+    final listo = await NfcCardService.instance.nfcListo();
+    if (!listo) {
+      _mostrarToastPos(
+        color: const Color(0xFFDC2626),
+        icono: const Icon(Icons.nfc_rounded, color: Colors.white, size: 22),
+        titulo: 'NFC no disponible en este dispositivo',
+        subtitulo: 'Necesitas un tel\u00e9fono Android con NFC para leer el chip.',
+      );
+      return;
+    }
+    setState(() => _leyendoTarjeta = true);
+
+    final future = NfcCardService.instance.detectar();
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _DialogoLeyendoTarjeta(
+        onCancel: () {
+          NfcCardService.instance.cancelar();
+          Navigator.of(ctx).pop();
+        },
+      ),
+    );
+
+    try {
+      final tarjeta = await future;
+      if (!mounted) return;
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      setState(() {
+        _tarjetaDetectada = tarjeta;
+        _leyendoTarjeta = false;
+      });
+      _mostrarToastPos(
+        color: const Color(0xFF059669),
+        icono: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+        titulo: 'Chip detectado: ${tarjeta.marca}',
+        subtitulo: 'Tarjeta \u00b7\u00b7\u00b7\u00b7${tarjeta.ultimos4Visibles}. No se cobr\u00f3 nada.',
+      );
+    } on NfcException catch (e) {
+      if (!mounted) return;
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      setState(() => _leyendoTarjeta = false);
+      _mostrarSnackBar(e.mensaje, isError: true);
+    } catch (e) {
+      if (!mounted) return;
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      setState(() => _leyendoTarjeta = false);
+      _mostrarSnackBar('No se pudo leer la tarjeta: $e', isError: true);
+    }
   }
 
   Widget _buildScannerView() {
@@ -1502,6 +2228,110 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DialogoCargandoAnalisis extends StatelessWidget {
+  const _DialogoCargandoAnalisis();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF141414),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 34,
+              height: 34,
+              child: CircularProgressIndicator(color: Color(0xFF8B5CF6), strokeWidth: 3),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Analizando la caja...',
+              style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'La IA revisa ventas, pagos y arqueo',
+              style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogoLeyendoTarjeta extends StatefulWidget {
+  final VoidCallback onCancel;
+  const _DialogoLeyendoTarjeta({required this.onCancel});
+
+  @override
+  State<_DialogoLeyendoTarjeta> createState() => _DialogoLeyendoTarjetaState();
+}
+
+class _DialogoLeyendoTarjetaState extends State<_DialogoLeyendoTarjeta>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF141414),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          RotationTransition(
+            turns: _ctrl,
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)]),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.nfc_rounded, color: Colors.white, size: 36),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Acerca la tarjeta al tel\u00e9fono',
+            style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'El lector NFC est\u00e1 escuchando el chip. No se realizar\u00e1 ning\u00fan cobro.',
+            style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFA1A1AA)),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          TextButton(
+            onPressed: widget.onCancel,
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFA1A1AA)),
+            child: Text('Cancelar', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
     );
   }
 }

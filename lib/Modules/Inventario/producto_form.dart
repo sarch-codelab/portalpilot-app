@@ -1,5 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Platform;
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -71,6 +72,7 @@ class _ProductoFormState extends State<ProductoForm> {
   void dispose() {
     _scannerController?.dispose();
     _barcodeController.dispose();
+    _ocultarToastIA();
     super.dispose();
   }
 
@@ -117,6 +119,28 @@ class _ProductoFormState extends State<ProductoForm> {
     final idx = valor.indexOf(',');
     if (valor.startsWith('data:') && idx >= 0) return valor.substring(idx + 1);
     return valor;
+  }
+
+  Future<Uint8List?> _descargarImagen(String url) async {
+    try {
+      final client = HttpClient();
+      try {
+        final req = await client.getUrl(Uri.parse(url));
+        final res = await req.close();
+        if (res.statusCode != 200) return null;
+        final builder = BytesBuilder(copy: false);
+        await for (final chunk in res) {
+          builder.add(chunk);
+        }
+        final bytes = builder.toBytes();
+        return bytes.isEmpty ? null : bytes;
+      } finally {
+        client.close();
+      }
+    } catch (e) {
+      debugPrint('❌ Descarga de imagen fallida: $e');
+      return null;
+    }
   }
 
   Future<void> _seleccionarImagen() async {
@@ -254,68 +278,97 @@ class _ProductoFormState extends State<ProductoForm> {
   /// AI-powered product identification: captures image → AI analyzes → fills fields
   bool _aiAnalysisInProgress = false;
 
-  Future<void> _identificarProductoConIA() async {
+Future<void> _identificarProductoConIA() async {
     if (_isAiAnalyzing || _aiAnalysisInProgress) return;
     _aiAnalysisInProgress = true;
 
-    // PC = galería, Móvil = opción cámara/galería
-    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    ImageSource? source;
-    if (isDesktop) {
-      source = ImageSource.gallery;
-    } else {
-      // En móvil preguntar: cámara o galería
-      if (!mounted) {
-        _aiAnalysisInProgress = false;
-        return;
-      }
-      source = await showDialog<ImageSource>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF141414),
-          title: Text('Identificar con IA', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
-          content: Text('Elige de dónde tomar la foto del producto', style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFA3A3A3))),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, ImageSource.gallery), child: Text('Galería', style: GoogleFonts.dmSans(color: const Color(0xFF737373)))),
-            ElevatedButton(onPressed: () => Navigator.pop(ctx, ImageSource.camera), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)), child: Text('Cámara', style: GoogleFonts.dmSans(color: Colors.white))),
-          ],
-        ),
-      );
-      if (source == null) {
-        _aiAnalysisInProgress = false;
-        return;
-      }
-      // Permiso solo si es cámara en móvil
-      if (source == ImageSource.camera) {
-        final status = await Permission.camera.request();
-        if (!status.isGranted) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Permiso de cámara denegado. Intenta con Galería.', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFF59E0B)),
-            );
-          }
-          _aiAnalysisInProgress = false;
-          return;
-        }
+    // ── Si ya hay una imagen en el cuadro, usarla directamente ──────────────
+    String? imagenParaAnalizar = _normalizarBase64(
+      _imagenBase64 ?? (_imagenUrl != null && !(_imagenUrl ?? '').startsWith('http') ? _imagenUrl : null),
+    );
+    // Preferir el base64 local aunque exista una URL remota (Supabase)
+    if (imagenParaAnalizar == null || imagenParaAnalizar.isEmpty) {
+      imagenParaAnalizar = _normalizarBase64(_imagenBase64);
+    }
+    // Si la imagen en el cuadro es una URL remota, descargarla y convertirla a base64
+    if ((imagenParaAnalizar == null || imagenParaAnalizar.isEmpty) &&
+        (_imagenUrl ?? '').startsWith('http')) {
+      try {
+        final bytes = await _descargarImagen(_imagenUrl!);
+        if (bytes != null) imagenParaAnalizar = base64Encode(bytes);
+      } catch (e) {
+        debugPrint('[AI] Error descargando imagen del cuadro: $e');
       }
     }
 
-    // Pick image
-    XFile? picked;
-    try {
-      picked = await ImagePicker().pickImage(source: source, maxWidth: 800, maxHeight: 800, imageQuality: 75);
-    } on PlatformException catch (e) {
-      debugPrint('[AI] ImagePicker PlatformException: $e');
-      // Fallback a galería si cámara falla en desktop
-      if (source == ImageSource.camera) {
-        try {
-          picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800, imageQuality: 75);
-        } catch (_) {}
+    if (imagenParaAnalizar == null || imagenParaAnalizar.isEmpty) {
+      // No hay imagen en el cuadro: pedir una. PC = galería, Móvil = cámara/galería.
+      final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+      ImageSource? source;
+      if (isDesktop) {
+        source = ImageSource.gallery;
+      } else {
+        if (!mounted) {
+          _aiAnalysisInProgress = false;
+          return;
+        }
+        source = await showDialog<ImageSource>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF141414),
+            title: Text('Identificar con IA', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+            content: Text('Elige de dónde tomar la foto del producto', style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFA3A3A3))),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, ImageSource.gallery), child: Text('Galería', style: GoogleFonts.dmSans(color: const Color(0xFF737373)))),
+              ElevatedButton(onPressed: () => Navigator.pop(ctx, ImageSource.camera), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)), child: Text('Cámara', style: GoogleFonts.dmSans(color: Colors.white))),
+            ],
+          ),
+        );
+        if (source == null) {
+          _aiAnalysisInProgress = false;
+          return;
+        }
+        if (source == ImageSource.camera) {
+          final status = await Permission.camera.request();
+          if (!status.isGranted) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Permiso de cámara denegado. Intenta con Galería.', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFF59E0B)),
+              );
+            }
+            _aiAnalysisInProgress = false;
+            return;
+          }
+        }
       }
-    }
-    if (picked == null) {
-      _aiAnalysisInProgress = false;
-      return;
+
+      // Pick image
+      XFile? picked;
+      try {
+        picked = await ImagePicker().pickImage(source: source, maxWidth: 800, maxHeight: 800, imageQuality: 75);
+      } on PlatformException catch (e) {
+        debugPrint('[AI] ImagePicker PlatformException: $e');
+        if (source == ImageSource.camera) {
+          try {
+            picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800, imageQuality: 75);
+          } catch (_) {}
+        }
+      }
+      if (picked == null) {
+        _aiAnalysisInProgress = false;
+        return;
+      }
+
+      final bytes = await picked.readAsBytes();
+      imagenParaAnalizar = base64Encode(bytes);
+
+      // Mostrar la foto en el cuadro del formulario mientras se analiza
+      if (mounted) {
+        setState(() {
+          _imagenBase64 = imagenParaAnalizar;
+          _imagenUrl = null;
+        });
+      }
     }
 
     if (mounted) {
@@ -326,40 +379,28 @@ class _ProductoFormState extends State<ProductoForm> {
     }
 
     try {
-      final bytes = await picked.readAsBytes();
-      final imageBase64 = base64Encode(bytes);
-
-      // Show analyzing indicator
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-                const SizedBox(width: 12),
-                Text('IA analizando producto...', style: GoogleFonts.dmSans()),
-              ],
-            ),
-            backgroundColor: const Color(0xFF6366F1),
-            duration: const Duration(seconds: 60),
-          ),
-        );
-      }
+      // Indicador visual: overlay superior + spinner en el botón
+      if (mounted) _mostrarToastAnalizando();
 
       // Step 1: If barcode exists, try Supabase lookup first
       BarcodeLookupResult? barcodeResult;
       final existingBarcode = _barcodeController.text.trim();
       if (existingBarcode.isNotEmpty) {
+        _ocultarToastIA();
         barcodeResult = await AIManager.instance.lookupBarcode(existingBarcode);
         if (barcodeResult.found && barcodeResult.products.isNotEmpty) {
           _applyProductData(barcodeResult.products.first, source: 'base de datos');
+          if (mounted) _mostrarToastExito('Producto encontrado', subtitulo: 'Datos cargados desde la base de datos');
           return;
+        } else {
+          if (mounted) _mostrarToastAnalizando();
         }
       }
 
       // Step 2: AI Vision analysis
-      final visionResult = await AIManager.instance.identifyProductFromImage(imageBase64: imageBase64);
+      final visionResult = await AIManager.instance.identifyProductFromImage(imageBase64: imagenParaAnalizar);
       if (!visionResult.success) {
+        _ocultarToastIA();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -373,6 +414,7 @@ class _ProductoFormState extends State<ProductoForm> {
 
       final identification = AIManager.instance.parseProductIdentification(visionResult.text);
       if (identification.nombre == null || identification.nombre!.isEmpty) {
+        _ocultarToastIA();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -386,13 +428,16 @@ class _ProductoFormState extends State<ProductoForm> {
 
       // Show confirmation dialog with AI results
       if (mounted) {
+        _ocultarToastIA();
         final confirmed = await _showAIConfirmationDialog(identification);
         if (confirmed == true) {
           _applyAIIdentification(identification);
+          if (mounted) _mostrarToastExito('Datos de IA aplicados', subtitulo: 'El formulario fue completado');
         }
       }
     } catch (e) {
       debugPrint('[AI] Product identification error: $e');
+      _ocultarToastIA();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -403,8 +448,129 @@ class _ProductoFormState extends State<ProductoForm> {
       }
     } finally {
       _aiAnalysisInProgress = false;
-      if (mounted) setState(() => _isAiAnalyzing = false);
+      if (mounted) {
+        setState(() => _isAiAnalyzing = false);
+      }
     }
+  }
+
+  OverlayEntry? _toastIA;
+  bool _toastIASticky = false;
+
+  void _ocultarToastIA() {
+    _toastIA?.remove();
+    _toastIA = null;
+    _toastIASticky = false;
+  }
+
+  void _autodescartarToastIA() {
+    if (!_toastIASticky) _ocultarToastIA();
+  }
+
+  void _mostrarToastIA({
+    required Color color,
+    required Widget icono,
+    required String titulo,
+    String? subtitulo,
+    Duration duracion = const Duration(seconds: 60),
+  }) {
+    _ocultarToastIA();
+    _toastIASticky = duracion == Duration.zero;
+    final entry = OverlayEntry(
+      builder: (ctx) => Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: -1.2, end: 0),
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
+              builder: (ctx, t, child) =>
+                  Transform.translate(offset: Offset(0, 36 * t), child: child),
+              child: Material(
+                elevation: 16,
+                shadowColor: color.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(16),
+                color: color,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(child: icono),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              titulo,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            if (subtitulo != null)
+                              Text(
+                                subtitulo,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context).insert(entry);
+    _toastIA = entry;
+    if (!_toastIASticky) {
+      Timer(duracion, _autodescartarToastIA);
+    }
+  }
+
+  void _mostrarToastAnalizando() {
+    _mostrarToastIA(
+      color: const Color(0xFF6366F1),
+      icono: const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+      ),
+      titulo: 'Analizando producto',
+      subtitulo: 'La IA está revisando la imagen…',
+      duracion: Duration.zero,
+    );
+  }
+
+  void _mostrarToastExito(String titulo, {String? subtitulo}) {
+    _mostrarToastIA(
+      color: const Color(0xFF059669),
+      icono: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+      titulo: titulo,
+      subtitulo: subtitulo,
+      duracion: const Duration(seconds: 3),
+    );
   }
 
   void _applyProductData(Map<String, dynamic> p, {required String source}) {
@@ -431,45 +597,45 @@ class _ProductoFormState extends State<ProductoForm> {
     setState(() {
       if (id.nombre != null) _nombreController.text = id.nombre!;
       if (id.descripcion != null) _descripcionController.text = id.descripcion!;
-      
-      // Categoría: mapear valor IA a lista permitida o agregar dinámicamente
-      if (id.categoria != null && id.categoria!.isNotEmpty) {
-        final cat = id.categoria!.trim();
-        if (_categorias.contains(cat)) {
-          _categoria = cat;
-        } else {
-          final mapped = _mapearCategoriaIA(cat);
-          if (_categorias.contains(mapped)) {
-            _categoria = mapped;
-          } else {
-            // Agregar dinámicamente para que se muestre en dropdown
-            _categorias.add(cat);
-            _categoria = cat;
-          }
-        }
+
+      // Categoría: usar valor efectivo (mapeado a lista válida o agregado dinámicamente)
+      final catEfectiva = _categoriaEfectiva(id.categoria);
+      if (catEfectiva != _categoria) {
+        if (!_categorias.contains(catEfectiva)) _categorias.add(catEfectiva);
+        _categoria = catEfectiva;
       }
-      
-      // Unidad: mapear valor IA a lista permitida o agregar dinámicamente
-      if (id.unidadMedida != null && id.unidadMedida!.isNotEmpty) {
-        final uni = id.unidadMedida!.trim();
-        if (_unidades.contains(uni)) {
-          _unidadMedida = uni;
-        } else {
-          final mapped = _mapearUnidadIA(uni);
-          if (_unidades.contains(mapped)) {
-            _unidadMedida = mapped;
-          } else {
-            // Agregar dinámicamente para que se muestre en dropdown
-            _unidades.add(uni);
-            _unidadMedida = uni;
-          }
-        }
+
+      // Unidad: usar valor efectivo (mapeado a lista válida o agregado dinámicamente)
+      final uniEfectiva = _unidadEfectiva(id.unidadMedida);
+      if (uniEfectiva != _unidadMedida) {
+        if (!_unidades.contains(uniEfectiva)) _unidades.add(uniEfectiva);
+        _unidadMedida = uniEfectiva;
       }
-      
+
       if (id.barcode != null && id.barcode!.isNotEmpty) _barcodeController.text = id.barcode!;
       if (id.marca != null && id.marca!.isNotEmpty) _marcaController.text = id.marca!;
       if (id.presentacion != null && id.presentacion!.isNotEmpty) _presentacionController.text = id.presentacion!;
     });
+  }
+
+  /// Devuelve la categoría que se guardará (mapeada a la lista válida o agregada).
+  String _categoriaEfectiva(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return _categoria;
+    final cat = raw.trim();
+    if (_categorias.contains(cat)) return cat;
+    final mapped = _mapearCategoriaIA(cat);
+    if (_categorias.contains(mapped)) return mapped;
+    return cat; // no existe en la lista: se agregará dinámicamente al confirmar
+  }
+
+  /// Devuelve la unidad que se guardará (mapeada a la lista válida o agregada).
+  String _unidadEfectiva(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return _unidadMedida;
+    final uni = raw.trim();
+    if (_unidades.contains(uni)) return uni;
+    final mapped = _mapearUnidadIA(uni);
+    if (_unidades.contains(mapped)) return mapped;
+    return uni; // no existe en la lista: se agregará dinámicamente al confirmar
   }
 
   String _mapearCategoriaIA(String cat) {
@@ -542,9 +708,9 @@ class _ProductoFormState extends State<ProductoForm> {
             const SizedBox(height: 12),
             if (id.nombre != null) _aiField('Nombre', id.nombre!),
             if (id.marca != null) _aiField('Marca', id.marca!),
-            if (id.categoria != null) _aiField('Categoría', id.categoria!),
+            if (id.categoria != null) _aiField('Categoría', _categoriaEfectiva(id.categoria)),
             if (id.presentacion != null) _aiField('Presentación', id.presentacion!),
-            if (id.unidadMedida != null) _aiField('Unidad', id.unidadMedida!),
+            if (id.unidadMedida != null) _aiField('Unidad', _unidadEfectiva(id.unidadMedida)),
             if (id.descripcion != null) ...[
               const SizedBox(height: 8),
               Text('Descripción:', style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
@@ -1065,6 +1231,14 @@ Row(
           ),
           const SizedBox(height: 12),
           _buildDropdown('Bodega', _bodega, _bodegas, (v) => setState(() => _bodega = v!)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildField('Marca', _marcaController, hint: 'Ej: Coca-Cola, Pilsener')),
+              const SizedBox(width: 10),
+              Expanded(child: _buildField('Presentación', _presentacionController, hint: 'Ej: Botella 500ml, Lata')),
+            ],
+          ),
           const SizedBox(height: 16),
           _buildSection('Precios e ISV'),
           const SizedBox(height: 8),

@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/canal_tradicional_service.dart';
+import 'package:uuid/uuid.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 
@@ -129,8 +130,9 @@ class PosService {
     await _db.into(_db.posVentas).insertOnConflictUpdate(venta);
 
     // Insertar items y descontar stock
-    for (final item in items) {
-      final itemId = '${ventaId}_${item.productoId}_${item.cantidad}';
+    for (var i = 0; i < items.length; i++) {
+      final item = items[i];
+      final itemId = const Uuid().v4();
       final itemSubtotal = item.precioUnitario * item.cantidad - item.descuento;
 
       final ventaItem = PosVentaItemsCompanion.insert(
