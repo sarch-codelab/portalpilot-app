@@ -1,6 +1,6 @@
 Portal Pilot App - Licencia de Usuario Final
 
-Copyright (c) 2024 sarch-codelab
+Copyright (c) 2026 sarch-codelab
 
 Este software se proporciona "tal cual", sin garantía de ningún tipo, expresa o implícita.
 
