@@ -1,0 +1,9 @@
+Portal Pilot App - Licencia de Usuario Final
+
+Copyright (c) 2024 sarch-codelab
+
+Este software se proporciona "tal cual", sin garantía de ningún tipo, expresa o implícita.
+
+Al instalar y usar Portal Pilot, aceptas los términos de esta licencia.
+
+Para más información, visita: https://github.com/sarch-codelab/portalpilot-app
