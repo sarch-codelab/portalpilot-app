@@ -2,7 +2,7 @@
 ; Compile with: iscc setup.iss
 
 #define MyAppName "Portal Pilot"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.1.3"
 #define MyAppPublisher "sarch-codelab"
 #define MyAppURL "https://github.com/sarch-codelab/portalpilot-app"
 #define MyAppExeName "PortalPilotWorkspace.exe"
