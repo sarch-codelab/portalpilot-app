@@ -21,6 +21,7 @@ class AuthController extends ChangeNotifier {
   String _empresaCodigo = 'ROOT';
   String _empresaNombre = '';
   String _empresaAreaNegocio = '';
+  String _empresaPlan = 'Prueba';
   String _token = '';
   List<String> _modulos = const [];
   bool _isLoggedIn = false;
@@ -34,6 +35,7 @@ class AuthController extends ChangeNotifier {
   String get empresaCodigo => _empresaCodigo;
   String get empresaNombre => _empresaNombre;
   String get empresaAreaNegocio => _empresaAreaNegocio;
+  String get empresaPlan => _empresaPlan;
   String get token => _token;
   bool get isLoggedIn => _isLoggedIn;
   List<String> get modulos => _modulos;
@@ -62,6 +64,7 @@ class AuthController extends ChangeNotifier {
     _empresaCodigo = prefs.getString('company_code') ?? 'ROOT';
     _empresaNombre = prefs.getString('empresa_nombre') ?? '';
     _empresaAreaNegocio = prefs.getString('empresa_area_negocio') ?? '';
+    _empresaPlan = normalizarPlan(prefs.getString('empresa_plan') ?? '');
     _token = prefs.getString('auth_token') ?? '';
     final modulosRaw = prefs.getString('user_modulos') ?? '';
     _modulos = modulosRaw.isNotEmpty
@@ -88,6 +91,7 @@ class AuthController extends ChangeNotifier {
     required String token,
     List<String>? modulos,
     String? empresaAreaNegocio,
+    String? empresaPlan,
   }) async {
     _nombre = nombre;
     _apellido = apellido;
@@ -98,6 +102,7 @@ class AuthController extends ChangeNotifier {
     _empresaCodigo = empresaCodigo.toUpperCase();
     _empresaNombre = empresaNombre;
     _empresaAreaNegocio = (empresaAreaNegocio ?? '').trim().toLowerCase();
+    _empresaPlan = normalizarPlan(empresaPlan ?? '');
     _token = token;
     _isLoggedIn = true;
     if (modulos != null) _modulos = modulos;
@@ -113,6 +118,7 @@ class AuthController extends ChangeNotifier {
     await prefs.setString('user_apellido', apellido);
     await prefs.setString('empresa_nombre', empresaNombre);
     await prefs.setString('empresa_area_negocio', _empresaAreaNegocio);
+    await prefs.setString('empresa_plan', _empresaPlan);
     await prefs.setString('auth_token', token);
     await prefs.setString('user_modulos', _modulos.join(','));
     notifyListeners();
@@ -122,8 +128,17 @@ class AuthController extends ChangeNotifier {
       email,
       userId: email,
       module: 'auth',
-      changes: {'empresa': _empresaCodigo, 'rol': _rol},
+      changes: {'empresa': _empresaCodigo, 'rol': _rol, 'plan': _empresaPlan},
     );
+  }
+
+  /// Normaliza el nombre del plan a uno de los planes conocidos
+  /// (Prueba | Business | Enterprise). Desconocidos → Prueba.
+  static String normalizarPlan(String plan) {
+    final p = plan.trim().toLowerCase();
+    if (p.contains('business') || p == 'business' || p == 'comercial') return 'Business';
+    if (p.contains('enterprise') || p == 'enterprise' || p == 'empresa') return 'Enterprise';
+    return 'Prueba';
   }
 
   /// Actualiza el nombre/rol de la sesión en memoria y en disco (perfil).
@@ -133,6 +148,14 @@ class AuthController extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_nombre', _nombre);
     await prefs.setString('user_apellido', _apellido);
+    notifyListeners();
+  }
+
+  /// Actualiza el plan de la empresa en tiempo real (cambio de suscripción).
+  Future<void> setPlan(String plan) async {
+    _empresaPlan = normalizarPlan(plan);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('empresa_plan', _empresaPlan);
     notifyListeners();
   }
 
@@ -148,6 +171,7 @@ class AuthController extends ChangeNotifier {
     _empresaCodigo = 'ROOT';
     _empresaNombre = '';
     _empresaAreaNegocio = '';
+    _empresaPlan = 'Prueba';
     _token = '';
     _modulos = const [];
     _isLoggedIn = false;
@@ -162,6 +186,7 @@ class AuthController extends ChangeNotifier {
     await prefs.remove('user_apellido');
     await prefs.remove('empresa_nombre');
     await prefs.remove('empresa_area_negocio');
+    await prefs.remove('empresa_plan');
     await prefs.remove('auth_token');
     await prefs.remove('user_modulos');
     notifyListeners();

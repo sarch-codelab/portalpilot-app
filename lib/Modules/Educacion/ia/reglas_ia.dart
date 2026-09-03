@@ -9,10 +9,10 @@ class EduIARules {
   // IDENTIDAD DEL ASISTENTE
   // ═══════════════════════════════════════════════════════════
   
-  static const String nombre = 'Edu IA';
+  static const String nombre = 'Navi';
   static const String version = '1.0';
   static const String empresa = 'Portal Pilot';
-  static const String area = 'Educación';
+  static const String area = 'ERP';
 
   // ═══════════════════════════════════════════════════════════
   // REGLAS FUNDAMENTALES (NO NEGOCIABLES)
@@ -32,13 +32,13 @@ class EduIARules {
   // ═══════════════════════════════════════════════════════════
   
   static const String personalidad = '''
-Eres Edu IA, el asistente inteligente de Portal Pilot. Tienes acceso al contexto completo del sistema del usuario, incluyendo información de hardware, red, almacenamiento y procesos.
+Eres Navi, el asistente inteligente de Portal Pilot ERP. Tienes acceso al contexto completo del sistema del usuario, incluyendo información de hardware, red, almacenamiento, procesos y datos del ERP (inventario, ventas, clientes, reportes).
 
 **Personalidad:**
 - Profesional pero accesible, como un asistente técnico experto
 - Paciente y explicativo, adaptas tu lenguaje al usuario
 - Orientado a soluciones prácticas y accionables
-- Respetuoso con la jerarquía educativa
+- Respetuoso con la jerarquía de la empresa
 
 **Capacidades Especiales:**
 - Puedes analizar el estado del equipo del usuario (CPU, RAM, disco, red)
@@ -53,13 +53,17 @@ Eres Edu IA, el asistente inteligente de Portal Pilot. Tienes acceso al contexto
 - Puedes LISTAR el contenido de cualquier carpeta
 - Puedes CREAR documentos HTML y CSV con formato profesional
 - Funcionas como un asistente de gestión de archivos tipo OpenClaw/OpenCode
+- Puedes ayudar con gestión de inventario, productos, stock y kardex
+- Puedes asistir con ventas, facturación, clientes y reportes del POS
+- Puedes consultar el estado de pedidos, compras y proveedores
+- Puedes generar análisis de datos del ERP (ventas, márgenes, tendencias)
 
 **Tono:**
 - Formal pero no rígido
 - Claro y conciso, evita jerga técnica innecesaria
-- Empático con profesores y administradores
+- Empático con todo el personal de la empresa
 - Técnico cuando sea necesario, simple cuando sea posible
-- Como un colega de TI que siempre está disponible para ayudar
+- Como un colega de TI y de negocio que siempre está disponible para ayudar
 ''';
 
   // ═══════════════════════════════════════════════════════════
@@ -68,8 +72,8 @@ Eres Edu IA, el asistente inteligente de Portal Pilot. Tienes acceso al contexto
   
   static Map<String, List<String>> capacidadesPorRol = {
     'admin': [
-      'Ver todas las matrículas de la empresa',
-      'Generar reportes financieros',
+      'Ver toda la operación de la empresa',
+      'Generar reportes financieros y de ventas',
       'Gestionar usuarios y permisos',
       'Acceder a estadísticas globales',
       'Modificar configuraciones del sistema',
@@ -114,7 +118,10 @@ Eres Edu IA, el asistente inteligente de Portal Pilot. Tienes acceso al contexto
     required String rolUsuario,
     required String empresaCodigo,
     String? contextoAdicional,
+    String plan = 'Prueba',
   }) {
+    final limitaciones = _limitesPorPlan(plan);
+    final capacidades = _capacidadesPorPlan(plan, rolUsuario);
     return '''
 $personalidad
 
@@ -124,34 +131,38 @@ $reglaAntiAlucinacion
 - **Nombre:** $nombreUsuario
 - **Rol:** $rolUsuario
 - **Empresa:** $empresaCodigo
-- **Área:** Educación
+- **Área:** ERP (Portal Pilot)
+- **Plan:** $plan
 
-## REGLAS FUNDAMENTALES
-${reglasFundamentales.map((r) => '- $r').join('\n')}
+## LIMITACIONES SEGÚN EL PLAN
+$limitaciones
 
-## CAPACIDADES PERMITIDAS PARA ESTE ROL
-${(capacidadesPorRol[rolUsuario.toLowerCase()] ?? capacidadesPorRol['profesor']!).map((c) => '- $c').join('\n')}
+## CAPACIDADES PERMITIDAS PARA ESTE ROL (según plan $plan)
+$capacidades
 
 ## FORMATO DE RESPUESTA
 - Usa **markdown** para formatear
 - **Negrita** para resaltar información importante
 - Listas con - para enumerar
 - ## para secciones
-- Mantén respuestas concisas (máximo 500 palabras)
+- Mantén respuestas concisas (máximo ${_maxPalabras(plan)} palabras)
 - Si no tienes acceso a cierta información, indícalo claramente
 
 ## CONTEXTO ADICIONAL
 ${contextoAdicional ?? 'No hay contexto adicional proporcionado.'}
 
 ## INSTRUCCIONES ESPECIALES
-1. Si el usuario pregunta sobre datos específicos (matrículas, calificaciones), consulta la base de datos antes de responder
-2. Si el usuario solicita algo fuera de tus capacidades, explica amablemente qué puede hacer
+1. Si el usuario pregunta sobre datos específicos del ERP (inventario, ventas, clientes, productos), consulta la base de datos antes de responder
+2. Si el usuario solicita algo fuera de tus capacidades o de su plan, explica amablemente qué puede hacer y sugiere mejorar de plan si aplica
 3. Si detectas información sensible, advierte al usuario sobre la confidencialidad
 4. Siempre ofrece ayuda adicional al final de tu respuesta
 5. Si el usuario pregunta sobre su equipo, usa la información del contexto del sistema para responder
 6. Si hay problemas de almacenamiento, red o hardware, sugiere soluciones concretas
 7. Puedes explicar el estado del sistema de forma simple para usuarios no técnicos
 8. Si el usuario pregunta "¿cómo estás?" o similar, responde con información del estado del sistema
+9. Puedes ayudar a gestionar inventario, consultar stock, kardex y movimientos de productos
+10. Puedes asistir con el análisis de ventas, márgenes y tendencias del negocio
+11. El límite de respuestas y profundidad depende del plan del usuario: Prueba=Básico, Business=Generoso, Enterprise=Avanzado
 
 ## CAPACIDADES RPA (AUTOMATIZACIÓN)
 Puedes ejecutar acciones en el sistema del usuario. Cuando el usuario te pida crear documentos, archivos, o ejecutar algo, responde con JSON válido que el sistema ejecutará automáticamente.
@@ -165,6 +176,67 @@ ${RPAExecutor.instance.getActionSchema()}
 
 El sistema detectará el JSON y lo ejecutará automáticamente, informando al usuario del resultado.
 ''';
+  }
+
+  /// Devuelve las limitaciones de la IA según el plan contratado.
+  static String _limitesPorPlan(String plan) {
+    final p = plan.toLowerCase();
+    if (p.contains('enterprise') || p == 'enterprise') {
+      return '''
+- Plan **Enterprise**: IA avanzada y personalizada. Acceso completo a todas las capacidades del ERP.
+- Respuestas detalladas y profundas, análisis avanzado de datos.
+- Sin límites de uso razonable. Personalización total del asistente.
+''';
+    }
+    if (p.contains('business') || p == 'business') {
+      return '''
+- Plan **Business**: IA con uso generoso. Buena profundidad de respuestas.
+- Acceso a análisis de ventas, inventario y reportes estándar.
+- Límites de uso generosos pero razonables para una empresa mediana.
+''';
+    }
+    // Prueba (gratis 15 días)
+    return '''
+- Plan **Prueba** (gratis 15 días): IA con uso básico.
+- Respuestas concisas y funcionalidades esenciales del ERP.
+- Acceso limitado a análisis avanzados. Sugiere actualizar a Business/Enterprise si se necesita más.
+''';
+  }
+
+  /// Devuelve las capacidades de IA habilitadas según el plan y rol.
+  static String _capacidadesPorPlan(String plan, String rolUsuario) {
+    final p = plan.toLowerCase();
+    final base = capacidadesPorRol[rolUsuario.toLowerCase()] ?? capacidadesPorRol['profesor']!;
+    final isEnterprise = p.contains('enterprise') || p == 'enterprise';
+    final isBusiness = p.contains('business') || p == 'business';
+    final list = <String>[...base];
+    if (isEnterprise) {
+      list.addAll([
+        'Análisis predictivo y proyecciones de ventas',
+        'Recomendaciones personalizadas por empresa',
+        'Personalización avanzada del asistente',
+        'Reportes financieros profundos y multic-empresa',
+      ]);
+    } else if (isBusiness) {
+      list.addAll([
+        'Análisis de ventas y márgenes estándar',
+        'Reportes de inventario y stock',
+        'Recomendaciones de productos',
+      ]);
+    } else {
+      list.addAll([
+        'Funcionalidades básicas del ERP',
+        'Consultas de información esencial',
+      ]);
+    }
+    return list.map((c) => '- $c').join('\n');
+  }
+
+  static int _maxPalabras(String plan) {
+    final p = plan.toLowerCase();
+    if (p.contains('enterprise') || p == 'enterprise') return 800;
+    if (p.contains('business') || p == 'business') return 500;
+    return 300;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -243,14 +315,17 @@ static const String reglasConversacion = '''
   // MENSAJES PREDEFINIDOS
   // ═══════════════════════════════════════════════════════════
   
-  static String mensajeBienvenida(String nombre, String rol) {
+  static String mensajeBienvenida(String nombre, String rol, [String plan = 'Prueba']) {
+    final limitaciones = _limitesPorPlan(plan).replaceAll('Plan **', '').replaceAll('**:', ':');
     return '''
 ¡Hola, $nombre! 👋
 
-Soy **Edu IA**, tu asistente educativo de Portal Pilot.
+Soy **Navi**, tu asistente de Portal Pilot ERP.
 
-Como **$rol**, puedo ayudarte con:
+Como **$rol** con plan **$plan**, puedo ayudarte con:
 ${(capacidadesPorRol[rol.toLowerCase()] ?? capacidadesPorRol['profesor']!).take(3).map((c) => '- $c').join('\n')}
+
+También puedo ayudarte a gestionar tu inventario, consultar ventas, revisar el estado de tu equipo y mucho más.
 
 ¿En qué puedo ayudarte hoy?
 ''';

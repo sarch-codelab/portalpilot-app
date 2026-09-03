@@ -14,6 +14,8 @@ class DashboardGerencial extends StatefulWidget {
 class _DashboardGerencialState extends State<DashboardGerencial> {
   bool _showAIChat = false;
   final _aiQueryController = TextEditingController();
+  final _aiChatFocusNode = FocusNode();
+  bool _aiChatFocused = false;
   final List<_AIMessage> _aiMessages = [];
   bool _isAILoading = false;
 
@@ -26,6 +28,7 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
   void initState() {
     super.initState();
     appThemeNotifier.addListener(_onThemeChanged);
+    _aiChatFocusNode.addListener(_onAiFocusChanged);
     _cargarDatos();
   }
 
@@ -33,9 +36,15 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
     if (mounted) setState(() {});
   }
 
+  void _onAiFocusChanged() {
+    if (mounted) setState(() => _aiChatFocused = _aiChatFocusNode.hasFocus);
+  }
+
   @override
   void dispose() {
     appThemeNotifier.removeListener(_onThemeChanged);
+    _aiChatFocusNode.removeListener(_onAiFocusChanged);
+    _aiChatFocusNode.dispose();
     _aiQueryController.dispose();
     super.dispose();
   }
@@ -724,58 +733,21 @@ Widget _buildKeyMetrics(ThemePalette palette) {
                           _buildAIMessage(_aiMessages[index]),
                     ),
             ),
-            if (_aiMessages.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildAISuggestions(),
-              ),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
                 color: appThemeNotifier.isDark
-                    ? const Color(0xFF1A1A1A)
+                    ? const Color(0xFF111111)
                     : const Color(0xFFF9FAFB),
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _aiQueryController,
-                      enabled: !_isAILoading,
-                      onSubmitted: (_) => _sendAIQuery(),
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        color: appThemeNotifier.isDark ? Colors.white : Colors.black,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Escribe tu pregunta...',
-                        hintStyle: GoogleFonts.dmSans(fontSize: 13),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        filled: true,
-                        fillColor: appThemeNotifier.isDark
-                            ? const Color(0xFF262626)
-                            : Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _isAILoading ? null : _sendAIQuery,
-                    icon: _isAILoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send_rounded, color: Color(0xFF6366F1)),
-                  ),
+                  _buildChipGradientFrame(),
+                  if (_aiMessages.isEmpty) ...[
+                    const SizedBox(height: 10),
+                    _buildAISuggestions(),
+                  ],
                 ],
               ),
             ),
@@ -785,25 +757,188 @@ Widget _buildKeyMetrics(ThemePalette palette) {
     );
   }
 
+  Widget _buildChipGradientFrame() {
+    return Container(
+      padding: const EdgeInsets.all(1.5),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF7E7E7E),
+            Color(0xFF363636),
+            Color(0xFF363636),
+            Color(0xFF363636),
+            Color(0xFF363636),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14.5),
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF000000).withValues(alpha: 0.5),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildChatTextField(),
+                  _buildChatOptions(),
+                ],
+              ),
+            ),
+            Positioned(
+              top: -10,
+              left: -8,
+              child: IgnorePointer(
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const RadialGradient(
+                      center: Alignment(0, 0),
+                      radius: 1,
+                      colors: [
+                        Colors.white,
+                        Color(0x4DFFFFFF),
+                        Color(0x1AFFFFFF),
+                        Colors.transparent,
+                      ],
+                      stops: [0.0, 0.3, 0.6, 1.0],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatTextField() {
+    return TextField(
+      controller: _aiQueryController,
+      focusNode: _aiChatFocusNode,
+      enabled: !_isAILoading,
+      onSubmitted: (_) => _sendAIQuery(),
+      minLines: 1,
+      maxLines: 4,
+      style: GoogleFonts.dmSans(
+        fontSize: 12.5,
+        color: Colors.white,
+      ),
+      decoration: InputDecoration(
+        hintText: 'Imagina algo extraordinario... ✦',
+        hintStyle: GoogleFonts.dmSans(
+          fontSize: 12.5,
+          color: _aiChatFocused
+              ? const Color(0xFF363636)
+              : const Color(0xFFF3F6FD),
+        ),
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 11,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatOptions() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _AIToolButton(
+                icon: Icons.attach_file_rounded,
+                tooltip: 'Analizar caja',
+                onTap: _isAILoading
+                    ? null
+                    : () {
+                        _aiQueryController.text = 'Analiza la caja del mes';
+                        _sendAIQuery();
+                      },
+              ),
+              const SizedBox(width: 8),
+              _AIToolButton(
+                icon: Icons.dashboard_customize_rounded,
+                tooltip: 'Generar resumen ejecutivo',
+                onTap: _isAILoading
+                    ? null
+                    : () {
+                        _aiQueryController.text =
+                            'Genera un resumen ejecutivo del dashboard';
+                        _sendAIQuery();
+                      },
+              ),
+              const SizedBox(width: 8),
+              _AIToolButton(
+                icon: Icons.public_rounded,
+                tooltip: 'Comparar canales',
+                onTap: _isAILoading
+                    ? null
+                    : () {
+                        _aiQueryController.text =
+                            'Compara el rendimiento de los canales';
+                        _sendAIQuery();
+                      },
+              ),
+            ],
+          ),
+          _AISendButton(
+            loading: _isAILoading,
+            onTap: _isAILoading ? null : _sendAIQuery,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAISuggestions() {
     final suggestions = [
-      '¿Cuál es el canal más rentable?',
       'Resume las ventas del mes',
+      '¿Cuál es el canal más rentable?',
       'Compara canales tradicional y moderno',
     ];
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: 4,
+      runSpacing: 6,
       children: suggestions
           .map(
-            (s) => ActionChip(
-              label: Text(s, style: GoogleFonts.dmSans(fontSize: 11)),
-              backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
-              side: const BorderSide(color: Color(0xFF6366F1)),
-              onPressed: () {
+            (s) => GestureDetector(
+              onTap: () {
                 _aiQueryController.text = s;
                 _sendAIQuery();
               },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B1B1B),
+                  border: Border.all(color: const Color(0xFF363636), width: 1.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  s,
+                  style: GoogleFonts.dmSans(fontSize: 10, color: Colors.white),
+                ),
+              ),
             ),
           )
           .toList(),
@@ -873,4 +1008,145 @@ class _AIMessage {
   final bool isLoading;
   final bool isError;
   _AIMessage({required this.text, required this.isUser, this.isLoading = false, this.isError = false});
+}
+
+class _AIToolButton extends StatefulWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+  const _AIToolButton({required this.icon, required this.tooltip, this.onTap});
+
+  @override
+  State<_AIToolButton> createState() => _AIToolButtonState();
+}
+
+class _AIToolButtonState extends State<_AIToolButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: enabled ? (_) => setState(() => _hover = true) : null,
+      onExit: enabled ? (_) => setState(() => _hover = false) : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(
+          0,
+          _hover ? -4 : 0,
+          0,
+        ),
+        child: Tooltip(
+          message: widget.tooltip,
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                widget.icon,
+                size: 20,
+                color: enabled
+                    ? (_hover ? Colors.white : Colors.white.withValues(alpha: 0.15))
+                    : Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AISendButton extends StatefulWidget {
+  final bool loading;
+  final VoidCallback? onTap;
+  const _AISendButton({required this.loading, this.onTap});
+
+  @override
+  State<_AISendButton> createState() => _AISendButtonState();
+}
+
+class _AISendButtonState extends State<_AISendButton> {
+  bool _hover = false;
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: enabled ? (_) => setState(() => _hover = true) : null,
+      onExit: enabled ? (_) => setState(() => _hover = false) : null,
+      child: GestureDetector(
+        onTapDown: enabled ? (_) => setState(() => _down = true) : null,
+        onTapUp: enabled ? (_) => setState(() => _down = false) : null,
+        onTapCancel: enabled ? () => setState(() => _down = false) : null,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          transform: Matrix4.translationValues(
+            0,
+            _hover ? -1 : 0,
+            0,
+          ),
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [Color(0xFF292929), Color(0xFF555555), Color(0xFF292929)],
+            ),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: _hover ? Colors.white.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.12),
+                blurRadius: _hover ? 8 : 3,
+                spreadRadius: 0,
+                offset: const Offset(0, -1),
+              ),
+            ],
+          ),
+          child: Container(
+            width: 30,
+            height: 30,
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: widget.loading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFF3F6FD),
+                    ),
+                  )
+                : AnimatedRotation(
+                    turns: _down ? 0.125 : 0,
+                    duration: const Duration(milliseconds: 120),
+                    child: AnimatedScale(
+                      scale: _down ? 1.2 : 1.0,
+                      duration: const Duration(milliseconds: 120),
+                      child: Transform.translate(
+                        offset: Offset(_down ? -2 : 0, _down ? 1 : 0),
+                        child: Icon(
+                          Icons.send_rounded,
+                          size: 20,
+                          color: _hover || _down
+                              ? const Color(0xFFF3F6FD)
+                              : const Color(0xFF8B8B8B),
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
 }

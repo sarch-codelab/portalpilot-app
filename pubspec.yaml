@@ -50,8 +50,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - lib/Modules/Educacion/img/iconos/pp.edu.png
-    - lib/Modules/Educacion/img/educacion.png
     - assets/img/
     - img/fondos-img/fondo-panel-modulos.jpg
     - img/fondos-img/fondo-dentro-modulos.jpg

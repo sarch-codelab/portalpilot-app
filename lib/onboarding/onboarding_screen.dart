@@ -739,6 +739,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           token: '',
           modulos: modulos,
           empresaAreaNegocio: areaNegocio,
+          empresaPlan: 'Prueba',
         );
         final db = LocalDatabaseService.instance;
         final empresaCompanion = db.empresaFromOnboarding(areaNegocio, empresaCodigo);
@@ -747,7 +748,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           'codigo': empresaCodigo,
           'nombre': 'Portal Pilot Empresa',
           'area_negocio': areaNegocio,
-          'plan': 'Starter',
+          'plan': 'Prueba',
           'activa': true,
         };
         await SyncService.instance.enqueueSync(

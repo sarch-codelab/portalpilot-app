@@ -20,6 +20,7 @@ import 'package:portal_pilot_app/Modules/SectorRetail/sector_retail_home.dart';
 import 'package:portal_pilot_app/Modules/CanalTradicional/canal_tradicional_home.dart';
 import 'package:portal_pilot_app/Modules/Settings/settings_home.dart';
 import 'package:portal_pilot_app/Modules/Analytics/analytics_home.dart';
+import 'package:portal_pilot_app/Modules/ChatIA/chat_ia_home.dart';
 import 'package:portal_pilot_app/Modules/Soporte/soporte_home.dart';
 import 'package:portal_pilot_app/Modules/SupplyChain/supply_chain_home.dart';
 import 'package:portal_pilot_app/Modules/CRMAdvanced/crm_advanced_home.dart';
@@ -179,16 +180,13 @@ class _HomeScreenState extends State<HomeScreen>
       backgroundColor: palette.bgPrimary,
       body: Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment.topRight,
-                radius: 1.5,
-                colors: [
-                  const Color(0xFF8B5CF6).withValues(alpha: 0.06),
-                  Colors.black,
-                ],
-              ),
+          // Fondo original a pantalla completa, sin bordes
+          Positioned.fill(
+            child: Image.asset(
+              'img/fondos-img/fondo-panel-modulos.jpg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              gaplessPlayback: true,
             ),
           ),
           SafeArea(
@@ -230,10 +228,11 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.blur_on_rounded,
-                color: Colors.white,
-                size: 24,
+              child: Image.asset(
+                'assets/img/robot_logo.png',
+                width: 24,
+                height: 24,
+                fit: BoxFit.contain,
               ),
             ),
             const SizedBox(width: 14),
@@ -570,6 +569,9 @@ class _HomeScreenState extends State<HomeScreen>
         break;
       case 'settings':
         destination = const SettingsHome();
+        break;
+      case 'chat_ia':
+        destination = const ChatIAHome();
         break;
       case 'analytics':
         destination = const AnalyticsHome();

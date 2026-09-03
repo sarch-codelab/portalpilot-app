@@ -53,6 +53,7 @@ app.*.map.json
 
 # Build artifacts
 *.zip
+/dist/
 
 
 # Vercel env pulls

@@ -189,29 +189,37 @@ class _InventarioHomeState extends State<InventarioHome> {
           ),
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _cargarDatos,
-        color: const Color(0xFFF59E0B),
-        backgroundColor: const Color(0xFF1A1A1A),
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          children: [
-            _buildStatsGrid(),
-            const SizedBox(height: 16),
-            if (productosBajo.isNotEmpty) ...[
-              _buildAlertBanner(productosBajo.length),
-              const SizedBox(height: 16),
-            ],
-            _buildSectionTitle('Acciones Rápidas'),
-            const SizedBox(height: 10),
-            _buildActions(),
-            const SizedBox(height: 20),
-            _buildSectionTitle('Ãšltimos Productos'),
-            const SizedBox(height: 10),
-            _buildRecentProducts(),
-            const SizedBox(height: 30),
-          ],
-        ),
+body: Stack(
+        children: [
+          // Fondo negro sólido para catálogo (sin imagen)
+          Positioned.fill(
+            child: Container(color: palette.bgPrimary),
+          ),
+          RefreshIndicator(
+            onRefresh: _cargarDatos,
+            color: const Color(0xFFF59E0B),
+            backgroundColor: const Color(0xFF1A1A1A),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              children: [
+                _buildStatsGrid(),
+                const SizedBox(height: 16),
+                if (productosBajo.isNotEmpty) ...[
+                  _buildAlertBanner(productosBajo.length),
+                  const SizedBox(height: 16),
+                ],
+                _buildSectionTitle('Acciones Rápidas'),
+                const SizedBox(height: 10),
+                _buildActions(),
+                const SizedBox(height: 20),
+                _buildSectionTitle('Últimos Productos'),
+                const SizedBox(height: 10),
+                _buildRecentProducts(),
+                const SizedBox(height: 30),
+],
+            ),
+          ),
+        ],
       ),
     );
   }

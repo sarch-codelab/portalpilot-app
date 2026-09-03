@@ -194,10 +194,11 @@ class _SplashScreenState extends State<SplashScreen>
                                         ),
                                       ],
                                     ),
-                                    child: Icon(
-                                      Icons.blur_on_rounded,
-                                      color: textPrimary,
-                                      size: logoIcon,
+                                    child: Image.asset(
+                                      'assets/img/robot_logo.png',
+                                      width: logoIcon,
+                                      height: logoIcon,
+                                      fit: BoxFit.contain,
                                     ),
                                   ),
                                 ),

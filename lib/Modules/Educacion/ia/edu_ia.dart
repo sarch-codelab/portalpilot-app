@@ -317,7 +317,7 @@ class _CopilotScreenState extends State<CopilotScreen> with TickerProviderStateM
   Widget _buildAILogo({double size = 32}) {
     return ClipOval(
       child: Image.asset(
-        'lib/Modules/Educacion/img/iconos/pp.edu.png',
+        'assets/img/robot_logo.png',
         width: size,
         height: size,
         fit: BoxFit.cover,

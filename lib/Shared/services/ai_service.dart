@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Modules/Educacion/ia/reglas_ia.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 
 const String _defaultAiApiRoot = 'https://portalpilot-app.vercel.app';
 
@@ -110,11 +111,13 @@ class AIManager {
   String _nombreUsuario = 'Usuario';
   String _rolUsuario = 'profesor';
   String _empresaCodigo = 'ROOT';
+  String _empresaPlan = 'Prueba';
   String? _token;
 
   String get nombreUsuario => _nombreUsuario;
   String get rolUsuario => _rolUsuario;
   String get empresaCodigo => _empresaCodigo;
+  String get empresaPlan => _empresaPlan;
 
   bool _isInitialized = false;
 
@@ -125,12 +128,13 @@ class AIManager {
     if (_isInitialized && newToken == _token) return;
 
     _nombreUsuario = prefs.getString('user_nombre') ?? 'Usuario';
-    _rolUsuario = prefs.getString('user_rol') ?? 'profesor';
+    _rolUsuario = prefs.getString('user_role') ?? 'profesor';
     _empresaCodigo = prefs.getString('company_code') ?? 'ROOT';
+    _empresaPlan = AuthController.normalizarPlan(prefs.getString('empresa_plan') ?? '');
     _token = newToken;
 
     _isInitialized = true;
-    debugPrint('AIManager inicializado para: $_nombreUsuario ($_rolUsuario)');
+    debugPrint('AIManager inicializado para: $_nombreUsuario ($_rolUsuario) plan=$_empresaPlan');
   }
 
   void reset() {
@@ -139,6 +143,7 @@ class AIManager {
     _nombreUsuario = 'Usuario';
     _rolUsuario = 'profesor';
     _empresaCodigo = 'ROOT';
+    _empresaPlan = 'Prueba';
   }
 
   Map<String, String> get _headers => {
@@ -161,6 +166,7 @@ class AIManager {
       rolUsuario: _rolUsuario,
       empresaCodigo: _empresaCodigo,
       contextoAdicional: contextoAdicional,
+      plan: _empresaPlan,
     );
 
     final apiRoot = const String.fromEnvironment('API_ROOT', defaultValue: _defaultAiApiRoot);
@@ -425,7 +431,7 @@ class AIManager {
   }
 
   String getMensajeBienvenida() {
-    return EduIARules.mensajeBienvenida(_nombreUsuario, _rolUsuario);
+    return EduIARules.mensajeBienvenida(_nombreUsuario, _rolUsuario, _empresaPlan);
   }
 
   bool tienePermiso(String recurso) {

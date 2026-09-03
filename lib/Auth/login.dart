@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen>
   ];
   static const _loginCarouselAlignments = [
     Alignment(0.6, 0),
-    Alignment(1.5, -0.1), // tegus: bandera bien visible a la derecha
+    Alignment(2.2, -0.15), // tegus: bandera bien visible a la derecha
   ];
   static const _loginCarouselInterval = Duration(seconds: 5);
 
@@ -93,9 +93,8 @@ class _LoginScreenState extends State<LoginScreen>
     _loginPageController = PageController();
     _loginCarouselTimer = Timer.periodic(_loginCarouselInterval, (_) {
       if (!mounted) return;
+      if (!_loginPageController.hasClients) return;
       final nextIndex = (_loginImageIndex + 1) % _loginCarouselImages.length;
-      _loginImageIndex = nextIndex;
-      debugPrint('🔄 Carrusel → página $nextIndex (${_loginCarouselImages[nextIndex]})');
       _loginPageController.animateToPage(
         nextIndex,
         duration: const Duration(milliseconds: 1100),
@@ -171,6 +170,7 @@ class _LoginScreenState extends State<LoginScreen>
       }
 
       final String areaNegocio = _areaNegocioDesdeRespuesta(response, userJson);
+      final String planEmpresa = _planDesdeRespuesta(response, userJson);
 
       final area = (loggedUser.area ?? '').toLowerCase();
       String modulos = 'educacion';
@@ -201,6 +201,7 @@ class _LoginScreenState extends State<LoginScreen>
           token: token,
           modulos: modulos.split(',').map((m) => m.trim()).toList(),
           empresaAreaNegocio: areaNegocio,
+          empresaPlan: planEmpresa,
         ),
         MultiAreaConfig.instance.cargar(
           areaNegocio: areaNegocio,
@@ -256,6 +257,27 @@ class _LoginScreenState extends State<LoginScreen>
       }
     }
     return '';
+  }
+
+  /// Extrae el plan de suscripción de la respuesta del backend (si existe).
+  String _planDesdeRespuesta(
+    Map<String, dynamic> response,
+    Map<String, dynamic> userJson,
+  ) {
+    final empresa = response['empresa'];
+    if (empresa is Map<String, dynamic>) {
+      final v = empresa['plan'];
+      if (v != null && v.toString().trim().isNotEmpty) {
+        return AuthController.normalizarPlan(v.toString());
+      }
+    }
+    for (final key in ['plan', 'empresa_plan', 'suscripcion_plan']) {
+      final v = response[key] ?? userJson[key];
+      if (v != null && v.toString().trim().isNotEmpty) {
+        return AuthController.normalizarPlan(v.toString());
+      }
+    }
+    return 'Prueba';
   }
 
   Future<void> _handleRegister() async {

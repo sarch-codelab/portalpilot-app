@@ -321,7 +321,7 @@ class _EducacionScreenState extends State<EducacionScreen>
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: Image.asset(
-          'lib/Modules/Educacion/img/educacion.png',
+          'assets/img/robot_logo.png',
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
             return Container(
@@ -733,7 +733,7 @@ class _EducacionScreenState extends State<EducacionScreen>
           ),
           const SizedBox(height: 20),
 
-          // ── FILA 2: Registro Estudiantil + Edu IA ──
+          // ── FILA 2: Registro Estudiantil + Navi ──
           Row(
             children: [
               Expanded(
@@ -749,9 +749,9 @@ class _EducacionScreenState extends State<EducacionScreen>
               ),
               const SizedBox(width: 20),
               Expanded(
-                child: _buildAreaCard(
-                  'Edu IA',
-                  'Asistente inteligente de gestión escolar',
+                 child: _buildAreaCard(
+                  'Navi',
+                  'Asistente inteligente de Portal Pilot',
                   Icons.smart_toy_rounded,
                   p.accentPurpleDeep,
                   true,

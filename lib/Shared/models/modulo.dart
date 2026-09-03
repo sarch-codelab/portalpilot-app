@@ -85,6 +85,8 @@ class Modulo {
         return Icons.groups_rounded;
       case 'fiscal_advanced':
         return Icons.gavel_rounded;
+      case 'chat_ia':
+        return Icons.auto_awesome_rounded;
       case 'seguridad':
         return Icons.security_rounded;
       case 'multi_empresa':
@@ -134,6 +136,8 @@ class Modulo {
         return const Color(0xFF8B5CF6);
       case 'fiscal_advanced':
         return const Color(0xFFDC2626);
+      case 'chat_ia':
+        return const Color(0xFF8B5CF6);
       case 'seguridad':
         return const Color(0xFF6366F1);
       case 'multi_empresa':
@@ -144,6 +148,14 @@ class Modulo {
   }
 
   static List<Modulo> modulosDisponibles = const [
+    Modulo(
+      id: 'chat_ia',
+      nombre: 'Chat IA',
+      descripcion: 'Asistente inteligente, análisis y creación',
+      icono: Icons.auto_awesome_rounded,
+      color: Color(0xFF8B5CF6),
+      ruta: '/modules/chat_ia',
+    ),
     Modulo(
       id: 'educacion',
       nombre: 'Educación',
