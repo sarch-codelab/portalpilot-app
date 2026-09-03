@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:ui';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
@@ -9,6 +8,7 @@ import 'package:portal_pilot_app/Shared/services/multi_area_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:portal_pilot_app/Home/home_screen.dart';
+import 'unico.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -31,6 +31,34 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<double> _pulseAnimation;
 
   final NotificationManager _notificationManager = NotificationManager();
+
+// Carrusel login — cambia cada _loginCarouselInterval
+  int _loginImageIndex = 0;
+  Timer? _loginCarouselTimer;
+  late PageController _loginPageController;
+  static const _loginCarouselImages = [
+    'img/fondos-img/foto-login-abarrotista.jpg',
+    'img/fondos-img/foto-login-tegus-bandera.jpg',
+  ];
+  static const _loginCarouselAlignments = [
+    Alignment(0.6, 0),
+    Alignment(0.98, 0), // tegus: a la derecha
+  ];
+  static const _loginCarouselInterval = Duration(seconds: 5);
+
+  // Contenido de texto que cambia según la imagen del carrusel
+  static const _loginCarouselContents = [
+    {
+      'title': 'Get Started\nwith Portal Pilot',
+      'subtitle':
+          'Tu portal corporativo con IA integrada para que los abarrotistas gestionen inventario, ventas y finanzas de forma autónoma.',
+    },
+    {
+      'title': 'Orgullosamente\nHecho en Honduras',
+      'subtitle':
+          'Portal Pilot impulsa el comercio en Honduras con tecnología de IA para una gestión financiera inteligente y sin fricciones.',
+    },
+  ];
 
   // ═══ PALETA PREMIUM ═══
   static const Color bgPrimary = Color(0xFF000000);
@@ -62,6 +90,18 @@ class _LoginScreenState extends State<LoginScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _loadSavedData();
+    _loginPageController = PageController();
+    _loginCarouselTimer = Timer.periodic(_loginCarouselInterval, (_) {
+      if (!mounted) return;
+      final nextIndex = (_loginImageIndex + 1) % _loginCarouselImages.length;
+      _loginImageIndex = nextIndex;
+      debugPrint('🔄 Carrusel → página $nextIndex (${_loginCarouselImages[nextIndex]})');
+      _loginPageController.animateToPage(
+        nextIndex,
+        duration: const Duration(milliseconds: 1100),
+        curve: Curves.easeInOutCubic,
+      );
+    });
   }
 
   String? _onboardingBusiness;
@@ -85,6 +125,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
+    _loginCarouselTimer?.cancel();
+    _loginPageController.dispose();
     _pulseController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -96,12 +138,15 @@ class _LoginScreenState extends State<LoginScreen>
 
     setState(() => _isLoading = true);
 
+    // Progreso real de la carga guiado por los pasos de login
+    final loadingProgress = LoadingStepsController();
+
     // Mostrar overlay de carga fullscreen
     if (mounted) {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const _LoadingOverlay(),
+        builder: (_) => LoadingScreen(controller: loadingProgress),
       );
     }
 
@@ -113,6 +158,8 @@ class _LoginScreenState extends State<LoginScreen>
         email: email,
         password: password,
       );
+      // Paso 1 completado: credenciales verificadas
+      loadingProgress.completeStep();
 
       final Map<String, dynamic> userJson = response['user'] ?? {};
       final String token = response['token'] ?? '';
@@ -138,31 +185,40 @@ class _LoginScreenState extends State<LoginScreen>
         modulos = 'educacion,facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
       }
 
-      await AuthController.instance.setSession(
-        nombre: loggedUser.nombre ?? '',
-        apellido: loggedUser.apellido ?? '',
-        email: loggedUser.email,
-        rol: loggedUser.rol,
-        area: loggedUser.area ?? '',
-        rango: loggedUser.rango ?? '',
-        empresaCodigo: loggedUser.empresaCodigo,
-        empresaNombre: loggedUser.empresaNombre ?? '',
-        token: token,
-        modulos: modulos.split(',').map((m) => m.trim()).toList(),
-        empresaAreaNegocio: areaNegocio,
-      );
+      // Paso 2 completado: sesión con el servidor establecida
+      loadingProgress.completeStep();
 
-      await MultiAreaConfig.instance.cargar(
-        areaNegocio: areaNegocio,
-        modulosAsignados: modulos.split(',').map((m) => m.trim()).toList(),
-      );
+      await Future.wait([
+        AuthController.instance.setSession(
+          nombre: loggedUser.nombre ?? '',
+          apellido: loggedUser.apellido ?? '',
+          email: loggedUser.email,
+          rol: loggedUser.rol,
+          area: loggedUser.area ?? '',
+          rango: loggedUser.rango ?? '',
+          empresaCodigo: loggedUser.empresaCodigo,
+          empresaNombre: loggedUser.empresaNombre ?? '',
+          token: token,
+          modulos: modulos.split(',').map((m) => m.trim()).toList(),
+          empresaAreaNegocio: areaNegocio,
+        ),
+        MultiAreaConfig.instance.cargar(
+          areaNegocio: areaNegocio,
+          modulosAsignados: modulos.split(',').map((m) => m.trim()).toList(),
+        ),
+      ]);
 
-      // Pequeña pausa para que el usuario vea el overlay de éxito
-      await Future.delayed(const Duration(milliseconds: 800));
+      // Paso 3 completado: dashboard preparado. Abriendo módulos…
+      loadingProgress.completeStep();
+      await Future.delayed(const Duration(milliseconds: 550));
+
+      // Progreso completo
+      loadingProgress.completeStep();
+      await Future.delayed(const Duration(milliseconds: 600));
 
       if (!mounted) return;
       Navigator.of(context).pop(); // Cerrar overlay
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future.delayed(const Duration(milliseconds: 120));
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -176,6 +232,7 @@ class _LoginScreenState extends State<LoginScreen>
         NotificationType.error,
       );
     } finally {
+      loadingProgress.dispose();
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -293,66 +350,100 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildLeftPanel(BoxConstraints constraints) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: const Alignment(-0.2, 0.0),
-          radius: 1.4,
-          colors: [
-            accentPurpleDeep.withValues(alpha: 0.25),
-            accentPurpleDark.withValues(alpha: 0.08),
-            bgPrimary,
-          ],
-          stops: const [0.0, 0.4, 1.0],
-        ),
-      ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 64, vertical: 48),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildBrandLogo(),
-                const SizedBox(height: 40),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Get Started\nwith Portal Pilot',
-                    style: GoogleFonts.syne(
-                      fontSize: 52,
-                      fontWeight: FontWeight.w900,
-                      color: textPrimary,
-                      letterSpacing: -1.5,
-                      height: 1.1,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Tu portal corporativo inteligente con IA integrada para gestión financiera autónoma.',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 15,
-                    color: textMuted,
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 48),
-                _buildStepTile(1, 'Crea tu empresa', true),
-                const SizedBox(height: 14),
-                _buildStepTile(2, 'Accede a tu dashboard', false),
-                const SizedBox(height: 14),
-                _buildStepTile(3, 'Gestiona con IA', false),
-              ],
+    return Stack(
+      fit: StackFit.expand,
+        children: [
+          // Fondo: carrusel de fotos del login (cambia cada 5s)
+          PageView.builder(
+            controller: _loginPageController,
+            itemCount: _loginCarouselImages.length,
+            onPageChanged: (index) {
+              _loginImageIndex = index;
+              setState(() {});
+            },
+            itemBuilder: (context, index) {
+              return Image.asset(
+                _loginCarouselImages[index],
+                fit: BoxFit.cover,
+                alignment: _loginCarouselAlignments[index],
+                gaplessPlayback: true,
+              );
+            },
+          ),
+          // Overlay oscuro suave para que el texto blanco siga legible
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.45),
+                  Colors.black.withValues(alpha: 0.2),
+                  Colors.black.withValues(alpha: 0.78),
+                ],
+                stops: const [0.0, 0.5, 1.0],
+              ),
             ),
           ),
-        ),
-      ),
-    );
+          // Contenido de texto (cambia con cada imagen) anclado abajo
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(64, 24, 64, 64),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 620),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 700),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) =>
+                      FadeTransition(opacity: animation, child: child),
+                  child: Column(
+                    key: ValueKey(_loginImageIndex),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildBrandLogo(),
+                      const SizedBox(height: 28),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _loginCarouselContents[_loginImageIndex]['title']!,
+                          style: GoogleFonts.syne(
+                            fontSize: 50,
+                            fontWeight: FontWeight.w900,
+                            color: textPrimary,
+                            letterSpacing: -1.2,
+                            height: 1.1,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _loginCarouselContents[_loginImageIndex]['subtitle']!,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          color: textMuted,
+                          height: 1.6,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 28),
+                      _buildStepTile(1, 'Crea tu empresa', true),
+                      const SizedBox(height: 12),
+                      _buildStepTile(2, 'Accede a tu dashboard', false),
+                      const SizedBox(height: 12),
+                      _buildStepTile(3, 'Gestiona con IA', false),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
   }
 
   Widget _buildRightPanel(BoxConstraints constraints) {
@@ -403,29 +494,19 @@ class _LoginScreenState extends State<LoginScreen>
     return AnimatedBuilder(
       animation: _pulseController,
       builder: (context, child) {
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [accentPurple, accentPurpleDark],
+        final scale = 1.0 + 0.03 * _pulseAnimation.value;
+        return Transform.scale(
+          scale: scale,
+          child: Image.asset(
+            'assets/img/robot_logo.png',
+            width: 48,
+            height: 48,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => Icon(
+              Icons.blur_on_rounded,
+              color: accentPurple,
+              size: 48,
             ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: accentPurple.withValues(
-                  alpha: 0.5 * _pulseAnimation.value,
-                ),
-                blurRadius: 30,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.blur_on_rounded,
-            color: textPrimary,
-            size: 26,
           ),
         );
       },
@@ -558,6 +639,21 @@ class _LoginScreenState extends State<LoginScreen>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Logo superior centrado (sin marco)
+          Center(
+            child: Image.asset(
+              'assets/img/robot_logo.png',
+              width: 48,
+              height: 48,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => Icon(
+                Icons.blur_on_rounded,
+                color: accentPurple,
+                size: 48,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
           _buildTabs(),
           const SizedBox(height: 28),
           if (_selectedTab == 'login')
@@ -1107,54 +1203,6 @@ class NotificationModel {
       case NotificationType.info:
         return Icons.info_rounded;
     }
-  }
-}
-
-class _LoadingOverlay extends StatelessWidget {
-  const _LoadingOverlay();
-
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.85),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 48,
-                height: 48,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Color(0xFF8B5CF6),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Iniciando sesión...',
-                style: GoogleFonts.dmSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Preparando tu dashboard',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: Color(0xFFA3A3A3),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 
