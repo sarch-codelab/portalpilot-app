@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen>
   ];
   static const _loginCarouselAlignments = [
     Alignment(0.6, 0),
-    Alignment(0.98, 0), // tegus: a la derecha
+    Alignment(1.5, -0.1), // tegus: bandera bien visible a la derecha
   ];
   static const _loginCarouselInterval = Duration(seconds: 5);
 
@@ -462,31 +462,226 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildMobileLayout(Size size) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildBrandLogo(),
-              const SizedBox(height: 8),
-              Text(
-                'Portal Pilot',
-                style: GoogleFonts.syne(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: textPrimary,
-                  letterSpacing: -0.6,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF0A0A0F),
+            Color(0xFF050508),
+          ],
+        ),
+      ),
+      child: SafeArea(
+        child: Stack(
+          children: [
+            // Fondo decorativo sutil
+            Positioned(
+              top: -80,
+              right: -60,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      accentPurple.withValues(alpha: 0.08),
+                      Colors.transparent,
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              _buildAuthCard(),
+            ),
+            Positioned(
+              bottom: -100,
+              left: -80,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      accentPurpleDeep.withValues(alpha: 0.05),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Contenido principal
+            SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(28, 20, 28, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 24),
+                  // Logo con glow
+                  _buildMobileLogo(),
+                  const SizedBox(height: 32),
+                  // Título y subtítulo
+                  _buildMobileHeader(),
+                  const SizedBox(height: 36),
+                  // Card de autenticación
+                  _buildAuthCard(),
+                  const SizedBox(height: 24),
+                  // Footer
+                  _buildMobileFooter(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLogo() {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final scale = 1.0 + 0.04 * _pulseAnimation.value;
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                accentPurple.withValues(alpha: 0.15),
+                accentPurple.withValues(alpha: 0.05),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: accentPurple.withValues(alpha: 0.2 * _pulseAnimation.value),
+                blurRadius: 40,
+                spreadRadius: 8,
+              ),
             ],
+          ),
+          child: Transform.scale(
+            scale: scale,
+            child: Image.asset(
+              'assets/img/robot_logo.png',
+              width: 56,
+              height: 56,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => Icon(
+                Icons.blur_on_rounded,
+                color: accentPurple,
+                size: 56,
+              ),
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMobileHeader() {
+    return Column(
+      children: [
+        Text(
+          'Portal Pilot',
+          style: GoogleFonts.syne(
+            fontSize: 32,
+            fontWeight: FontWeight.w900,
+            color: textPrimary,
+            letterSpacing: -1.0,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                accentPurple.withValues(alpha: 0.2),
+                accentPurpleDark.withValues(alpha: 0.1),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: accentPurple.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Text(
+            'IA INTEGRADA',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              color: accentPurpleLight,
+              letterSpacing: 2.0,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Tu ERP inteligente para gestionar\ninventario, ventas y finanzas',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.dmSans(
+            fontSize: 14,
+            color: textMuted,
+            height: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileFooter() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildFeatureChip(Icons.auto_awesome, 'IA'),
+            const SizedBox(width: 8),
+            _buildFeatureChip(Icons.offline_bolt_outlined, 'Offline'),
+            const SizedBox(width: 8),
+            _buildFeatureChip(Icons.storefront, 'POS'),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'v0.1.3  •  sarch-codelab',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 10,
+            color: textDark,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeatureChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgTertiary,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderLight),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: accentPurpleLight),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: textMuted,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
