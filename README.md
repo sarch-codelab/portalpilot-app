@@ -423,6 +423,14 @@ La última versión publicada: **Portal_Pilot_WDx64_v0.1.5.exe** (~20 MB, Window
 
 El launcher `pp.cmd` abre un centro de control de Portal Pilot desde CMD: web, releases, instalador Windows ARM/x64, APK Android, descargas y diagnóstico.
 
+Para instalarlo globalmente en cualquier Windows sin clonar este repositorio:
+
+```cmd
+curl -L https://raw.githubusercontent.com/sarch-codelab/portalpilot-app/main/install-pp.cmd -o "%TEMP%\install-pp.cmd" && call "%TEMP%\install-pp.cmd"
+```
+
+Después de cerrar y abrir CMD, el comando `pp` estará disponible desde cualquier carpeta.
+
 ```cmd
 setx PATH "%PATH%;C:\Users\Sami\Downloads\Portal Pilot\PP APP"
 ```
