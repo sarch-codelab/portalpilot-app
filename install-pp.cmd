@@ -3,7 +3,9 @@ setlocal EnableExtensions
 chcp 65001 >nul
 set "PP_INSTALL_DIR=%USERPROFILE%\bin"
 set "PP_URL=https://github.com/sarch-codelab/portalpilot-app/releases/download/v0.1.5/pp.cmd"
+set "PP_SCRIPT_URL=https://github.com/sarch-codelab/portalpilot-app/releases/download/v0.1.5/pp.ps1"
 set "PP_TARGET=%PP_INSTALL_DIR%\pp.cmd"
+set "PP_SCRIPT_TARGET=%PP_INSTALL_DIR%\pp.ps1"
 
 if not exist "%PP_INSTALL_DIR%" mkdir "%PP_INSTALL_DIR%"
 where curl.exe >nul 2>&1
@@ -15,6 +17,11 @@ if errorlevel 1 (
 curl.exe -L --fail --silent --show-error -o "%PP_TARGET%" "%PP_URL%"
 if errorlevel 1 (
   echo No se pudo instalar Portal Pilot. Revisa tu conexion.
+  exit /b 1
+)
+curl.exe -L --fail --silent --show-error -o "%PP_SCRIPT_TARGET%" "%PP_SCRIPT_URL%"
+if errorlevel 1 (
+  echo No se pudo instalar el nucleo Navi de Portal Pilot.
   exit /b 1
 )
 
