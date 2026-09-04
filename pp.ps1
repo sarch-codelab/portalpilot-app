@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference = 'Stop'
 $Version = 'v0.1.5'
-$Web = 'https://portalpilot-app.vercel.app'
+$Web = 'https://portal-pilot.vercel.app'
 $Release = "https://github.com/sarch-codelab/portalpilot-app/releases/tag/$Version"
 $WindowsUrl = "https://github.com/sarch-codelab/portalpilot-app/releases/download/$Version/Portal_Pilot_WDx64_v0.1.5.exe"
 $ApkUrl = "https://github.com/sarch-codelab/portalpilot-app/releases/download/$Version/PortalPilot_Android_v0.1.5.apk"
@@ -15,8 +15,12 @@ $White = "$Esc[97m"
 $Reset = "$Esc[0m"
 $Clear = "$Esc[2J$Esc[H"
 
-function Show-Brand([int]$Frame = 0) {
-    Write-Host "$Clear$Purple"
+function Show-Brand([int]$Frame = 0, [bool]$ClearScreen = $true) {
+    if ($ClearScreen) {
+        Write-Host "$Clear$Purple"
+    } else {
+        Write-Host "$Esc[H$Purple"
+    }
     $Logo = @(
         '██████╗  ██████╗ ██████╗ ████████╗ █████╗ ██╗         ██████╗ ██╗██╗      ██████╗ ████████╗'
         '██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██╔══██╗██║         ██╔══██╗██║██║     ██╔═══██╗╚══██╔══╝'
@@ -77,7 +81,7 @@ function Show-Deck {
 
     $Frame = 0
     while ($true) {
-        Show-Brand $Frame
+        Show-Brand $Frame ($Frame -eq 0)
         Write-Host ""
         Write-Host "   $White 01 $Lavender ABRIR PORTAL PILOT$Reset       $Muted Acceso web$Reset"
         Write-Host "   $White 02 $Lavender VER VERSIONES$Reset             $Muted Releases y novedades$Reset"

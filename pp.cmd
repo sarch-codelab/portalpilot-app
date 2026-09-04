@@ -31,7 +31,7 @@ chcp 65001 >nul
 color 0B
 set "PP_VERSION=v0.1.5"
 set "PP_RELEASE=https://github.com/sarch-codelab/portalpilot-app/releases/tag/%PP_VERSION%"
-set "PP_WEB=https://portalpilot-app.vercel.app"
+set "PP_WEB=https://portal-pilot.vercel.app"
 set "PP_WIN=https://github.com/sarch-codelab/portalpilot-app/releases/download/%PP_VERSION%/Portal_Pilot_WDx64_v0.1.5.exe"
 set "PP_APK=https://github.com/sarch-codelab/portalpilot-app/releases/download/%PP_VERSION%/PortalPilot_Android_v0.1.5.apk"
 set "PP_DIR=%USERPROFILE%\Downloads\PortalPilot"

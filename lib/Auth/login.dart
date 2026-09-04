@@ -348,7 +348,7 @@ class _LoginScreenState extends State<LoginScreen>
         NotificationType.info,
       );
 
-      final base = String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portalpilot-app.vercel.app');
+      final base = String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portal-pilot.vercel.app');
       final uri = Uri.parse('$base/login.html').replace(queryParameters: {
         if (b.isNotEmpty) 'business_type': b,
         if (c.isNotEmpty) 'customer_type': c,
@@ -1273,7 +1273,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: 14),
         Text(
-          hasOnboarding ? 'Se abrirá portalpilot-app.vercel.app con tus datos' : 'Serás redirigido a portalpilot-app.vercel.app',
+          hasOnboarding ? 'Se abrirá portal-pilot.vercel.app con tus datos' : 'Serás redirigido a portal-pilot.vercel.app',
           style: GoogleFonts.spaceGrotesk(
             fontSize: 11,
             color: textDark,
