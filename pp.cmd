@@ -1,4 +1,22 @@
 @echo off
+set "PP_SCRIPT=%~dp0pp.ps1"
+
+if not exist "%PP_SCRIPT%" (
+  echo Portal Pilot no encontro su nucleo Navi.
+  exit /b 1
+)
+
+where wt.exe >nul 2>&1
+if not errorlevel 1 (
+  start "Portal Pilot" wt.exe -w 0 new-tab --title "Portal Pilot Command Deck" --tabColor #8B5CF6 powershell.exe -NoLogo -NoExit -ExecutionPolicy Bypass -File "%PP_SCRIPT%"
+  exit /b 0
+)
+
+powershell.exe -NoLogo -NoExit -ExecutionPolicy Bypass -File "%PP_SCRIPT%"
+exit /b 0
+
+rem Legacy CMD deck kept below for offline fallback compatibility.
+:legacy
 setlocal EnableExtensions
 chcp 65001 >nul
 color 0B
