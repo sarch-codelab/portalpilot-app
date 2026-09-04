@@ -2,7 +2,7 @@
 setlocal EnableExtensions
 chcp 65001 >nul
 set "PP_INSTALL_DIR=%USERPROFILE%\bin"
-set "PP_URL=https://raw.githubusercontent.com/sarch-codelab/portalpilot-app/main/pp.cmd"
+set "PP_URL=https://github.com/sarch-codelab/portalpilot-app/releases/download/v0.1.5/pp.cmd"
 set "PP_TARGET=%PP_INSTALL_DIR%\pp.cmd"
 
 if not exist "%PP_INSTALL_DIR%" mkdir "%PP_INSTALL_DIR%"

@@ -426,7 +426,7 @@ El launcher `pp.cmd` abre un centro de control de Portal Pilot desde CMD: web, r
 Para instalarlo globalmente en cualquier Windows sin clonar este repositorio:
 
 ```cmd
-curl -L https://raw.githubusercontent.com/sarch-codelab/portalpilot-app/main/install-pp.cmd -o "%TEMP%\install-pp.cmd" && call "%TEMP%\install-pp.cmd"
+curl -L https://github.com/sarch-codelab/portalpilot-app/releases/download/v0.1.5/install-pp.cmd -o "%TEMP%\install-pp.cmd" && call "%TEMP%\install-pp.cmd"
 ```
 
 Después de cerrar y abrir CMD, el comando `pp` estará disponible desde cualquier carpeta.
