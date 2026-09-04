@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $Version = 'v0.1.5'
 $Web = 'https://portalpilot-app.vercel.app'
 $Release = "https://github.com/sarch-codelab/portalpilot-app/releases/tag/$Version"
@@ -17,14 +17,41 @@ $Clear = "$Esc[2J$Esc[H"
 
 function Show-Brand {
     Write-Host "$Clear$Purple"
-    Write-Host '   +--------------------------------------------------+'
-    Write-Host '   |              P O R T A L   P I L O T             |'
-    Write-Host '   |           N A V I   C O M M A N D   D E C K      |'
-    Write-Host '   +--------------------------------------------------+'
+    $Logo = @(
+        '██████╗  ██████╗ ██████╗ ████████╗ █████╗ ██╗         ██████╗ ██╗██╗      ██████╗ ████████╗'
+        '██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██╔══██╗██║         ██╔══██╗██║██║     ██╔═══██╗╚══██╔══╝'
+        '██████╔╝██║   ██║██████╔╝   ██║   ███████║██║         ██████╔╝██║██║     ██║   ██║   ██║   '
+        '██╔═══╝ ██║   ██║██╔══██╗   ██║   ██╔══██║██║         ██╔═══╝ ██║██║     ██║   ██║   ██║   '
+        '██║     ╚██████╔╝██║  ██║   ██║   ██║  ██║███████╗    ██║     ██║███████╗╚██████╔╝   ██║   '
+        '╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═╝     ╚═╝╚══════╝ ╚═════╝    ╚═╝   '
+    )
+    foreach ($LogoLine in $Logo) {
+        Write-Host "   $LogoLine"
+    }
+    Write-LightLine
     Write-Host "$Reset"
     Write-Host "   $White PORTAL PILOT $Purple// COMMAND DECK $Reset"
     Write-Host "   $Muted NUCLEO NAVI $Green● EN LINEA $Muted // $Version$Reset"
-    Write-Host "   $Purple----------------------------------------------------------------$Reset"
+    Write-LightLine
+}
+
+function Write-LightLine {
+    $segments = 72
+    $frames = 16
+    for ($frame = 0; $frame -lt $frames; $frame++) {
+        [Console]::Write("   ")
+        for ($segment = 0; $segment -lt $segments; $segment++) {
+            $distance = [Math]::Abs($segment - (($frame / ($frames - 1)) * ($segments - 1)))
+            $glow = [Math]::Max(0, 1 - ($distance / 12))
+            $red = [int](105 + (120 * $glow))
+            $green = [int](35 + (45 * $glow))
+            $blue = [int](190 + (65 * $glow))
+            [Console]::Write("$Esc[38;2;${red};${green};${blue}m═")
+        }
+        [Console]::Write("$Reset`r")
+        Start-Sleep -Milliseconds 28
+    }
+    Write-Host ""
 }
 
 function Pause-Deck {
