@@ -419,6 +419,20 @@ flutter build windows --release
 
 La última versión publicada: **Portal_Pilot_WDx64_v0.1.5.exe** (~20 MB, Windows 10/11 x64 y Windows ARM con emulación x64).
 
+## Centro de control por CMD
+
+El launcher `pp.cmd` abre un centro de control de Portal Pilot desde CMD: web, releases, instalador Windows ARM/x64, APK Android, descargas y diagnóstico.
+
+```cmd
+setx PATH "%PATH%;C:\Users\Sami\Downloads\Portal Pilot\PP APP"
+```
+
+Cierra y vuelve a abrir CMD. Después puedes iniciar el centro escribiendo:
+
+```cmd
+pp
+```
+
 ---
 
 ## Licencia
