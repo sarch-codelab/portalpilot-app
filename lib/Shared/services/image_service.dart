@@ -13,8 +13,7 @@ class ImageService {
   static final ImageService instance = ImageService._();
 
   /// Sube una imagen (base64 o ruta de archivo) a Supabase Storage vía el API.
-  /// Retorna la URL pública; si la subida remota falla, retorna la data URL
-  /// como respaldo para no perder la imagen en la app.
+  /// Retorna únicamente la URL pública creada en Supabase Storage.
   Future<String?> uploadImage({
     required String base64OrPath,
     required String bucketName,
@@ -45,8 +44,8 @@ class ImageService {
       );
       if (remoteUrl != null) return remoteUrl;
 
-      // Respaldo: si no hay red o falla el API, seguir con la data URL.
-      return dataUrl;
+      // No guardar data URLs como si fueran archivos sincronizados en la nube.
+      return null;
     } catch (e) {
       debugPrint('❌ Error en uploadImage: $e');
       return null;
