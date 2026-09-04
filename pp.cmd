@@ -6,6 +6,15 @@ if not exist "%PP_SCRIPT%" (
   exit /b 1
 )
 
+rem Actualiza el nucleo local en cada inicio; conserva la copia actual si no hay red.
+set "PP_UPDATE_URL=https://github.com/sarch-codelab/portalpilot-app/releases/download/v0.1.5/pp.ps1"
+set "PP_UPDATE_FILE=%PP_SCRIPT%.update"
+curl.exe -L --fail --silent --show-error -o "%PP_UPDATE_FILE%" "%PP_UPDATE_URL%" >nul 2>&1
+if not errorlevel 1 (
+  move /Y "%PP_UPDATE_FILE%" "%PP_SCRIPT%" >nul
+)
+if exist "%PP_UPDATE_FILE%" del /Q "%PP_UPDATE_FILE%" >nul 2>&1
+
 where wt.exe >nul 2>&1
 if not errorlevel 1 (
   start "Portal Pilot" wt.exe -w 0 new-tab --title "Portal Pilot Command Deck" --tabColor #8B5CF6 powershell.exe -NoLogo -NoExit -ExecutionPolicy Bypass -File "%PP_SCRIPT%"

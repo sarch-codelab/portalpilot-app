@@ -431,6 +431,8 @@ curl -L https://github.com/sarch-codelab/portalpilot-app/releases/download/v0.1.
 
 Después de cerrar y abrir CMD, el comando `pp` estará disponible desde cualquier carpeta.
 
+Cada ejecución de `pp` actualiza automáticamente su núcleo PowerShell desde el release publicado y conserva la última copia funcional cuando no hay conexión.
+
 ```cmd
 setx PATH "%PATH%;C:\Users\Sami\Downloads\Portal Pilot\PP APP"
 ```
