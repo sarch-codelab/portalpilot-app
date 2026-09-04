@@ -221,11 +221,19 @@ class _LoginScreenState extends State<LoginScreen>
         throw Exception('Tu cuenta está pendiente de activación por el Owner.');
       }
 
-      final String areaNegocio = _areaNegocioDesdeRespuesta(response, userJson);
+        final prefs = await SharedPreferences.getInstance();
+        final responseAreaNegocio = _areaNegocioDesdeRespuesta(response, userJson);
+        final String areaNegocio = responseAreaNegocio.isNotEmpty
+          ? responseAreaNegocio
+          : (prefs.getString('empresa_area_negocio') ?? '');
       final String planEmpresa = _planDesdeRespuesta(response, userJson);
 
       final area = (loggedUser.area ?? '').toLowerCase();
-      String modulos = 'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
+      String modulos = AreasNegocio.modulosPorDefecto(areaNegocio).join(',');
+      if (modulos.isEmpty) {
+        modulos = prefs.getString('onboarding_modulos') ??
+        'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
+      }
 
       if (area == 'finanzas') {
         modulos = 'contabilidad,facturacion';
@@ -331,6 +339,25 @@ class _LoginScreenState extends State<LoginScreen>
     return 'Prueba';
   }
 
+  Future<void> _openPasswordRecovery() async {
+    try {
+      final base = String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portal-pilot.vercel.app');
+      final email = _emailController.text.trim();
+      final uri = Uri.parse('$base/login.html').replace(queryParameters: {
+        'recovery': '1',
+        if (email.isNotEmpty) 'email': email,
+      });
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened) throw StateError('El sistema no pudo abrir el navegador');
+    } catch (error) {
+      _notificationManager.showNotification(
+        'No se pudo abrir la recuperación. Revisa tu navegador.',
+        NotificationType.error,
+      );
+      debugPrint('Error al abrir recuperación: $error');
+    }
+  }
+
   Future<void> _handleRegister() async {
     if (_isRegistering) return;
     setState(() => _isRegistering = true);
@@ -340,21 +367,13 @@ class _LoginScreenState extends State<LoginScreen>
       final b = prefs.getString('business_type') ?? _onboardingBusiness ?? '';
       final c = prefs.getString('customer_type') ?? _onboardingCustomer ?? '';
       final o = prefs.getString('operation_type') ?? _onboardingOperation ?? '';
-
-      _notificationManager.showNotification(
-        b.isNotEmpty || c.isNotEmpty || o.isNotEmpty
-            ? 'Abriendo el registro con tus selecciones...'
-            : 'Abriendo el portal de registro...',
-        NotificationType.info,
-      );
+      _notificationManager.showNotification('Abriendo el portal de registro...', NotificationType.info);
 
       final base = String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portal-pilot.vercel.app');
-      final uri = Uri.parse('$base/login.html').replace(queryParameters: {
+      final uri = Uri.parse('$base/registrov2.html').replace(queryParameters: {
         if (b.isNotEmpty) 'business_type': b,
         if (c.isNotEmpty) 'customer_type': c,
         if (o.isNotEmpty) 'operation_type': o,
-        if (b.isNotEmpty || c.isNotEmpty || o.isNotEmpty) 'onboarding': '1',
-        if (b.isNotEmpty || c.isNotEmpty || o.isNotEmpty) 'prefilled': '1',
       });
 
       final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -527,7 +546,10 @@ class _LoginScreenState extends State<LoginScreen>
           padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: _buildAuthCard(),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: _buildAuthCard(),
+            ),
           ),
         ),
       ),
@@ -1084,10 +1106,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ],
                   ),
                 GestureDetector(
-                  onTap: () => _notificationManager.showNotification(
-                    'Función de recuperación disponible',
-                    NotificationType.info,
-                  ),
+                  onTap: _openPasswordRecovery,
                   child: Text(
                     '¿Olvidaste tu contraseña?',
                     style: GoogleFonts.dmSans(

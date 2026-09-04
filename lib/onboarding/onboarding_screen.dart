@@ -2,7 +2,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Auth/login.dart';
-import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/multi_area_config.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -645,7 +644,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(isLast ? 'Crear mi espacio' : 'Siguiente',
+                              Text(isLast ? 'Continuar al acceso' : 'Siguiente',
                                   style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w800)),
                               const SizedBox(width: 8),
                               Icon(isLast ? Icons.check_rounded : Icons.arrow_forward_rounded, size: 18),
@@ -658,7 +657,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           if (isLast) ...[
             const SizedBox(height: 8),
-            Text('Podrás cambiar esto luego en Configuración → Mi Empresa',
+            Text('Tus preferencias se guardarán y podrás cambiarlas luego en Configuración → Mi Empresa',
                 style: GoogleFonts.dmSans(fontSize: 11, color: _p.textDark, fontStyle: FontStyle.italic),
                 textAlign: TextAlign.center),
             const SizedBox(height: 6),
@@ -716,23 +715,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         );
       }
 
-      // Operaciones en segundo plano (no bloquean navegación)
+      // Preparar datos locales sin crear una sesión autenticada.
       try {
         final List<String> modulos = AreasNegocio.modulosPorDefecto(areaNegocio);
-        await AuthController.instance.setSession(
-          nombre: '',
-          apellido: '',
-          email: '',
-          rol: 'cliente',
-          area: areaNegocio,
-          rango: '',
-          empresaCodigo: 'ROOT',
-          empresaNombre: 'Portal Pilot',
-          token: '',
-          modulos: modulos,
-          empresaAreaNegocio: areaNegocio,
-          empresaPlan: 'Prueba',
-        );
+        await prefs.setString('onboarding_modulos', modulos.join(','));
         final db = LocalDatabaseService.instance;
         final empresaCompanion = db.empresaFromOnboarding(areaNegocio, empresaCodigo);
         await db.upsertEmpresa(empresaCompanion);
