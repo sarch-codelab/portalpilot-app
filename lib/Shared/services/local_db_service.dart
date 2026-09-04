@@ -32,7 +32,6 @@ class LocalDatabaseService {
   AppDatabase get database => _db;
 
   Future<void> close() async {
-    await _db.close();
     _syncService.dispose();
     _connectivityService.dispose();
     _initialized = false;

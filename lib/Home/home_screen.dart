@@ -93,16 +93,20 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _initializeServices() async {
-    await HapticService.instance.initialize();
-    await OfflineSyncService.instance.initialize();
-    
-    // Escuchar estado de sincronización
-    OfflineSyncService.instance.syncStatusStream.listen((status) {
-      if (mounted) {
-        // Mostrar indicador de sincronización si es necesario
-        debugPrint('🔄 Sync status: ${status.message}');
-      }
-    });
+    try {
+      await HapticService.instance.initialize();
+      await OfflineSyncService.instance.initialize();
+      
+      // Escuchar estado de sincronización
+      OfflineSyncService.instance.syncStatusStream.listen((status) {
+        if (mounted) {
+          // Mostrar indicador de sincronización si es necesario
+          debugPrint('🔄 Sync status: ${status.message}');
+        }
+      });
+    } catch (e) {
+      debugPrint('⚠️ Error inicializando servicios: $e');
+    }
   }
 
   Future<void> _refreshData() async {
@@ -130,7 +134,6 @@ class _HomeScreenState extends State<HomeScreen>
     _moduleSearchController.dispose();
     _clockTimer?.cancel();
     _connectivitySubscription?.cancel();
-    OfflineSyncService.instance.dispose();
     super.dispose();
   }
 

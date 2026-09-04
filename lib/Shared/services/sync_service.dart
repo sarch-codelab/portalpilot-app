@@ -470,7 +470,7 @@ class SyncService {
     _syncTimer?.cancel();
     _retryTimer?.cancel();
     _statusController?.close();
-    _db.close();
+    _statusController = null;
   }
 }
 

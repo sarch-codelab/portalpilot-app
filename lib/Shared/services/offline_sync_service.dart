@@ -15,7 +15,8 @@ class OfflineSyncService {
   bool _hasPendingSync = false;
   
   final List<Map<String, dynamic>> _pendingOperations = [];
-  final StreamController<SyncStatus> _syncStatusController = StreamController<SyncStatus>.broadcast();
+  StreamController<SyncStatus> _syncStatusController = StreamController<SyncStatus>.broadcast();
+  StreamSubscription? _connectivitySubscription;
   
   Stream<SyncStatus> get syncStatusStream => _syncStatusController.stream;
   bool get isSyncing => _isSyncing;
@@ -27,8 +28,7 @@ class OfflineSyncService {
     
     await _connectivityService.initialize();
     
-    // Escuchar cambios de conectividad
-    _connectivityService.connectivityStream.listen((isOnline) {
+    _connectivitySubscription = _connectivityService.connectivityStream.listen((isOnline) {
       if (isOnline && _hasPendingSync) {
         debugPrint('📡 Conexión restaurada, iniciando sincronización...');
         _performSync();
@@ -144,7 +144,12 @@ class OfflineSyncService {
   }
 
   void dispose() {
-    _syncStatusController.close();
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
+    if (!_syncStatusController.isClosed) {
+      _syncStatusController.close();
+    }
+    _isInitialized = false;
   }
 }
 

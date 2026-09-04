@@ -918,7 +918,12 @@ class CompraItems extends Table {
   CompraItems,
 ])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase._() : super(_openConnection());
+
+  static AppDatabase? _instance;
+  static AppDatabase get instance => _instance ??= AppDatabase._();
+
+  factory AppDatabase() => instance;
 
   @override
   int get schemaVersion => 6;

@@ -14,10 +14,36 @@ import 'package:portal_pilot_app/launch_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Atrapar errores async no recuperados para evitar crashes en móvil.
+  runZonedGuarded(() async {
+    await _initApp();
+  }, (error, stack) {
+    debugPrint('🚨 Error no capturado: $error');
+    debugPrint('Stack: $stack');
+  });
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('🚨 Flutter error: ${details.exception}');
+    debugPrint('Stack: ${details.stack}');
+  };
+}
+
+Future<void> _initApp() async {
   await LocalDatabaseService.instance.initialize();
   await SarService.instance.initialize();
-  await OrientationService.instance.initialize();
-  await OfflineSyncService.instance.initialize();
+
+  try {
+    await OrientationService.instance.initialize();
+  } catch (e) {
+    debugPrint('⚠️ OrientationService init error: $e');
+  }
+
+  try {
+    await OfflineSyncService.instance.initialize();
+  } catch (e) {
+    debugPrint('⚠️ OfflineSyncService init error: $e');
+  }
 
   try {
     await PortalPilotDB.initialize();
