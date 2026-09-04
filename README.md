@@ -9,7 +9,7 @@
 ![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?logo=supabase&logoColor=white)
 ![Groq](https://img.shields.io/badge/Groq%20IA-F55036?logo=groq&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-000000?logo=vercel&logoColor=white)
-![Version](https://img.shields.io/badge/Version-0.1.3-8B5CF6)
+![Version](https://img.shields.io/badge/Version-0.1.5-8B5CF6)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Android%20%7C%20iOS%20%7C%20Web-6B7280)
 
 </div>
@@ -412,12 +412,12 @@ flutter build windows --release
 # 2. Compilar el instalador (Inno Setup 6)
 & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" setup.iss
 
-# 3. El instalador se genera en dist\PortalPilot_Windows_x64_v0.1.3.exe
+# 3. El instalador se genera en dist\Portal_Pilot_WDx64_v0.1.5.exe
 ```
 
-> Los instaladores publicados se suben como assets a los releases de GitHub con `gh release upload v0.1.3 dist/PortalPilot_Windows_x64_v0.1.3.exe --clobber`.
+> Los instaladores publicados se suben como assets a los releases de GitHub con `gh release upload v0.1.5 dist/Portal_Pilot_WDx64_v0.1.5.exe --clobber`.
 
-La última versión publicada: **PortalPilot_Windows_x64_v0.1.3.exe** (~20 MB, Windows 10/11 x64).
+La última versión publicada: **Portal_Pilot_WDx64_v0.1.5.exe** (~20 MB, Windows 10/11 x64 y Windows ARM con emulación x64).
 
 ---
 

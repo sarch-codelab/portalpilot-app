@@ -53,6 +53,29 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Portal Pilot necesita acceso a la cámara para escanear códigos de barras y tomar fotos de productos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Portal Pilot necesita acceso a tus fotos para seleccionar imágenes de productos y documentos.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Portal Pilot necesita guardar fotos de productos y documentos en tu galería.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Portal Pilot necesita acceso a Bluetooth para conectar impresoras y dispositivos POS.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Portal Pilot necesita acceso a Bluetooth para conectar impresoras y dispositivos POS.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Portal Pilot necesita tu ubicación para mostrar tiendas cercanas y servicios de entrega.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Portal Pilot necesita tu ubicación para mostrar tiendas cercanas y servicios de entrega.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Portal Pilot usa Face ID para autenticación segura.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Portal Pilot necesita acceso a la red local para conectar con dispositivos POS.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

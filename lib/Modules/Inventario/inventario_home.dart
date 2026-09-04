@@ -268,6 +268,7 @@ body: Stack(
     IconData icon,
     Color color,
   ) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     final wide = MediaQuery.of(context).size.width >= 600;
 
     if (wide) {
@@ -292,14 +293,13 @@ body: Stack(
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     value,
                     style: GoogleFonts.syne(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: palette.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -309,7 +309,7 @@ body: Stack(
                     label,
                     style: GoogleFonts.dmSans(
                       fontSize: 10,
-                      color: const Color(0xFF737373),
+                      color: palette.textMuted,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -357,6 +357,7 @@ body: Stack(
   }
 
   Widget _buildAlertBanner(int count) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -383,14 +384,14 @@ body: Stack(
                   style: GoogleFonts.dmSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: palette.textPrimary,
                   ),
                 ),
                 Text(
                   'Revisa el inventario para reabastecer',
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
-                    color: const Color(0xFFA3A3A3),
+                    color: palette.textMuted,
                   ),
                 ),
               ],
@@ -402,12 +403,13 @@ body: Stack(
   }
 
   Widget _buildSectionTitle(String title) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Text(
       title,
       style: GoogleFonts.syne(
         fontSize: 14,
         fontWeight: FontWeight.w800,
-        color: Colors.white,
+        color: palette.textPrimary,
         letterSpacing: 0.8,
       ),
     );
@@ -494,14 +496,15 @@ body: Stack(
     Color color,
     VoidCallback onTap,
   ) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: palette.cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF262626)),
+          border: Border.all(color: palette.borderLight),
         ),
         child: Row(
           children: [
@@ -523,7 +526,7 @@ body: Stack(
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: palette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -531,7 +534,7 @@ body: Stack(
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: const Color(0xFF737373),
+                      color: palette.textMuted,
                     ),
                   ),
                 ],
@@ -549,6 +552,7 @@ body: Stack(
   }
 
   Widget _buildRecentProducts() {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     final recientes = List<Map<String, dynamic>>.from(
       _productos,
     )..sort((a, b) => (b['created_at'] ?? '').compareTo(a['created_at'] ?? ''));
@@ -557,14 +561,14 @@ body: Stack(
       return Container(
         padding: const EdgeInsets.all(30),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: palette.cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF262626)),
+          border: Border.all(color: palette.borderLight),
         ),
         child: Center(
           child: Text(
             'No hay productos registrados',
-            style: GoogleFonts.dmSans(color: const Color(0xFF525252)),
+            style: GoogleFonts.dmSans(color: palette.textDark),
           ),
         ),
       );
@@ -581,12 +585,12 @@ body: Stack(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF141414),
+            color: palette.cardColor,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: bajo
                   ? const Color(0xFFEF4444).withValues(alpha: 0.3)
-                  : const Color(0xFF262626),
+                  : palette.borderLight,
             ),
           ),
           child: Row(
@@ -619,7 +623,7 @@ body: Stack(
                       style: GoogleFonts.dmSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: palette.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),

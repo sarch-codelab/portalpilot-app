@@ -11,6 +11,7 @@ import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/utils/network_helper.dart';
 
 class FacturacionHome extends StatefulWidget {
   const FacturacionHome({super.key});
@@ -105,9 +106,15 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             _montoTotal = (resumen['total_facturado'] as num?)?.toDouble() ?? 0.0;
           });
         }
+      } else if (mounted && result != null) {
+        // Mostrar error de red si aplica
+        NetworkHelper.showNetworkError(context, result);
       }
     } catch (e) {
       debugPrint('⚠️ Error cargando facturas del backend: $e');
+      if (mounted) {
+        NetworkHelper.showNetworkError(context, {'error': e.toString()});
+      }
     }
   }
 
@@ -150,7 +157,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
               style: GoogleFonts.syne(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: palette.textPrimary,
                 letterSpacing: 1.5,
               ),
             ),

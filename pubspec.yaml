@@ -1,7 +1,7 @@
 name: portal_pilot_app
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.3+1
+version: 0.1.5+2
 
 environment:
   sdk: ^3.12.1
@@ -38,6 +38,11 @@ dependencies:
   image: ^4.1.7                   # Procesar logo para ticket
   image_picker: ^1.1.2            # Seleccionar imagen de producto
   # flutter_sound: ^9.2.13          # Sonido confirmación venta
+  # Mobile notifications
+  firebase_messaging: ^15.0.0      # Notificaciones push
+  flutter_local_notifications: ^17.0.0  # Notificaciones locales
+  # Biometric authentication
+  local_auth: ^2.1.0               # Autenticación biométrica
 
 dev_dependencies:
   flutter_test:

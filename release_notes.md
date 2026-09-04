@@ -1,3 +1,11 @@
+# Portal Pilot v0.1.5
+
+## Correcciones y mejoras
+- Registro externo funcional con estado de carga, manejo de errores y datos preseleccionados.
+- Nueva barra móvil con el Núcleo Portal Pilot para acceso rápido al menú, configuración, soporte y salida.
+- Instalador Windows compatible con equipos ARM que soportan emulación x64.
+- Build Android actualizado a `0.1.5+2`.
+
 # Portal Pilot v0.1.1
 
 ## Brand

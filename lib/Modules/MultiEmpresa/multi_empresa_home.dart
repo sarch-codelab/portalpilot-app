@@ -68,7 +68,7 @@ class _MultiEmpresaHomeState extends State<MultiEmpresaHome> {
               style: GoogleFonts.syne(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: palette.textPrimary,
                 letterSpacing: 1.5,
               ),
             ),

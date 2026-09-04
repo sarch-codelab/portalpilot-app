@@ -48,7 +48,28 @@
         continue;
       }
     }
-    return res.status(502).json({ success: false, error: lastError || 'Todos los modelos de chat fallaron', details: null });
+    // Respaldo automático: OpenRouter cuando Groq falla o no hay más modelos.
+    try {
+      const { openRouterComplete } = require('../_aiRouter.js');
+      const fallback = await openRouterComplete({
+        messages: [
+          { role: 'system', content: body.systemPrompt || 'Eres un asistente útil.' },
+          { role: 'user', content: body.prompt || body.message || '' },
+        ],
+        model: body.modelId || body.model || '',
+        maxTokens: body.maxTokens || 1500,
+        temperature: body.temperature ?? 0.7,
+      });
+      return res.status(200).json({
+        success: true,
+        text: fallback.reply,
+        modelId: fallback.model,
+        provider: fallback.provider,
+        tokensUsed: fallback.usage?.total_tokens || 0,
+      });
+    } catch (fallbackErr) {
+      return res.status(502).json({ success: false, error: lastError || fallbackErr.message || 'Todos los modelos de chat fallaron', details: null });
+    }
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

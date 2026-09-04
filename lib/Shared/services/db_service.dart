@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
@@ -13,9 +13,9 @@ class PortalPilotDB {
 
   static final LocalDatabaseService _localDb = LocalDatabaseService.instance;
 
-  /// Inicializa la capa de backend para producción.
+  /// Inicializa la capa de backend para producciÃ³n.
   static Future<void> initialize() async {
-    debugPrint('🔄 Backend listo para producción mediante Vercel.');
+    debugPrint('ðŸ”„ Backend listo para producciÃ³n mediante Vercel.');
   }
 
   /// Obtiene la empresa actual desde el token/usuario logueado
@@ -23,114 +23,9 @@ class PortalPilotDB {
   static void setEmpresaCodigo(String codigo) => _currentEmpresaCodigo = codigo;
   static String? get empresaCodigo => _currentEmpresaCodigo;
 
-  // ═══════════════════════════════════════════════════════════════
-  // MATRÍCULAS (offline-first)
-  // ═══════════════════════════════════════════════════════════════
-
-  /// Inserta una matrícula completa - guarda localmente y encola sync
-  static Future<void> insertMatriculaCompleta({
-    required String folioMatricula,
-    required String cicloEscolar,
-    required String nivelEducativo,
-    required String grado,
-    required String seccion,
-    required String turno,
-    required String tipoIngreso,
-    required String alumnoNombre,
-    required String alumnoApellido,
-    required String alumnoDni,
-    required String alumnoFechaNacimiento,
-    required String alumnoLugarNacimiento,
-    required String alumnoNacionalidad,
-    required String observacionesSalud,
-    required String tutorParentesco,
-    required String tutorNombre,
-    required String tutorTelefono,
-    required String tutorEmail,
-    required String direccionCalle,
-    required String direccionMunicipio,
-    required String direccionDepartamento,
-    required String direccionReferencia,
-    required String direccionCP,
-    required bool pagoInscripcionRealizado,
-    required String metodoPago,
-    required String planPagos,
-    required String empresaCodigo,
-    String estado = 'pendiente',
-  }) async {
-    final id = folioMatricula;
-    final localDb = _localDb;
-
-    await localDb.insertMatriculaLocal(
-      id: id,
-      empresaId: empresaCodigo,
-      estudianteNombre: '$alumnoNombre $alumnoApellido',
-      estudianteId: alumnoDni,
-      grado: grado,
-      seccion: seccion,
-      turno: turno,
-      estado: estado,
-      fechaMatricula: DateTime.now(),
-      observaciones: observacionesSalud,
-    );
-
-    debugPrint('✅ Matrícula guardada localmente: $folioMatricula');
-  }
-
-  /// Obtiene matrículas desde BD local (instantáneo, funciona offline)
-  static Future<List<Map<String, dynamic>>> getMatriculasByEmpresa(String empresaCodigo) async {
-    final matriculas = await _localDb.getMatriculas(empresaCodigo);
-    return matriculas.map((m) => {
-          'id': m.id ?? '',
-          'folio_matricula': m.id ?? '',
-          'empresa_codigo': m.empresaId ?? '',
-          'ciclo_escolar': '2024-2025',
-          'nivel_educativo': m.grado ?? '',
-          'grado': m.grado ?? '',
-          'seccion': m.seccion ?? '',
-          'turno': m.turno ?? '',
-          'tipo_ingreso': 'nuevo',
-          'alumno_nombre': (m.estudianteNombre ?? '').split(' ').first,
-          'alumno_apellido': (m.estudianteNombre ?? '').split(' ').length > 1
-              ? (m.estudianteNombre ?? '').split(' ').skip(1).join(' ')
-              : '',
-          'alumno_dni': m.estudianteId ?? '',
-          'alumno_fecha_nacimiento': '',
-          'alumno_lugar_nacimiento': '',
-          'alumno_nacionalidad': '',
-          'observaciones_salud': m.observaciones ?? '',
-          'tutor_parentesco': '',
-          'tutor_nombre': '',
-          'tutor_telefono': '',
-          'tutor_email': '',
-          'direccion_calle': '',
-          'direccion_municipio': '',
-          'direccion_departamento': '',
-          'direccion_referencia': '',
-          'direccion_cp': '',
-          'pago_inscripcion_realizado': false,
-          'metodo_pago': '',
-          'plan_pagos': '',
-          'estado': m.estado ?? 'pendiente',
-          'created_at': m.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
-          'updated_at': m.updatedAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
-        }).toList();
-  }
-
-  /// Obtiene estadísticas desde BD local
-  static Future<Map<String, dynamic>> getEstadisticasMatriculas(String empresaCodigo) async {
-    final matriculas = await _localDb.getMatriculas(empresaCodigo);
-    return {
-      'total': matriculas.length,
-      'activas': matriculas.where((m) => m.estado == 'activa').length,
-      'pendientes': matriculas.where((m) => m.estado == 'pendiente').length,
-      'inactivas': matriculas.where((m) => m.estado == 'inactiva').length,
-    };
-  }
-
-  // ═══════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // READ METHODS (offline-first - read from local DB)
-  // ═══════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   static Future<List<Map<String, dynamic>>> getFacturas(String empresaCodigo) async {
     final facturas = await _localDb.getFacturas(empresaCodigo);
@@ -222,38 +117,9 @@ class PortalPilotDB {
       'updated_at': t.updatedAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
     }).toList();
   }
-
-  static Future<Map<String, dynamic>?> getNotas(String empresaCodigo, String clave) async {
-    // clave format: matriculaId|materia|trimestre
-    final parts = clave.split('|');
-    if (parts.length != 3) return null;
-    
-    final matriculaId = parts[0];
-    final materia = parts[1];
-    final trimestre = int.tryParse(parts[2]) ?? 1;
-    
-    final notas = await _localDb.getNotas(empresaCodigo, matriculaId);
-    Nota? nota;
-    for (final n in notas) {
-      if (n.materia == materia && n.trimestre == trimestre) {
-        nota = n;
-        break;
-      }
-    }
-    
-    if (nota == null) return null;
-    
-    return {
-      'materia': nota.materia ?? '',
-      'trimestre': nota.trimestre ?? 1,
-      'nota': nota.nota,
-      'observaciones': nota.observaciones,
-    };
-  }
-
-  // ═══════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // SYNC METHODS (used by SyncService)
-  // ═══════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   static Uri _uri(String path, [Map<String, String>? query]) {
     final base = Uri.parse('$apiRoot$path');
@@ -266,7 +132,7 @@ class PortalPilotDB {
         .post(_uri(path), headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))
         .timeout(_timeout);
     if (response.statusCode >= 400) {
-      debugPrint('⚠️ POST $path -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
+      debugPrint('âš ï¸ POST $path -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
       return null;
     }
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -275,7 +141,7 @@ class PortalPilotDB {
   static Future<dynamic> _getJson(String path, [Map<String, String>? query]) async {
     final response = await http.get(_uri(path, query)).timeout(_timeout);
     if (response.statusCode != 200) {
-      debugPrint('⚠️ GET $path -> ${response.statusCode}');
+      debugPrint('âš ï¸ GET $path -> ${response.statusCode}');
       return null;
     }
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -287,7 +153,7 @@ class PortalPilotDB {
       final result = await _postJson('/api/facturas', {'empresa_codigo': empresaCodigo, 'factura': factura});
       return result != null;
     } catch (e) {
-      debugPrint('❌ insertFactura sync: $e');
+      debugPrint('âŒ insertFactura sync: $e');
       return false;
     }
   }
@@ -306,12 +172,12 @@ class PortalPilotDB {
           )
           .timeout(_timeout);
       if (response.statusCode >= 400) {
-        debugPrint('⚠️ anularFactura sync -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
+        debugPrint('âš ï¸ anularFactura sync -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
         return false;
       }
       return true;
     } catch (e) {
-      debugPrint('❌ anularFactura sync: $e');
+      debugPrint('âŒ anularFactura sync: $e');
       return false;
     }
   }
@@ -325,7 +191,7 @@ class PortalPilotDB {
       });
       return result != null;
     } catch (e) {
-      debugPrint('❌ insertTransaccion sync: $e');
+      debugPrint('âŒ insertTransaccion sync: $e');
       return false;
     }
   }
@@ -336,7 +202,7 @@ class PortalPilotDB {
       final result = await _postJson('/api/clientes', {'empresa_codigo': empresaCodigo, 'cliente': cliente});
       return result != null;
     } catch (e) {
-      debugPrint('❌ insertCliente sync: $e');
+      debugPrint('âŒ insertCliente sync: $e');
       return false;
     }
   }
@@ -347,7 +213,7 @@ class PortalPilotDB {
       final result = await _postJson('/api/productos', {'empresa_codigo': empresaCodigo, 'productos': productos});
       return result != null;
     } catch (e) {
-      debugPrint('❌ syncProductos sync: $e');
+      debugPrint('âŒ syncProductos sync: $e');
       return false;
     }
   }
@@ -363,12 +229,12 @@ class PortalPilotDB {
           )
           .timeout(_timeout);
       if (response.statusCode >= 400) {
-        debugPrint('⚠️ DELETE /api/productos -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
+        debugPrint('âš ï¸ DELETE /api/productos -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
         return false;
       }
       return true;
     } catch (e) {
-      debugPrint('❌ deleteProducto sync: $e');
+      debugPrint('âŒ deleteProducto sync: $e');
       return false;
     }
   }
@@ -379,7 +245,7 @@ class PortalPilotDB {
       final result = await _postJson('/api/proveedores', {'empresa_codigo': empresaCodigo, 'proveedor': proveedor});
       return result != null;
     } catch (e) {
-      debugPrint('❌ insertProveedor sync: $e');
+      debugPrint('âŒ insertProveedor sync: $e');
       return false;
     }
   }
@@ -390,7 +256,7 @@ class PortalPilotDB {
       final result = await _postJson('/api/cotizaciones', {'empresa_codigo': empresaCodigo, 'cotizacion': cotizacion});
       return result != null;
     } catch (e) {
-      debugPrint('❌ insertCotizacion sync: $e');
+      debugPrint('âŒ insertCotizacion sync: $e');
       return false;
     }
   }
@@ -401,23 +267,23 @@ class PortalPilotDB {
       final result = await _postJson('/api/ordenes-compra', {'empresa_codigo': empresaCodigo, 'orden_compra': orden});
       return result != null;
     } catch (e) {
-      debugPrint('❌ insertOrdenCompra sync: $e');
+      debugPrint('âŒ insertOrdenCompra sync: $e');
       return false;
     }
   }
 
-  /// Compras (recepción) - sync to backend
+  /// Compras (recepciÃ³n) - sync to backend
   static Future<bool> insertCompra({required Map<String, dynamic> compra, required String empresaCodigo}) async {
     try {
       final result = await _postJson('/api/compras', {'empresa_codigo': empresaCodigo, 'compra': compra});
       return result != null;
     } catch (e) {
-      debugPrint('❌ insertCompra sync: $e');
+      debugPrint('âŒ insertCompra sync: $e');
       return false;
     }
   }
 
-  /// Sync genérico por tabla (ruta /api/sync) para cualquier entidad.
+  /// Sync genÃ©rico por tabla (ruta /api/sync) para cualquier entidad.
   /// El backend hace upsert idempotente fila por fila y reporta errores
   /// individuales para que la cola siga procesando el resto.
   static Future<bool> syncRows({
@@ -435,7 +301,7 @@ class PortalPilotDB {
       });
       return result != null;
     } catch (e) {
-      debugPrint('❌ syncRows ($tabla) sync: $e');
+      debugPrint('âŒ syncRows ($tabla) sync: $e');
       return false;
     }
   }
@@ -454,7 +320,7 @@ class PortalPilotDB {
       });
       return result != null;
     } catch (e) {
-      debugPrint('❌ saveNotas sync: $e');
+      debugPrint('âŒ saveNotas sync: $e');
       return false;
     }
   }
@@ -485,7 +351,7 @@ class PortalPilotDB {
       return data ?? {};
     }
 
-    String errorMessage = 'Error al iniciar sesión.';
+    String errorMessage = 'Error al iniciar sesiÃ³n.';
     if (data != null) {
       if (data['error'] != null) {
         errorMessage = data['error'].toString();
@@ -493,17 +359,17 @@ class PortalPilotDB {
         errorMessage = data['message'].toString();
       } else if (data['protection'] != null) {
         errorMessage =
-            'La API está protegida por Vercel. Desactiva la protección de despliegue o usa un dominio público válido.';
+            'La API estÃ¡ protegida por Vercel. Desactiva la protecciÃ³n de despliegue o usa un dominio pÃºblico vÃ¡lido.';
       }
     } else if (response.statusCode == 401) {
       errorMessage =
-          'No autorizado. El despliegue está protegido o la API requiere autenticación.';
+          'No autorizado. El despliegue estÃ¡ protegido o la API requiere autenticaciÃ³n.';
     } else if (response.statusCode == 404) {
       errorMessage =
-          'No se encontró el endpoint de login. Revisa la URL de la API y la configuración de Vercel.';
+          'No se encontrÃ³ el endpoint de login. Revisa la URL de la API y la configuraciÃ³n de Vercel.';
     }
 
-    throw Exception('$errorMessage (Código ${response.statusCode})');
+    throw Exception('$errorMessage (CÃ³digo ${response.statusCode})');
   }
 }
 

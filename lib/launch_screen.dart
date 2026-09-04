@@ -172,36 +172,13 @@ class _SplashScreenState extends State<SplashScreen>
                                 scale: _logoScale.value,
                                 child: Opacity(
                                   opacity: _logoFade.value,
-                                  child: Container(
-                                    padding: EdgeInsets.all(logoPadding),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [
-                                          accentPurple,
-                                          accentPurpleDark,
-                                        ],
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: accentPurple.withValues(
-                                            alpha: 0.5 * _logoFade.value,
-                                          ),
-                                          blurRadius: 40,
-                                          spreadRadius: 3,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Image.asset(
+                                  child: Image.asset(
                                       'assets/img/robot_logo.png',
-                                      width: logoIcon,
-                                      height: logoIcon,
+                                      width: logoIcon + logoPadding,
+                                      height: logoIcon + logoPadding,
                                       fit: BoxFit.contain,
                                     ),
                                   ),
-                                ),
                               );
                             },
                           ),

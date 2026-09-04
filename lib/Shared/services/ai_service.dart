@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:portal_pilot_app/Modules/Educacion/ia/reglas_ia.dart';
+import 'package:portal_pilot_app/Shared/services/navi_rules.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 
 const String _defaultAiApiRoot = 'https://portalpilot-app.vercel.app';
@@ -109,7 +109,7 @@ class AIManager {
   static final AIManager instance = AIManager._privateConstructor();
 
   String _nombreUsuario = 'Usuario';
-  String _rolUsuario = 'profesor';
+  String _rolUsuario = 'admin';
   String _empresaCodigo = 'ROOT';
   String _empresaPlan = 'Prueba';
   String? _token;
@@ -128,7 +128,7 @@ class AIManager {
     if (_isInitialized && newToken == _token) return;
 
     _nombreUsuario = prefs.getString('user_nombre') ?? 'Usuario';
-    _rolUsuario = prefs.getString('user_role') ?? 'profesor';
+    _rolUsuario = prefs.getString('user_role') ?? 'admin';
     _empresaCodigo = prefs.getString('company_code') ?? 'ROOT';
     _empresaPlan = AuthController.normalizarPlan(prefs.getString('empresa_plan') ?? '');
     _token = newToken;
@@ -141,7 +141,7 @@ class AIManager {
     _isInitialized = false;
     _token = null;
     _nombreUsuario = 'Usuario';
-    _rolUsuario = 'profesor';
+    _rolUsuario = 'admin';
     _empresaCodigo = 'ROOT';
     _empresaPlan = 'Prueba';
   }
@@ -161,7 +161,7 @@ class AIManager {
   }) async {
     if (!_isInitialized) await initialize();
 
-    final systemPrompt = EduIARules.generarPromptMaestro(
+    final systemPrompt = NaviRules.generarPromptMaestro(
       nombreUsuario: _nombreUsuario,
       rolUsuario: _rolUsuario,
       empresaCodigo: _empresaCodigo,
@@ -431,10 +431,10 @@ class AIManager {
   }
 
   String getMensajeBienvenida() {
-    return EduIARules.mensajeBienvenida(_nombreUsuario, _rolUsuario, _empresaPlan);
+    return NaviRules.mensajeBienvenida(_nombreUsuario, _rolUsuario, _empresaPlan);
   }
 
   bool tienePermiso(String recurso) {
-    return EduIARules.puedeAccederA(_rolUsuario, recurso);
+    return NaviRules.puedeAccederA(_rolUsuario, recurso);
   }
 }

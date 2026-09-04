@@ -4,7 +4,7 @@
 ; ═══════════════════════════════════════════════════════════════
 
 #define MyAppName "Portal Pilot"
-#define MyAppVersion "0.1.3"
+#define MyAppVersion "0.1.5"
 #define MyAppPublisher "sarch-codelab"
 #define MyAppURL "https://github.com/sarch-codelab/portalpilot-app"
 #define MyAppExeName "PortalPilotWorkspace.exe"
@@ -24,12 +24,14 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile=LICENSE.txt
 OutputDir=dist
-OutputBaseFilename=PortalPilot_Windows_x64_v{#MyAppVersion}
+OutputBaseFilename=Portal_Pilot_WDx64_v{#MyAppVersion}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesInstallIn64BitMode=x64
-ArchitecturesAllowed=x64
+; El ejecutable Flutter es x64 y Windows ARM puede ejecutarlo por emulacion.
+; No bloquear el instalador por arquitectura: Windows ARM rechazaba el .exe antes de instalar.
+ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed=x64compatible
 PrivilegesRequired=admin
 
 ; ── Apariencia visual ──────────────────────────────────────

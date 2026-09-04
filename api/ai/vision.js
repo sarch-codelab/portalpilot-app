@@ -54,5 +54,16 @@ module.exports = async function handler(req, res) {
       continue;
     }
   }
-  return res.status(502).json({ error: lastError?.error?.message || 'No hay modelo de visión disponible', reply: null, details: lastError });
+  // Respaldo automático: OpenRouter de visión cuando Groq falla.
+  try {
+    const { openRouterVision } = require('../_aiRouter.js');
+    const fallback = await openRouterVision({
+      prompt,
+      image,
+      maxTokens: body.maxTokens || 800,
+    });
+    return res.status(200).json({ reply: fallback.reply, model: fallback.model, provider: fallback.provider, usage: fallback.usage });
+  } catch (fallbackErr) {
+    return res.status(502).json({ error: lastError?.error?.message || fallbackErr.message || 'No hay modelo de visión disponible', reply: null, details: lastError });
+  }
 };

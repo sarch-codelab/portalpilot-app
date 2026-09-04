@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/multi_area_config.dart';
+import 'package:portal_pilot_app/Shared/services/biometric_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:portal_pilot_app/Home/home_screen.dart';
@@ -21,8 +22,11 @@ class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isRegistering = false;
   String _selectedTab = 'login';
   final _formKey = GlobalKey<FormState>();
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -42,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen>
   ];
   static const _loginCarouselAlignments = [
     Alignment(0.6, 0),
-    Alignment(2.2, -0.15), // tegus: bandera bien visible a la derecha
+    Alignment(-0.85, -0.15), // tegus: mueve la bandera un poco a la izquierda
   ];
   static const _loginCarouselInterval = Duration(seconds: 5);
 
@@ -90,6 +94,7 @@ class _LoginScreenState extends State<LoginScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _loadSavedData();
+    _checkBiometricAvailability();
     _loginPageController = PageController();
     _loginCarouselTimer = Timer.periodic(_loginCarouselInterval, (_) {
       if (!mounted) return;
@@ -119,6 +124,53 @@ class _LoginScreenState extends State<LoginScreen>
         _onboardingCustomer = c;
         _onboardingOperation = o;
       });
+    }
+  }
+
+  Future<void> _checkBiometricAvailability() async {
+    await BiometricService.instance.initialize();
+    final isAvailable = await BiometricService.instance.isBiometricAvailable();
+    final prefs = await SharedPreferences.getInstance();
+    final biometricEnabled = prefs.getBool('biometric_enabled') ?? false;
+    
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = isAvailable;
+        _biometricEnabled = biometricEnabled;
+      });
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    if (!_biometricAvailable || !_biometricEnabled) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('saved_email');
+    final savedPassword = prefs.getString('saved_password');
+    
+    if (savedEmail == null || savedPassword == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay credenciales guardadas para autenticación biométrica')),
+      );
+      return;
+    }
+    
+    final authenticated = await BiometricService.instance.authenticate(
+      localizedReason: 'Inicia sesión con tu huella o Face ID',
+    );
+    
+    if (authenticated && mounted) {
+      _emailController.text = savedEmail;
+      _passwordController.text = savedPassword;
+      await _handleLogin();
+    }
+  }
+
+  Future<void> _saveCredentialsForBiometric(String email, String password) async {
+    if (_biometricEnabled) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('saved_email', email);
+      await prefs.setString('saved_password', password);
     }
   }
 
@@ -173,16 +225,14 @@ class _LoginScreenState extends State<LoginScreen>
       final String planEmpresa = _planDesdeRespuesta(response, userJson);
 
       final area = (loggedUser.area ?? '').toLowerCase();
-      String modulos = 'educacion';
+      String modulos = 'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
 
-      if (area == 'educacion' || area == 'educación') {
-        modulos = 'educacion,facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
-      } else if (area == 'finanzas') {
+      if (area == 'finanzas') {
         modulos = 'contabilidad,facturacion';
       } else if (area == 'salud') {
         modulos = 'facturacion,inventario';
       } else if (loggedUser.isRoot) {
-        modulos = 'educacion,facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
+        modulos = 'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
       }
 
       // Paso 2 completado: sesión con el servidor establecida
@@ -207,6 +257,7 @@ class _LoginScreenState extends State<LoginScreen>
           areaNegocio: areaNegocio,
           modulosAsignados: modulos.split(',').map((m) => m.trim()).toList(),
         ),
+        _saveCredentialsForBiometric(email, password),
       ]);
 
       // Paso 3 completado: dashboard preparado. Abriendo módulos…
@@ -281,41 +332,41 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _handleRegister() async {
-    final prefs = await SharedPreferences.getInstance();
-    final b = prefs.getString('business_type') ?? _onboardingBusiness ?? '';
-    final c = prefs.getString('customer_type') ?? _onboardingCustomer ?? '';
-    final o = prefs.getString('operation_type') ?? _onboardingOperation ?? '';
+    if (_isRegistering) return;
+    setState(() => _isRegistering = true);
 
-    if (b.isNotEmpty || c.isNotEmpty || o.isNotEmpty) {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final b = prefs.getString('business_type') ?? _onboardingBusiness ?? '';
+      final c = prefs.getString('customer_type') ?? _onboardingCustomer ?? '';
+      final o = prefs.getString('operation_type') ?? _onboardingOperation ?? '';
+
       _notificationManager.showNotification(
-        'Tus selecciones ($b, $c, $o) se enviarán pre-seleccionadas',
+        b.isNotEmpty || c.isNotEmpty || o.isNotEmpty
+            ? 'Abriendo el registro con tus selecciones...'
+            : 'Abriendo el portal de registro...',
         NotificationType.info,
       );
-      await Future.delayed(const Duration(milliseconds: 600));
-    } else {
-      _notificationManager.showNotification(
-        'Redirigiendo al portal de registro...',
-        NotificationType.info,
-      );
-      await Future.delayed(const Duration(milliseconds: 800));
-    }
 
-    final base = String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portalpilot-app.vercel.app');
-    final uri = Uri.parse('$base/login.html').replace(queryParameters: {
-      if (b.isNotEmpty) 'business_type': b,
-      if (c.isNotEmpty) 'customer_type': c,
-      if (o.isNotEmpty) 'operation_type': o,
-      if (b.isNotEmpty || c.isNotEmpty || o.isNotEmpty) 'onboarding': '1',
-      if (b.isNotEmpty || c.isNotEmpty || o.isNotEmpty) 'prefilled': '1',
-    });
+      final base = String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portalpilot-app.vercel.app');
+      final uri = Uri.parse('$base/login.html').replace(queryParameters: {
+        if (b.isNotEmpty) 'business_type': b,
+        if (c.isNotEmpty) 'customer_type': c,
+        if (o.isNotEmpty) 'operation_type': o,
+        if (b.isNotEmpty || c.isNotEmpty || o.isNotEmpty) 'onboarding': '1',
+        if (b.isNotEmpty || c.isNotEmpty || o.isNotEmpty) 'prefilled': '1',
+      });
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened) throw StateError('El sistema no pudo abrir el navegador');
+    } catch (error) {
       _notificationManager.showNotification(
-        'No se pudo abrir el portal de registro',
+        'No se pudo abrir el portal de registro. Revisa tu navegador.',
         NotificationType.error,
       );
+      debugPrint('Error al abrir registro: $error');
+    } finally {
+      if (mounted) setState(() => _isRegistering = false);
     }
   }
 
@@ -566,25 +617,7 @@ class _LoginScreenState extends State<LoginScreen>
       animation: _pulseController,
       builder: (context, child) {
         final scale = 1.0 + 0.04 * _pulseAnimation.value;
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                accentPurple.withValues(alpha: 0.15),
-                accentPurple.withValues(alpha: 0.05),
-              ],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: accentPurple.withValues(alpha: 0.2 * _pulseAnimation.value),
-                blurRadius: 40,
-                spreadRadius: 8,
-              ),
-            ],
-          ),
-          child: Transform.scale(
+        return Transform.scale(
             scale: scale,
             child: Image.asset(
               'assets/img/robot_logo.png',
@@ -597,8 +630,7 @@ class _LoginScreenState extends State<LoginScreen>
                 size: 56,
               ),
             ),
-          ),
-        );
+          );
       },
     );
   }
@@ -670,7 +702,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: 20),
         Text(
-          'v0.1.3  •  sarch-codelab',
+          'v0.1.5  •  sarch-codelab',
           style: GoogleFonts.spaceGrotesk(
             fontSize: 10,
             color: textDark,
@@ -1017,6 +1049,40 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ],
                 ),
+                if (_biometricAvailable)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: Checkbox(
+                          value: _biometricEnabled,
+                          onChanged: (value) async {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.setBool('biometric_enabled', value ?? false);
+                            if (mounted) {
+                              setState(() => _biometricEnabled = value ?? false);
+                            }
+                          },
+                          activeColor: accentPurple,
+                          checkColor: textPrimary,
+                          side: BorderSide(color: borderLight),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Huella/Face ID',
+                        style:
+                            GoogleFonts.dmSans(fontSize: 11, color: textMuted),
+                      ),
+                    ],
+                  ),
                 GestureDetector(
                   onTap: () => _notificationManager.showNotification(
                     'Función de recuperación disponible',
@@ -1041,6 +1107,10 @@ class _LoginScreenState extends State<LoginScreen>
             isLoading: _isLoading,
             onPressed: _handleLogin,
           ),
+          if (_biometricAvailable && _biometricEnabled) ...[
+            const SizedBox(height: 16),
+            _buildBiometricButton(),
+          ],
         ],
       ),
     );
@@ -1199,6 +1269,7 @@ class _LoginScreenState extends State<LoginScreen>
           label: hasOnboarding ? 'Continuar Registro' : 'Comenzar Registro',
           icon: Icons.open_in_new_rounded,
           onPressed: _handleRegister,
+          isLoading: _isRegistering,
         ),
         const SizedBox(height: 14),
         Text(
@@ -1372,6 +1443,48 @@ class _LoginScreenState extends State<LoginScreen>
                   Icon(icon, size: 16, color: textPrimary),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildBiometricButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: bgTertiary,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderLight),
+      ),
+      child: ElevatedButton(
+        onPressed: _handleBiometricLogin,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.fingerprint_rounded,
+              size: 18,
+              color: accentPurple,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Iniciar con Huella/Face ID',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: textPrimary,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

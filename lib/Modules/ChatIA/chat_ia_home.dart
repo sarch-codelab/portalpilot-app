@@ -478,22 +478,14 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
       child: Column(
         children: [
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)]),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withValues(alpha: 0.35), blurRadius: 24)],
-            ),
-            child: Image.asset(
+          Image.asset(
               'assets/img/robot_logo.png',
-              width: 32,
-              height: 32,
+              width: 68,
+              height: 68,
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) =>
                   const Icon(Icons.blur_on_rounded, color: Colors.white, size: 32),
             ),
-          ),
           const SizedBox(height: 18),
           Text('¿En qué puedo ayudarte hoy?', style: GoogleFonts.syne(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black)),
           const SizedBox(height: 8),

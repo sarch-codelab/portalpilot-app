@@ -224,15 +224,12 @@ class SyncService {
         case 'posVentas':
           success = await _syncPosVenta(datos, operacion);
           break;
-        case 'notas':
-          success = await _syncNotas(datos, operacion);
-          break;
         case 'empresas':
           success = await _syncEmpresa(datos, operacion);
           break;
         default:
           // Cualquier otra tabla (proveedores, cotizaciones, ordenes_compra,
-          // compras, transacciones, matriculas, empleados, nomina, rutas,
+          // compras, transacciones, empleados, nomina, rutas,
           // fiado_abonos, sucursales, transferencias, membresias, socios,
           // sar_correlativo, etc.) se sincroniza por la ruta genérica /api/sync.
           success = await _syncGeneric(datos, tabla, operacion);
@@ -356,20 +353,6 @@ class SyncService {
           empresaCodigo: empresaCodigo,
         );
     }
-  }
-
-  Future<bool> _syncNotas(Map<String, dynamic> datos, SyncOperation op) async {
-    final empresaCodigo = datos['empresa_codigo'] as String?;
-    final clave = datos['clave'] as String?;
-    final datosNotas = datos['datos'] as Map<String, dynamic>?;
-
-    if (empresaCodigo == null || clave == null || datosNotas == null) return false;
-
-    return await PortalPilotDB.saveNotas(
-      empresaCodigo: empresaCodigo,
-      clave: clave,
-      datos: datosNotas,
-    );
   }
 
   Future<bool> _syncEmpresa(Map<String, dynamic> datos, SyncOperation op) async {

@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
@@ -177,42 +177,6 @@ class Transacciones extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-class Matriculas extends Table {
-  TextColumn get id => text().withLength(min: 1, max: 36)();
-  TextColumn get empresaId => text()();
-  TextColumn get estudianteNombre => text()();
-  TextColumn get estudianteId => text().nullable()();
-  TextColumn get grado => text().nullable()();
-  TextColumn get seccion => text().nullable()();
-  TextColumn get turno => text().nullable()();
-  TextColumn get estado => text().withDefault(const Constant('activa'))();
-  DateTimeColumn get fechaMatricula => dateTime().withDefault(currentDateAndTime)();
-  TextColumn get observaciones => text().nullable()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
-  BoolColumn get synced => boolean().withDefault(const Constant(false))();
-  DateTimeColumn get lastSyncAttempt => dateTime().nullable()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class Notas extends Table {
-  TextColumn get id => text().withLength(min: 1, max: 36)();
-  TextColumn get empresaId => text()();
-  TextColumn get matriculaId => text().nullable()();
-  TextColumn get materia => text()();
-  IntColumn get trimestre => integer()();
-  RealColumn get nota => real().nullable()();
-  TextColumn get observaciones => text().nullable()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
-  BoolColumn get synced => boolean().withDefault(const Constant(false))();
-  DateTimeColumn get lastSyncAttempt => dateTime().nullable()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
 
 class Empleados extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
@@ -295,11 +259,11 @@ class Drafts extends Table {
       ];
 }
 
-// ════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SAR HONDURAS TABLES (Paso 3)
-// ════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-/// Configuración fiscal de la empresa para facturación SAR Honduras.
+/// ConfiguraciÃ³n fiscal de la empresa para facturaciÃ³n SAR Honduras.
 /// Una fila por empresa (id == empresaId).
 class SarConfiguracion extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
@@ -351,7 +315,7 @@ class SarCorrelativo extends Table {
       ];
 }
 
-/// Bitácora de documentos emitidos en régimen de contingencia.
+/// BitÃ¡cora de documentos emitidos en rÃ©gimen de contingencia.
 class SarContingencia extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
   TextColumn get empresaId => text()();
@@ -369,9 +333,9 @@ class SarContingencia extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-// ════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // POS TABLES
-// ════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class PosVentas extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
@@ -522,9 +486,9 @@ class PosConfig extends Table {
       ];
 }
 
-// ════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // CANAL TRADICIONAL TABLES (Paso 5)
-// ════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 /// Ruta de reparto/visita del canal tradicional.
 class Rutas extends Table {
@@ -588,9 +552,9 @@ class FiadoAbonos extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-// ════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // CANAL MODERNO TABLES (Paso 6)
-// ════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 /// Sucursal del canal moderno. Su `codigo` se usa como bodega de los
 /// productos (`productos.bodega`) para separar inventario por sucursal.
@@ -653,11 +617,11 @@ class TransferenciaItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-// ════════════════════════════════════════════════════════════════
-// MEMBRESÍAS TABLES (Paso 7)
-// ════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// MEMBRESÃAS TABLES (Paso 7)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-/// Plan de membresía: define precio, descuento preferencial y vigencia.
+/// Plan de membresÃ­a: define precio, descuento preferencial y vigencia.
 class Membresias extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
   TextColumn get empresaId => text()();
@@ -676,7 +640,7 @@ class Membresias extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Socio / miembro del programa de membresías.
+/// Socio / miembro del programa de membresÃ­as.
 class Socios extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
   TextColumn get empresaId => text()();
@@ -696,7 +660,7 @@ class Socios extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Afiliación de un socio a un plan de membresía (vigencia).
+/// AfiliaciÃ³n de un socio a un plan de membresÃ­a (vigencia).
 /// estados: activa -> vencida | cancelada
 class SocioMembresias extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
@@ -743,9 +707,9 @@ class SocioPrecios extends Table {
       ];
 }
 
-// ════════════════════════════════════════════════════════════════
-// COMERCIAL GENÉRICO TABLES (Paso 8)
-// ════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// COMERCIAL GENÃ‰RICO TABLES (Paso 8)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 /// Proveedor / suministrador.
 class Proveedores extends Table {
@@ -769,7 +733,7 @@ class Proveedores extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Cotización a proveedor.
+/// CotizaciÃ³n a proveedor.
 /// estados: borrador -> enviada -> aceptada | rechazada | vencida
 class Cotizaciones extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
@@ -796,7 +760,7 @@ class Cotizaciones extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Items de una cotización.
+/// Items de una cotizaciÃ³n.
 class CotizacionItems extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
   TextColumn get cotizacionId => text()();
@@ -864,7 +828,7 @@ class OrdenCompraItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Compra / factura de proveedor (recepción de mercancía).
+/// Compra / factura de proveedor (recepciÃ³n de mercancÃ­a).
 /// estados: pendiente -> pagada | parcial | anulada
 class Compras extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
@@ -893,7 +857,7 @@ class Compras extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Items de una compra (recepción).
+/// Items de una compra (recepciÃ³n).
 class CompraItems extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
   TextColumn get compraId => text()();
@@ -922,8 +886,6 @@ class CompraItems extends Table {
   Clientes,
   Productos,
   Transacciones,
-  Matriculas,
-  Notas,
   Empleados,
   Nomina,
   SyncQueue,

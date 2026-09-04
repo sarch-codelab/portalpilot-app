@@ -47,8 +47,6 @@ class Modulo {
 
   static IconData _iconoFromId(String id) {
     switch (id) {
-      case 'educacion':
-        return Icons.school_rounded;
       case 'facturacion':
         return Icons.receipt_long_rounded;
       case 'inventario':
@@ -98,8 +96,6 @@ class Modulo {
 
   static Color _colorFromId(String id) {
     switch (id) {
-      case 'educacion':
-        return const Color(0xFF8B5CF6);
       case 'facturacion':
         return const Color(0xFF10B981);
       case 'inventario':
@@ -155,14 +151,6 @@ class Modulo {
       icono: Icons.auto_awesome_rounded,
       color: Color(0xFF8B5CF6),
       ruta: '/modules/chat_ia',
-    ),
-    Modulo(
-      id: 'educacion',
-      nombre: 'Educación',
-      descripcion: 'Notas, matrícula, asistencia',
-      icono: Icons.school_rounded,
-      color: Color(0xFF8B5CF6),
-      ruta: '/modules/educacion',
     ),
     Modulo(
       id: 'facturacion',

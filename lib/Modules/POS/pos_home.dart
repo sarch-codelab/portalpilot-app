@@ -152,7 +152,7 @@ class _PosHomeState extends State<PosHome> {
               style: GoogleFonts.syne(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: palette.textPrimary,
                 letterSpacing: 1.5,
               ),
             ),

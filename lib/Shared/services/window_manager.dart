@@ -14,12 +14,17 @@ class AppWindowManager {
     if (_initialized) return;
     _initialized = true;
     await _wm.ensureInitialized();
+    await _wm.setTitleBarStyle(
+      TitleBarStyle.hidden,
+      windowButtonVisibility: false,
+    );
   }
 
   Future<void> restoreWindow() async {
     try {
       await initialize();
       await Future.delayed(const Duration(milliseconds: 500));
+      await _wm.setMinimumSize(const Size(720, 560));
 
       final prefs = await SharedPreferences.getInstance();
       final left = prefs.getInt('win_x');

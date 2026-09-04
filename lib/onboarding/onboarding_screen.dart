@@ -200,21 +200,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _p.cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: _p.borderLight),
-                        ),
-                        child: Image.asset(
+                      Image.asset(
                           'assets/img/robot_logo.png',
                           width: 22,
                           height: 22,
                           errorBuilder: (context, error, stackTrace) =>
                               Icon(Icons.blur_on_rounded, color: _p.accentPurple, size: 22),
-                        ),
-                      ),
+                          ),
                       const SizedBox(width: 10),
                       Text('Portal Pilot',
                           style: GoogleFonts.syne(

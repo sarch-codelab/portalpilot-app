@@ -69,7 +69,7 @@ class _CRMAdvancedHomeState extends State<CRMAdvancedHome> {
               style: GoogleFonts.syne(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: palette.textPrimary,
                 letterSpacing: 1.5,
               ),
             ),

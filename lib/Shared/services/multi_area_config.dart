@@ -42,7 +42,6 @@ class AreasNegocio {
   static const String canalTradicional = 'canal_tradicional';
   static const String canalModerno = 'canal_moderno';
   static const String general = 'general';
-  static const String educacion = 'educacion';
 
   static List<String> get todosModulos =>
       Modulo.modulosDisponibles.map((m) => m.id).toList();
@@ -125,7 +124,6 @@ class AreasNegocio {
       icono: Icons.grid_view_rounded,
       color: Color(0xFFEC4899),
       modulosPorDefecto: [
-        'educacion',
         'facturacion',
         'inventario',
         'contabilidad',
@@ -135,20 +133,6 @@ class AreasNegocio {
         'comercial',
         'membresias',
         'cotizaciones',
-      ],
-    ),
-    AreaNegocio(
-      id: educacion,
-      nombre: 'Educación',
-      descripcion: 'Instituciones educativas',
-      icono: Icons.school_rounded,
-      color: Color(0xFF8B5CF6),
-      modulosPorDefecto: [
-        'educacion',
-        'facturacion',
-        'inventario',
-        'rrhh',
-        'crm',
       ],
     ),
   ];

@@ -402,7 +402,22 @@ async function aiChatHandler(req, res) {
       continue;
     }
   }
-  return res.status(502).json({ error: lastError || 'Todos los modelos de chat fallaron', reply: null });
+  // Respaldo automático: OpenRouter cuando Groq falla o no hay más modelos.
+  try {
+    const { openRouterComplete } = require('./_aiRouter.js');
+    const fallback = await openRouterComplete({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ],
+      model: requested,
+      maxTokens: body.maxTokens || 1500,
+      temperature: body.temperature ?? 0.7,
+    });
+    return res.status(200).json({ reply: fallback.reply, model: fallback.model, provider: fallback.provider, usage: fallback.usage });
+  } catch (fallbackErr) {
+    return res.status(502).json({ error: lastError || fallbackErr.message || 'Todos los modelos de chat fallaron', reply: null });
+  }
 }
 
 async function aiVisionHandler(req, res) {
@@ -458,7 +473,14 @@ async function aiVisionHandler(req, res) {
       continue;
     }
   }
-  return res.status(502).json({ error: lastError || 'Todos los modelos de visiÃ³n fallaron', reply: null });
+  // Respaldo automático: OpenRouter de visión cuando Groq falla.
+  try {
+    const { openRouterVision } = require('./_aiRouter.js');
+    const fallback = await openRouterVision({ prompt, image, maxTokens: body.maxTokens || 800 });
+    return res.status(200).json({ reply: fallback.reply, model: fallback.model, provider: fallback.provider, usage: fallback.usage });
+  } catch (fallbackErr) {
+    return res.status(502).json({ error: lastError || fallbackErr.message || 'Todos los modelos de visión fallaron', reply: null });
+  }
 }
 
 async function aiBarcodeHandler(req, res) {

@@ -58,7 +58,7 @@ class AuthController extends ChangeNotifier {
     _nombre = prefs.getString('user_nombre') ?? '';
     _apellido = prefs.getString('user_apellido') ?? '';
     _email = prefs.getString('user_email') ?? '';
-    _rol = prefs.getString('user_role') ?? 'profesor';
+    _rol = prefs.getString('user_role') ?? 'admin';
     _area = prefs.getString('user_area') ?? '';
     _rango = prefs.getString('user_rango') ?? '';
     _empresaCodigo = prefs.getString('company_code') ?? 'ROOT';
@@ -73,7 +73,7 @@ class AuthController extends ChangeNotifier {
               .map((m) => m.trim())
               .where((m) => m.isNotEmpty)
               .toList()
-        : const ['educacion'];
+        : const ['facturacion', 'inventario', 'contabilidad', 'rrhh', 'crm', 'pos', 'comercial', 'membresias'];
     _isLoggedIn = _token.isNotEmpty;
     notifyListeners();
   }
