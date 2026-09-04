@@ -11,21 +11,18 @@ set "PP_DIR=%USERPROFILE%\Downloads\PortalPilot"
 
 :menu
 cls
+call :brand
 echo.
-echo  ================================================================
-echo       PORTAL PILOT HONDURAS  ^|  CENTRO DE CONTROL
- echo  ================================================================
+echo       COMMAND DECK  /  NUCLEO NAVI  /  HONDURAS
+echo       Estado del enlace: ACTIVO       Version: %PP_VERSION%
 echo.
-echo       Tu portal. Tu operacion. Un solo comando.
-echo       Version estable: %PP_VERSION%
-echo.
-echo       [1] Visitar Portal Pilot en la web
-echo       [2] Ver la ultima version publicada
-echo       [3] Descargar instalador Windows ARM / x64
-echo       [4] Descargar app Android ARM
-echo       [5] Abrir carpeta de descargas
-echo       [6] Diagnostico de este equipo
-echo       [0] Salir
+echo       [1] Abrir el Portal Pilot
+echo       [2] Abrir la compuerta de versiones
+echo       [3] Desplegar Portal Pilot en Windows ARM / x64
+echo       [4] Enviar Portal Pilot a Android ARM
+echo       [5] Abrir el hangar de descargas
+echo       [6] Ejecutar escaneo Navi del equipo
+echo       [0] Cerrar el Command Deck
  echo.
 choice /C 1234560 /N /M "       Portal Pilot ^> Selecciona una opcion: "
 if errorlevel 7 goto :exit
@@ -88,10 +85,8 @@ goto :menu
 
 :diagnostic
 cls
-echo.
-echo  ================================================================
-echo       PORTAL PILOT  ^|  DIAGNOSTICO DEL EQUIPO
-echo  ================================================================
+call :brand
+echo       ESCANEO NAVI  /  PERFIL DEL EQUIPO
 echo.
 systeminfo | findstr /B /C:"OS Name" /C:"OS Version" /C:"System Type"
 echo.
@@ -109,4 +104,14 @@ echo.
 echo       Portal Pilot: hasta pronto.
 echo.
 endlocal
+exit /b 0
+
+:brand
+echo.
+echo        +------------------------------------------------+
+echo        +       PORTAL PILOT  /  COMMAND DECK            +
+echo        +       N A V I   C O R E   O N L I N E          +
+echo        +------------------------------------------------+
+echo.
+echo                 P O R T A L   P I L O T
 exit /b 0
