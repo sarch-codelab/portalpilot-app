@@ -15,7 +15,7 @@ $White = "$Esc[97m"
 $Reset = "$Esc[0m"
 $Clear = "$Esc[2J$Esc[H"
 
-function Show-Brand {
+function Show-Brand([int]$Frame = 0) {
     Write-Host "$Clear$Purple"
     $Logo = @(
         '██████╗  ██████╗ ██████╗ ████████╗ █████╗ ██╗         ██████╗ ██╗██╗      ██████╗ ████████╗'
@@ -25,33 +25,27 @@ function Show-Brand {
         '██║     ╚██████╔╝██║  ██║   ██║   ██║  ██║███████╗    ██║     ██║███████╗╚██████╔╝   ██║   '
         '╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═╝     ╚═╝╚══════╝ ╚═════╝    ╚═╝   '
     )
+    $BorderCharacters = '═║╔╗╚╝╠╣╦╩'
     foreach ($LogoLine in $Logo) {
-        Write-Host "   $LogoLine"
+        [Console]::Write('   ')
+        for ($column = 0; $column -lt $LogoLine.Length; $column++) {
+            $Character = [string]$LogoLine[$column]
+            if ($BorderCharacters.Contains($Character)) {
+                $distance = [Math]::Abs($column - (($Frame % 120) - 10))
+                $glow = [Math]::Max(0, 1 - ($distance / 14))
+                $red = [int](100 + (155 * $glow))
+                $green = [int](25 + (55 * $glow))
+                $blue = [int](185 + (70 * $glow))
+                [Console]::Write("$Esc[38;2;${red};${green};${blue}m$Character")
+            } else {
+                [Console]::Write("$Purple$Character")
+            }
+        }
+        [Console]::Write("$Reset`n")
     }
-    Write-LightLine
     Write-Host "$Reset"
     Write-Host "   $White PORTAL PILOT $Purple// COMMAND DECK $Reset"
     Write-Host "   $Muted NUCLEO NAVI $Green● EN LINEA $Muted // $Version$Reset"
-    Write-LightLine
-}
-
-function Write-LightLine {
-    $segments = 72
-    $frames = 16
-    for ($frame = 0; $frame -lt $frames; $frame++) {
-        [Console]::Write("   ")
-        for ($segment = 0; $segment -lt $segments; $segment++) {
-            $distance = [Math]::Abs($segment - (($frame / ($frames - 1)) * ($segments - 1)))
-            $glow = [Math]::Max(0, 1 - ($distance / 12))
-            $red = [int](105 + (120 * $glow))
-            $green = [int](35 + (45 * $glow))
-            $blue = [int](190 + (65 * $glow))
-            [Console]::Write("$Esc[38;2;${red};${green};${blue}m═")
-        }
-        [Console]::Write("$Reset`r")
-        Start-Sleep -Milliseconds 28
-    }
-    Write-Host ""
 }
 
 function Pause-Deck {
@@ -76,18 +70,34 @@ function Download-Asset([string]$Url, [string]$FileName) {
 }
 
 function Show-Deck {
-    Show-Brand
-    Write-Host ""
-    Write-Host "   $White 01 $Lavender ABRIR PORTAL PILOT$Reset       $Muted Acceso web$Reset"
-    Write-Host "   $White 02 $Lavender VER VERSIONES$Reset             $Muted Releases y novedades$Reset"
-    Write-Host "   $White 03 $Lavender DESPLEGAR EN WINDOWS$Reset      $Muted Instalador ARM / x64$Reset"
-    Write-Host "   $White 04 $Lavender ENVIAR A ANDROID$Reset          $Muted APK ARM para pruebas$Reset"
-    Write-Host "   $White 05 $Lavender ABRIR HANGAR$Reset               $Muted Carpeta de descargas$Reset"
-    Write-Host "   $White 06 $Lavender ESCANEO NAVI$Reset               $Muted Diagnostico del equipo$Reset"
-    Write-Host "   $Purple----------------------------------------------------------------$Reset"
-    Write-Host "   $Muted 00 CERRAR COMMAND DECK$Reset"
-    Write-Host ""
-    return (Read-Host "   $Purple> Selecciona una ruta$Reset")
+    if ([Console]::IsInputRedirected) {
+        Show-Brand
+        return ([Console]::ReadLine()).Trim()
+    }
+
+    $Frame = 0
+    while ($true) {
+        Show-Brand $Frame
+        Write-Host ""
+        Write-Host "   $White 01 $Lavender ABRIR PORTAL PILOT$Reset       $Muted Acceso web$Reset"
+        Write-Host "   $White 02 $Lavender VER VERSIONES$Reset             $Muted Releases y novedades$Reset"
+        Write-Host "   $White 03 $Lavender DESPLEGAR EN WINDOWS$Reset      $Muted Instalador ARM / x64$Reset"
+        Write-Host "   $White 04 $Lavender ENVIAR A ANDROID$Reset          $Muted APK ARM para pruebas$Reset"
+        Write-Host "   $White 05 $Lavender ABRIR HANGAR$Reset               $Muted Carpeta de descargas$Reset"
+        Write-Host "   $White 06 $Lavender ESCANEO NAVI$Reset               $Muted Diagnostico del equipo$Reset"
+        Write-Host "   $Purple----------------------------------------------------------------$Reset"
+        Write-Host "   $Muted 00 CERRAR COMMAND DECK$Reset"
+        Write-Host ""
+        Write-Host "   $Purple> Escribe una tecla para elegir una ruta$Reset"
+
+        for ($wait = 0; $wait -lt 8; $wait++) {
+            if ([Console]::KeyAvailable) {
+                return ([Console]::ReadKey($true).KeyChar.ToString())
+            }
+            Start-Sleep -Milliseconds 45
+        }
+        $Frame++
+    }
 }
 
 while ($true) {
