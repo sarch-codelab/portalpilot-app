@@ -55,9 +55,15 @@ app.*.map.json
 *.zip
 /dist/
 
+# App packages
+*.apk
+
 
 # Vercel env pulls
 .env.vercel
 .env.prod
 .env
 
+
+# Local distribution builds
+/compilaciones/

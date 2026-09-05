@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 
 class _SupportMessage {
   final String text;
@@ -67,41 +68,12 @@ class _SoporteHomeState extends State<SoporteHome> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF3B82F6), size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.headset_mic_rounded, color: Colors.white, size: 16),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Soporte IA',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+  Widget build(BuildContext context) {    return PPModuleScaffold(
+      moduleId: 'soporte',
+      screenTitle: 'Centro de Soporte',
+      moduleIcon: Icons.headset_mic_rounded,
+      moduleColor: const Color(0xFF3B82F6),
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -111,8 +83,7 @@ class _SoporteHomeState extends State<SoporteHome> {
             onPressed: () async => await appThemeNotifier.toggle(),
           ),
         ],
-      ),
-      body: Column(
+      child: Column(
         children: [
           Expanded(
             child: _messages.isEmpty ? _buildWelcome() : _buildMessageList(),

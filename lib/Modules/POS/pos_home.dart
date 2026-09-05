@@ -9,6 +9,7 @@ import 'package:portal_pilot_app/Modules/CanalTradicional/ruta_screen.dart';
 import 'package:portal_pilot_app/Modules/Membresias/membresia_home.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 
 class PosHome extends StatefulWidget {
@@ -115,115 +116,61 @@ class _PosHomeState extends State<PosHome> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFFF97316),
-            size: 18,
+    return PPModuleScaffold(
+      moduleId: 'pos',
+      screenTitle: 'Punto de Venta',
+      moduleIcon: Icons.point_of_sale_rounded,
+      moduleColor: const Color(0xFFF97316),
+      onNew: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PosTerminalV2()),
+        );
+      },
+      actions: [
+        IconButton(
+          icon: Icon(
+            _showAIChat ? Icons.chat_bubble : Icons.auto_awesome,
+            color: const Color(0xFFF97316),
+            size: 20,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _toggleAIChat,
+          tooltip: 'Asistente IA',
         ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF97316), Color(0xFFEA580C)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.point_of_sale_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Punto de Venta',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: palette.textPrimary,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _showAIChat ? Icons.chat_bubble : Icons.auto_awesome,
-              color: const Color(0xFFF97316),
-              size: 20,
-            ),
-            onPressed: _toggleAIChat,
-            tooltip: 'Asistente IA',
+        IconButton(
+          icon: Icon(
+            appThemeNotifier.isDark
+                ? Icons.light_mode_rounded
+                : Icons.dark_mode_rounded,
+            color: const Color(0xFFF97316),
+            size: 20,
           ),
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFFF97316),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-              MaterialPageRoute(builder: (_) => const PosTerminalV2()),
-          );
-        },
-        backgroundColor: const Color(0xFFF97316),
-        icon: const Icon(
-          Icons.shopping_cart_rounded,
-          color: Colors.white,
-          size: 22,
+          onPressed: () async {
+            await appThemeNotifier.toggle();
+          },
         ),
-        label: Text(
-          'Nueva Venta',
-          style: GoogleFonts.dmSans(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      body: Stack(
+      ],
+      child: Stack(
         children: [
           RefreshIndicator(
             onRefresh: _cargarDatos,
             color: const Color(0xFFF97316),
             backgroundColor: const Color(0xFF1A1A1A),
             child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          children: [
-            _buildStatsGrid(),
-            const SizedBox(height: 16),
-            _buildSectionTitle('Acciones Rápidas'),
-            const SizedBox(height: 10),
-            _buildActions(),
-            const SizedBox(height: 20),
-            _buildSectionTitle('Resumen del Día'),
-            const SizedBox(height: 10),
-            _buildDaySummary(),
-            const SizedBox(height: 30),
-          ],
-        ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              children: [
+                _buildStatsGrid(),
+                const SizedBox(height: 16),
+                _buildSectionTitle('Acciones Rápidas'),
+                const SizedBox(height: 10),
+                _buildActions(),
+                const SizedBox(height: 20),
+                _buildSectionTitle('Resumen del Día'),
+                const SizedBox(height: 10),
+                _buildDaySummary(),
+                const SizedBox(height: 30),
+              ],
+            ),
           ),
           if (_showAIChat) _buildAIChatPanel(),
         ],

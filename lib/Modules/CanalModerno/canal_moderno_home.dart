@@ -10,6 +10,7 @@ import 'package:portal_pilot_app/Modules/CanalModerno/reportes_cadena.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/canal_moderno_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 
 /// Hub del Canal Moderno: multi-sucursal, transferencias y consolidado.
 class CanalModernoHome extends StatefulWidget {
@@ -58,51 +59,12 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFFF97316),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.account_balance_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'CANAL MODERNO',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: palette.textPrimary,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+  Widget build(BuildContext context) {    return PPModuleScaffold(
+      moduleId: 'canal_moderno',
+      screenTitle: 'Canal Moderno',
+      moduleIcon: Icons.account_balance_rounded,
+      moduleColor: const Color(0xFF3B82F6),
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark
@@ -116,12 +78,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             },
           ),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _cargar,
-        color: const Color(0xFF3B82F6),
-        backgroundColor: const Color(0xFF1A1A1A),
-        child: ListView(
+      child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
             _buildResumen(),
@@ -212,9 +169,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
                 MaterialPageRoute(builder: (_) => const ReportesCadena()),
               ),
             ),
-          ],
-        ),
-      ),
+          ],),
     );
   }
 

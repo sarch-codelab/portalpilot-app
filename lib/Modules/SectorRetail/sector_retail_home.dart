@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Modules/SectorRetail/precios_por_canal.dart';
 import 'package:portal_pilot_app/Modules/SectorRetail/promociones.dart';
 import 'package:portal_pilot_app/Modules/SectorRetail/inventario_tienda.dart';
@@ -32,51 +33,12 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFFEC4899),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFEC4899), Color(0xFFDB2777)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.store_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'SECTOR RETAIL',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: palette.textPrimary,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+  Widget build(BuildContext context) {    return PPModuleScaffold(
+      moduleId: 'sector_retail',
+      screenTitle: 'Sector Retail',
+      moduleIcon: Icons.store_rounded,
+      moduleColor: const Color(0xFFEC4899),
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark
@@ -90,8 +52,7 @@ class _SectorRetailHomeState extends State<SectorRetailHome> {
             },
           ),
         ],
-      ),
-      body: ListView(
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildActionCard(

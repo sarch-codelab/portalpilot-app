@@ -7,6 +7,7 @@ import 'package:portal_pilot_app/Modules/CRM/clientes/cliente_list.dart';
 import 'package:portal_pilot_app/Modules/CRM/ventas/ventas_home.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 
 class CrmHome extends StatefulWidget {
   const CrmHome({super.key});
@@ -98,107 +99,51 @@ class _CrmHomeState extends State<CrmHome> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF06B6D4),
-            size: 18,
+    return PPModuleScaffold(
+      moduleId: 'crm',
+      screenTitle: 'CRM',
+      moduleIcon: Icons.contacts_rounded,
+      moduleColor: const Color(0xFF06B6D4),
+      onNew: _nuevoCliente,
+      onRefresh: _cargarDatos,
+      actions: [
+        IconButton(
+          icon: Icon(
+            appThemeNotifier.isDark
+                ? Icons.light_mode_rounded
+                : Icons.dark_mode_rounded,
+            color: const Color(0xFF06B6D4),
+            size: 20,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () async {
+            await appThemeNotifier.toggle();
+          },
         ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.contacts_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'CRM',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: palette.textPrimary,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF06B6D4),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
+      ],
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        children: [
+          _buildStatsGrid(),
+          const SizedBox(height: 16),
+          _buildSectionTitle('Acciones Rápidas'),
+          const SizedBox(height: 10),
+          _buildActions(),
+          const SizedBox(height: 20),
+          _buildSectionTitle('Pipeline de Ventas'),
+          const SizedBox(height: 10),
+          _buildPipeline(),
+          const SizedBox(height: 30),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ClienteForm()),
-          );
-          _cargarDatos();
-        },
-        backgroundColor: const Color(0xFF06B6D4),
-        icon: const Icon(
-          Icons.person_add_rounded,
-          color: Colors.white,
-          size: 22,
-        ),
-        label: Text(
-          'Nuevo Cliente',
-          style: GoogleFonts.dmSans(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _cargarDatos,
-        color: const Color(0xFF06B6D4),
-        backgroundColor: const Color(0xFF1A1A1A),
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          children: [
-            _buildStatsGrid(),
-            const SizedBox(height: 16),
-            _buildSectionTitle('Acciones Rápidas'),
-            const SizedBox(height: 10),
-            _buildActions(),
-            const SizedBox(height: 20),
-            _buildSectionTitle('Pipeline de Ventas'),
-            const SizedBox(height: 10),
-            _buildPipeline(),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
     );
+  }
+
+  Future<void> _nuevoCliente() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ClienteForm()),
+    );
+    _cargarDatos();
   }
 
   Widget _buildStatsGrid() {

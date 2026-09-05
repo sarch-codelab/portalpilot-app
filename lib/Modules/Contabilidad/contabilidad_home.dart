@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Modules/Contabilidad/cierres_mensuales.dart';
 import 'package:portal_pilot_app/Modules/Contabilidad/conciliacion_bancaria.dart';
 import 'package:portal_pilot_app/Modules/Contabilidad/configuracion_impuestos.dart';
@@ -454,43 +455,13 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
       return fecha != null && fecha.year == ahora.year && fecha.month == ahora.month;
     }).toList()
       ..sort((a, b) => (b['fecha'] ?? '').compareTo(a['fecha'] ?? ''));
-
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF3B82F6), size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.account_balance_rounded, color: Colors.white, size: 16),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'CONTABILIDAD',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+    return PPModuleScaffold(
+      moduleId: 'contabilidad',
+      screenTitle: 'Contabilidad',
+      moduleIcon: Icons.account_balance_rounded,
+      moduleColor: const Color(0xFF3B82F6),
+      onNew: _agregarTransaccion,
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -502,21 +473,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
             },
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _agregarTransaccion,
-        backgroundColor: const Color(0xFF3B82F6),
-        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-        label: Text(
-          'Nueva Transacción',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _cargarDatos,
-        color: const Color(0xFF3B82F6),
-        backgroundColor: const Color(0xFF1A1A1A),
-        child: ListView(
+      child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
             _buildBalanceCard(),
@@ -582,9 +539,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
             else
               ...transaccionesMes.take(10).map((t) => _buildTransaccionTile(t)),
             const SizedBox(height: 80),
-          ],
-        ),
-      ),
+          ],),
     );
   }
 

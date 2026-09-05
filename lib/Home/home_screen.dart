@@ -316,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen>
       decoration: InputDecoration(
         hintText: 'Buscar módulos...',
         hintStyle: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF737373)),
-        prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF8B5CF6), size: 20),
+        prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFB94DDC), size: 20),
         suffixIcon: _moduleSearchController.text.isEmpty
             ? null
             : IconButton(
@@ -332,15 +332,15 @@ class _HomeScreenState extends State<HomeScreen>
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: const Color(0xFF8B5CF6).withValues(alpha: 0.25)),
+          borderSide: BorderSide(color: const Color(0xFFB94DDC).withValues(alpha: 0.25)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: const Color(0xFF8B5CF6).withValues(alpha: 0.25)),
+          borderSide: BorderSide(color: const Color(0xFFB94DDC).withValues(alpha: 0.25)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFFB94DDC), width: 1.5),
         ),
       ),
     );
@@ -406,7 +406,7 @@ class _HomeScreenState extends State<HomeScreen>
                   child: IconButton(
                     icon: const Icon(
                       Icons.menu_rounded,
-                      color: Color(0xFF8B5CF6),
+                      color: Color(0xFFB94DDC),
                       size: 18,
                     ),
                     onPressed: () => Scaffold.of(context).openDrawer(),
@@ -427,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen>
                       appThemeNotifier.isDark
                           ? Icons.light_mode_rounded
                           : Icons.dark_mode_rounded,
-                      color: const Color(0xFF8B5CF6),
+                      color: const Color(0xFFB94DDC),
                       size: 16,
                     ),
                     onPressed: () async {
@@ -448,7 +448,7 @@ class _HomeScreenState extends State<HomeScreen>
                   child: IconButton(
                     icon: const Icon(
                       Icons.logout_rounded,
-                      color: Color(0xFF8B5CF6),
+                      color: Color(0xFFB94DDC),
                       size: 18,
                     ),
                     onPressed: () => _handleLogout(context),
@@ -535,7 +535,7 @@ class _HomeScreenState extends State<HomeScreen>
                       appThemeNotifier.isDark
                           ? Icons.light_mode_rounded
                           : Icons.dark_mode_rounded,
-                      color: const Color(0xFF8B5CF6),
+                      color: const Color(0xFFB94DDC),
                       size: 16,
                     ),
                     onPressed: () async {
@@ -557,7 +557,7 @@ class _HomeScreenState extends State<HomeScreen>
                     child: IconButton(
                       icon: const Icon(
                         Icons.settings_rounded,
-                        color: Color(0xFF8B5CF6),
+                        color: Color(0xFFB94DDC),
                         size: 18,
                       ),
                       onPressed: () => _openMultiAreaConfig(),
@@ -576,7 +576,7 @@ class _HomeScreenState extends State<HomeScreen>
                   child: IconButton(
                     icon: const Icon(
                       Icons.logout_rounded,
-                      color: Color(0xFF8B5CF6),
+                      color: Color(0xFFB94DDC),
                       size: 18,
                     ),
                     onPressed: () => _handleLogout(context),
@@ -685,12 +685,12 @@ class _HomeScreenState extends State<HomeScreen>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                color: const Color(0xFFB94DDC).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.apps_rounded,
-                color: Color(0xFF8B5CF6),
+                color: Color(0xFFB94DDC),
                 size: 18,
               ),
             ),
@@ -1018,7 +1018,7 @@ class _HomeScreenState extends State<HomeScreen>
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: const Color(0xFF111111),
-            border: Border(top: BorderSide(color: const Color(0xFF8B5CF6).withValues(alpha: 0.25))),
+            border: Border(top: BorderSide(color: const Color(0xFFB94DDC).withValues(alpha: 0.25))),
             boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 18, offset: Offset(0, -8))],
           ),
           child: Row(
@@ -1050,9 +1050,9 @@ class _HomeScreenState extends State<HomeScreen>
           margin: const EdgeInsets.only(bottom: 20),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFB794F4), Color(0xFF6D28D9)]),
+            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFD16BF0), Color(0xFF5C1A7E)]),
             border: Border.all(color: Colors.white.withValues(alpha: 0.75), width: 2),
-            boxShadow: const [BoxShadow(color: Color(0x998B5CF6), blurRadius: 18, spreadRadius: 2)],
+            boxShadow: const [BoxShadow(color: Color(0x99B94DDC), blurRadius: 18, spreadRadius: 2)],
           ),
           child: const Icon(Icons.hub_rounded, color: Colors.white, size: 27),
         ),
@@ -1072,7 +1072,7 @@ class _HomeScreenState extends State<HomeScreen>
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected 
-              ? const Color(0xFF8B5CF6).withValues(alpha: 0.15)
+              ? const Color(0xFFB94DDC).withValues(alpha: 0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
@@ -1081,7 +1081,7 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             Icon(
               icon,
-              color: isSelected ? const Color(0xFF8B5CF6) : const Color(0xFFA3A3A3),
+              color: isSelected ? const Color(0xFFB94DDC) : const Color(0xFFA3A3A3),
               size: 20,
             ),
             const SizedBox(height: 4),
@@ -1090,7 +1090,7 @@ class _HomeScreenState extends State<HomeScreen>
               style: GoogleFonts.dmSans(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? const Color(0xFF8B5CF6) : const Color(0xFFA3A3A3),
+                color: isSelected ? const Color(0xFFB94DDC) : const Color(0xFFA3A3A3),
               ),
             ),
           ],
@@ -1112,7 +1112,7 @@ class _HomeScreenState extends State<HomeScreen>
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                  colors: [Color(0xFFB94DDC), Color(0xFF6D28D9)],
                 ),
               ),
               child: Column(
@@ -1221,7 +1221,7 @@ class _HomeScreenState extends State<HomeScreen>
                   _buildDrawerItem(
                     icon: Icons.settings_rounded,
                     title: 'Configuración',
-                    color: const Color(0xFF8B5CF6),
+                    color: const Color(0xFFB94DDC),
                     onTap: () {
                       Navigator.pop(context);
                       _openModule(_modulosDisponibles.firstWhere(

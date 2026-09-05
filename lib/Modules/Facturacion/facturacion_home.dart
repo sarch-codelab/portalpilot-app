@@ -12,6 +12,7 @@ import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/utils/network_helper.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 
 class FacturacionHome extends StatefulWidget {
   const FacturacionHome({super.key});
@@ -120,50 +121,14 @@ class _FacturacionHomeState extends State<FacturacionHome> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF10B981),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF10B981), Color(0xFF059669)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.receipt_long_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'FACTURACIÃ“N SAR',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: palette.textPrimary,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+    return PPModuleScaffold(
+      moduleId: 'facturacion',
+      screenTitle: 'Facturación',
+      moduleIcon: Icons.receipt_long_rounded,
+      moduleColor: const Color(0xFF10B981),
+      onNew: _nuevaFactura,
+      onRefresh: _cargarDatos,
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark
@@ -185,12 +150,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             onPressed: _mostrarConfiguracion,
           ),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _cargarDatos,
-        color: const Color(0xFF10B981),
-        backgroundColor: const Color(0xFF1A1A1A),
-        child: ListView(
+      child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
             _buildCAIBanner(),
@@ -211,26 +171,15 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             const SizedBox(height: 30),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const FacturaForm()),
-          );
-          _cargarDatos();
-        },
-        backgroundColor: const Color(0xFF10B981),
-        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-        label: Text(
-          'Nueva Factura',
-          style: GoogleFonts.dmSans(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ),
     );
+  }
+
+  Future<void> _nuevaFactura() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const FacturaForm()),
+    );
+    _cargarDatos();
   }
 
   Widget _buildCAIBanner() {

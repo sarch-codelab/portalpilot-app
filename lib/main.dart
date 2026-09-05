@@ -103,60 +103,20 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
           debugShowCheckedModeBanner: false,
           title: 'Portal Pilot',
           themeMode: themeMode,
-          darkTheme: ThemeData(
-            brightness: Brightness.dark,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF8B5CF6),
-              brightness: Brightness.dark,
-            ),
-            scaffoldBackgroundColor: const Color(0xFF000000),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFF080808),
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-            cardTheme: const CardThemeData(
-              color: Color(0xFF111111),
-              surfaceTintColor: Colors.transparent,
-            ),
-            inputDecorationTheme: const InputDecorationTheme(
-              filled: true,
-              fillColor: Color(0xFF111111),
-              border: OutlineInputBorder(),
-            ),
-          ),
-          theme: ThemeData(
-            brightness: Brightness.light,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF6D28D9),
-              brightness: Brightness.light,
-            ),
-            scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Colors.white,
-              foregroundColor: Color(0xFF1F2937),
-              elevation: 0,
-            ),
-            cardTheme: const CardThemeData(
-              color: Colors.white,
-              surfaceTintColor: Colors.transparent,
-            ),
-            inputDecorationTheme: const InputDecorationTheme(
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(),
-            ),
-          ),
+          darkTheme: ThemePalette.buildTheme(isDark: true),
+          theme: ThemePalette.buildTheme(isDark: false),
           home: _windowRestored
               ? const SplashScreen()
-              : Scaffold(
-                  backgroundColor: const Color(0xFF000000),
-                  body: Center(
-                    child: Image.asset(
-                      'assets/img/robot_logo.png',
+              : const Scaffold(
+                  backgroundColor: Color(0xFF070510),
+                  body: Align(
+                    alignment: Alignment.center,
+                    child: SizedBox(
                       width: 40,
                       height: 40,
-                      fit: BoxFit.contain,
+                      child: ColoredBox(
+                        color: Color(0xFF070510),
+                      ),
                     ),
                   ),
                 ),
@@ -170,7 +130,7 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
                 SizedBox(
                   height: 44,
                   child: WindowCaption(
-                    backgroundColor: isDark ? const Color(0xFF080808) : Colors.white,
+                    backgroundColor: isDark ? const Color(0xFF0A0814) : Colors.white,
                     brightness: isDark ? Brightness.dark : Brightness.light,
                     title: Row(
                       children: [
@@ -184,7 +144,9 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
                         Text(
                           'Portal Pilot',
                           style: TextStyle(
-                            color: isDark ? Colors.white : const Color(0xFF18202B),
+                            color: isDark
+                                ? const Color(0xFFF5F2FF)
+                                : const Color(0xFF1E1B2A),
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                           ),
@@ -193,13 +155,13 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                            color: const Color(0xFFB94DDC).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             'WORKSPACE',
                             style: TextStyle(
-                              color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF6D28D9),
+                              color: isDark ? const Color(0xFFD16BF0) : const Color(0xFF8B2FB0),
                               fontSize: 8,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1.1,

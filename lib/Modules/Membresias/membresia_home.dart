@@ -9,6 +9,7 @@ import 'package:portal_pilot_app/Modules/Membresias/renovaciones_automaticas.dar
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/membresia_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 
 /// Hub del módulo de Membresías: socios, planes y precios preferenciales.
 class MembresiaHome extends StatefulWidget {
@@ -41,47 +42,12 @@ class _MembresiaHomeState extends State<MembresiaHome> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    final d = _dashboard;
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF8B5CF6),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.badge_rounded, color: Colors.white, size: 16),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'MEMBRESÍAS',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+    final d = _dashboard;    return PPModuleScaffold(
+      moduleId: 'membresias',
+      screenTitle: 'Membresias',
+      moduleIcon: Icons.badge_rounded,
+      moduleColor: const Color(0xFF8B5CF6),
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -93,12 +59,7 @@ class _MembresiaHomeState extends State<MembresiaHome> {
             },
           ),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _cargar,
-        color: const Color(0xFF8B5CF6),
-        backgroundColor: const Color(0xFF1A1A1A),
-        child: ListView(
+      child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
             _buildBanner(d),
@@ -180,9 +141,7 @@ class _MembresiaHomeState extends State<MembresiaHome> {
                 MaterialPageRoute(builder: (_) => const RenovacionesAutomaticas()),
               ),
             ),
-          ],
-        ),
-      ),
+          ],),
     );
   }
 

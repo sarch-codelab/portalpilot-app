@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Modules/Analytics/dashboard_gerencial.dart';
 import 'package:portal_pilot_app/Modules/Analytics/kpis_dashboard.dart';
 import 'package:portal_pilot_app/Modules/Analytics/margenes_analisis.dart';
@@ -31,51 +32,12 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF6366F1),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.analytics_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'ANALYTICS & BI',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+  Widget build(BuildContext context) {    return PPModuleScaffold(
+      moduleId: 'analytics',
+      screenTitle: 'Analytics & BI',
+      moduleIcon: Icons.analytics_rounded,
+      moduleColor: const Color(0xFF6366F1),
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark
@@ -89,8 +51,7 @@ class _AnalyticsHomeState extends State<AnalyticsHome> {
             },
           ),
         ],
-      ),
-      body: ListView(
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildActionCard(

@@ -5,6 +5,7 @@ import 'package:portal_pilot_app/Modules/Comercial/cotizacion_list.dart';
 import 'package:portal_pilot_app/Modules/Comercial/orden_compra_list.dart';
 import 'package:portal_pilot_app/Modules/Comercial/compras_list.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 
 class ComercialHome extends StatefulWidget {
   const ComercialHome({super.key});
@@ -31,51 +32,12 @@ class _ComercialHomeState extends State<ComercialHome> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF6B7280),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6B7280), Color(0xFF4B5563)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.storefront_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'COMERCIAL',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: palette.textPrimary,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+  Widget build(BuildContext context) {    return PPModuleScaffold(
+      moduleId: 'comercial',
+      screenTitle: 'Comercial',
+      moduleIcon: Icons.storefront_rounded,
+      moduleColor: const Color(0xFF6B7280),
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark
@@ -89,8 +51,7 @@ class _ComercialHomeState extends State<ComercialHome> {
             },
           ),
         ],
-      ),
-      body: ListView(
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildActionCard(

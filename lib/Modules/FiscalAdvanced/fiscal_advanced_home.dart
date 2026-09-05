@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Modules/FiscalAdvanced/retenciones.dart';
 import 'package:portal_pilot_app/Modules/FiscalAdvanced/libros_contables.dart';
 import 'package:portal_pilot_app/Modules/FiscalAdvanced/facturacion_electronica.dart';
@@ -30,51 +31,12 @@ class _FiscalAdvancedHomeState extends State<FiscalAdvancedHome> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFFDC2626),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFDC2626), Color(0xFFEF4444)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.gavel_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'FISCAL AVANZADO',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: palette.textPrimary,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+  Widget build(BuildContext context) {    return PPModuleScaffold(
+      moduleId: 'fiscal_advanced',
+      screenTitle: 'Fiscal Avanzado',
+      moduleIcon: Icons.gavel_rounded,
+      moduleColor: const Color(0xFFDC2626),
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark
@@ -88,8 +50,7 @@ class _FiscalAdvancedHomeState extends State<FiscalAdvancedHome> {
             },
           ),
         ],
-      ),
-      body: ListView(
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildActionCard(

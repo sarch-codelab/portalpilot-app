@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Shared/utils/fiscal_compliance.dart';
 import 'package:portal_pilot_app/Shared/utils/backup_manager.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
@@ -35,31 +36,12 @@ class _SettingsHomeState extends State<SettingsHome> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF6B7280),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'CONFIGURACIÃ“N',
-          style: GoogleFonts.syne(
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-            letterSpacing: 1.5,
-          ),
-        ),
-        actions: [
+  Widget build(BuildContext context) {    return PPModuleScaffold(
+      moduleId: 'settings',
+      screenTitle: 'Configuracion',
+      moduleIcon: Icons.settings_rounded,
+      moduleColor: const Color(0xFF6B7280),
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark
@@ -73,8 +55,7 @@ class _SettingsHomeState extends State<SettingsHome> {
             },
           ),
         ],
-      ),
-      body: ListView(
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildSectionHeader('SISTEMA'),

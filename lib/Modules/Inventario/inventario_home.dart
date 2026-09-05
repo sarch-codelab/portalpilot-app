@@ -9,6 +9,16 @@ import 'package:portal_pilot_app/Modules/Inventario/bodegas.dart';
 import 'package:portal_pilot_app/Modules/CanalModerno/canal_moderno_home.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/utils/mobile_utils.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_stats_card.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_empty_state.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_swipe_tile.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_context_menu.dart';
+
+const _inventarioColor = Color(0xFFF59E0B);
+const _inventarioIcon = Icons.inventory_2_rounded;
 
 class InventarioHome extends StatefulWidget {
   const InventarioHome({super.key});
@@ -23,6 +33,7 @@ class _InventarioHomeState extends State<InventarioHome> {
   int _totalProductos = 0;
   int _stockBajo = 0;
   double _valorInventario = 0.0;
+  bool _cargando = true;
 
   @override
   void initState() {
@@ -42,10 +53,10 @@ class _InventarioHomeState extends State<InventarioHome> {
   }
 
   Future<void> _cargarDatos() async {
+    if (mounted && _productos.isEmpty) setState(() => _cargando = true);
     List<Map<String, dynamic>> productos = [];
     List<Map<String, dynamic>> bodegas = [];
 
-    // Try loading from backend API first
     try {
       final api = ApiService.instance;
       final productosRes = await api.get('/api/productos');
@@ -59,7 +70,6 @@ class _InventarioHomeState extends State<InventarioHome> {
       debugPrint('[Inventario] API load failed, falling back to local: $e');
     }
 
-    // Fallback to SharedPreferences (legacy)
     if (productos.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       final productosJson = prefs.getString('productos') ?? '[]';
@@ -67,7 +77,6 @@ class _InventarioHomeState extends State<InventarioHome> {
       productos = localProductos.cast<Map<String, dynamic>>();
     }
 
-    // Load bodegas from backend
     try {
       final api = ApiService.instance;
       final bodegasRes = await api.get('/api/bodegas');
@@ -96,17 +105,50 @@ class _InventarioHomeState extends State<InventarioHome> {
       valor += stock * precio;
     }
 
-    setState(() {
-      _productos = productos;
-      _bodegas = bodegas;
-      _totalProductos = productos.length;
-      _stockBajo = stockBajo;
-      _valorInventario = valor;
-    });
+    if (mounted) {
+      setState(() {
+        _productos = productos;
+        _bodegas = bodegas;
+        _totalProductos = productos.length;
+        _stockBajo = stockBajo;
+        _valorInventario = valor;
+        _cargando = false;
+      });
+    }
+  }
+
+  Future<void> _abrirProductoForm() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProductoForm()),
+    );
+    await _cargarDatos();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MobileUtils.isMobile(context);
+
+    return PPModuleScaffold(
+      moduleId: 'inventario',
+      screenTitle: 'Inventario',
+      moduleIcon: _inventarioIcon,
+      moduleColor: _inventarioColor,
+      onNew: _abrirProductoForm,
+      onRefresh: _cargarDatos,
+      loading: _cargando,
+      onGlobalSearch: (q) async {
+        if (q.trim().isEmpty) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProductoList()),
+        );
+      },
+      child: _buildContent(isMobile),
+    );
+  }
+
+  Widget _buildContent(bool isMobile) {
     final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     final productosBajo = _productos.where((p) {
       final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
@@ -114,266 +156,129 @@ class _InventarioHomeState extends State<InventarioHome> {
       return stock <= minimo && minimo > 0;
     }).toList();
 
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFFF59E0B),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.inventory_2_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
+    return ListView(
+      padding: MobileUtils.getPagePadding(context),
+      children: [
+        _buildHeader(palette),
+        const SizedBox(height: 18),
+        PPStatsGrid(
+          cards: [
+            PPStatsCard(
+              label: 'Productos',
+              value: '$_totalProductos',
+              icon: Icons.inventory_2_rounded,
+              color: _inventarioColor,
             ),
-            const SizedBox(width: 12),
-            Text(
-              'INVENTARIO',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: 1.5,
-              ),
+            PPStatsCard(
+              label: 'Stock Bajo',
+              value: '$_stockBajo',
+              icon: Icons.warning_amber_rounded,
+              color: palette.errorRed,
+            ),
+            PPStatsCard(
+              label: 'Bodegas',
+              value: '${_bodegas.length}',
+              icon: Icons.warehouse_rounded,
+              color: palette.infoBlue,
+            ),
+            PPStatsCard(
+              label: 'Valor Inventario',
+              value: 'L.${_formatNumber(_valorInventario)}',
+              icon: Icons.attach_money_rounded,
+              color: palette.successGreen,
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFFF59E0B),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
+        if (productosBajo.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildAlertBanner(palette, productosBajo.length),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ProductoForm()),
-          );
-          _cargarDatos();
-        },
-        backgroundColor: const Color(0xFFF59E0B),
-        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-        label: Text(
-          'Nuevo Producto',
-          style: GoogleFonts.dmSans(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ),
-body: Stack(
-        children: [
-          // Fondo negro sólido para catálogo (sin imagen)
-          Positioned.fill(
-            child: Container(color: palette.bgPrimary),
-          ),
-          RefreshIndicator(
-            onRefresh: _cargarDatos,
-            color: const Color(0xFFF59E0B),
-            backgroundColor: const Color(0xFF1A1A1A),
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              children: [
-                _buildStatsGrid(),
-                const SizedBox(height: 16),
-                if (productosBajo.isNotEmpty) ...[
-                  _buildAlertBanner(productosBajo.length),
-                  const SizedBox(height: 16),
-                ],
-                _buildSectionTitle('Acciones Rápidas'),
-                const SizedBox(height: 10),
-                _buildActions(),
-                const SizedBox(height: 20),
-                _buildSectionTitle('Últimos Productos'),
-                const SizedBox(height: 10),
-                _buildRecentProducts(),
-                const SizedBox(height: 30),
-],
+        const SizedBox(height: 22),
+        _buildSectionTitle(palette, 'ACCIONES RÁPIDAS'),
+        const SizedBox(height: 12),
+        _buildActions(palette),
+        const SizedBox(height: 22),
+        _buildSectionTitle(palette, 'ÚLTIMOS PRODUCTOS'),
+        const SizedBox(height: 12),
+        if (_productos.isEmpty)
+          PPEmptyState(
+            title: 'No hay productos registrados',
+            message: 'Agrega tu primer producto para comenzar a gestionar tu inventario.',
+            icon: _inventarioIcon,
+            accentColor: _inventarioColor,
+            action: FilledButton.icon(
+              onPressed: _abrirProductoForm,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(
+                'Nuevo Producto',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+              ),
             ),
-          ),
-        ],
-      ),
+          )
+        else
+          _buildRecentProducts(palette),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
-  Widget _buildStatsGrid() {
-    final wide = MediaQuery.of(context).size.width >= 600;
-    return GridView.count(
-      crossAxisCount: wide ? 4 : 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: wide ? 2.6 : 1.5,
+  Widget _buildHeader(ThemePalette palette) {
+    return Row(
       children: [
-        _buildStatCard(
-          'Productos',
-          '$_totalProductos',
-          Icons.inventory_2_rounded,
-          const Color(0xFFF59E0B),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Inventario',
+                style: GoogleFonts.syne(
+                  fontSize: MobileUtils.responsiveFontSize(context, 24),
+                  fontWeight: FontWeight.w900,
+                  color: palette.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Productos, kardex y bodegas',
+                style: GoogleFonts.dmSans(fontSize: 13, color: palette.textMuted),
+              ),
+            ],
+          ),
         ),
-        _buildStatCard(
-          'Stock Bajo',
-          '$_stockBajo',
-          Icons.warning_amber_rounded,
-          const Color(0xFFEF4444),
-        ),
-        _buildStatCard(
-          'Bodegas',
-          '${_bodegas.length}',
-          Icons.warehouse_rounded,
-          const Color(0xFF3B82F6),
-        ),
-        _buildStatCard(
-          'Valor',
-          'L.${_formatNumber(_valorInventario)}',
-          Icons.attach_money_rounded,
-          const Color(0xFF10B981),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [_inventarioColor, const Color(0xFFD97706)]),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: palette.glowShadow(_inventarioColor),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.inventory_2_rounded, color: Colors.white, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                'Nuevo',
+                style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildStatCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    final wide = MediaQuery.of(context).size.width >= 600;
-
-    if (wide) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value,
-                    style: GoogleFonts.syne(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: palette.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    label,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      color: palette.textMuted,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const Spacer(),
-          Text(
-            value,
-            style: GoogleFonts.syne(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: GoogleFonts.dmSans(
-              fontSize: 11,
-              color: const Color(0xFF737373),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAlertBanner(int count) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
+  Widget _buildAlertBanner(ThemePalette palette, int count) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF7F1D1D).withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFEF4444).withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            color: Color(0xFFEF4444),
-            size: 24,
-          ),
+          const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -381,18 +286,11 @@ body: Stack(
               children: [
                 Text(
                   '$count producto${count > 1 ? 's' : ''} con stock bajo',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: palette.textPrimary,
-                  ),
+                  style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: palette.textPrimary),
                 ),
                 Text(
                   'Revisa el inventario para reabastecer',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: palette.textMuted,
-                  ),
+                  style: GoogleFonts.dmSans(fontSize: 12, color: palette.textMuted),
                 ),
               ],
             ),
@@ -402,41 +300,34 @@ body: Stack(
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
+  Widget _buildSectionTitle(ThemePalette palette, String title) {
     return Text(
       title,
-      style: GoogleFonts.syne(
-        fontSize: 14,
-        fontWeight: FontWeight.w800,
-        color: palette.textPrimary,
-        letterSpacing: 0.8,
+      style: GoogleFonts.spaceGrotesk(
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        color: palette.textMuted,
+        letterSpacing: 1.5,
       ),
     );
   }
 
-  Widget _buildActions() {
+  Widget _buildActions(ThemePalette palette) {
     return Column(
       children: [
         _buildActionRow(
           Icons.add_circle_outline_rounded,
           'Nuevo Producto',
           'Agregar producto al catálogo',
-          const Color(0xFFF59E0B),
-          () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProductoForm()),
-            );
-            _cargarDatos();
-          },
+          _inventarioColor,
+          _abrirProductoForm,
         ),
         const SizedBox(height: 8),
         _buildActionRow(
           Icons.list_alt_rounded,
           'Ver Catálogo',
           'Lista completa de productos',
-          const Color(0xFF3B82F6),
+          palette.infoBlue,
           () async {
             await Navigator.push(
               context,
@@ -450,7 +341,7 @@ body: Stack(
           Icons.swap_horiz_rounded,
           'Kardex',
           'Historial de movimientos de stock',
-          const Color(0xFF10B981),
+          palette.successGreen,
           () {
             Navigator.push(
               context,
@@ -463,7 +354,7 @@ body: Stack(
           Icons.warehouse_rounded,
           'Bodegas',
           'Gestionar almacenes',
-          const Color(0xFF8B5CF6),
+          palette.brand,
           () async {
             await Navigator.push(
               context,
@@ -477,7 +368,7 @@ body: Stack(
           Icons.account_balance_rounded,
           'Canal Moderno',
           'Multi-sucursal, transferencias y consolidado',
-          const Color(0xFF0EA5E9),
+          palette.infoBlue,
           () {
             Navigator.push(
               context,
@@ -489,23 +380,21 @@ body: Stack(
     );
   }
 
-  Widget _buildActionRow(
-    IconData icon,
-    String title,
-    String subtitle,
-    Color color,
-    VoidCallback onTap,
-  ) {
+  Widget _buildActionRow(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
     final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return GestureDetector(
+    return PPSwipeTile(
+      accentColor: color,
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: palette.cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: palette.borderLight),
+      contextMenuItems: () => [
+        PPContextMenuItem(
+          icon: Icons.open_in_new_rounded,
+          label: 'Abrir $title',
+          color: palette.textPrimary,
+          onTap: onTap,
         ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.all(14),
         child: Row(
           children: [
             Container(
@@ -523,56 +412,26 @@ body: Stack(
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: palette.textPrimary,
-                    ),
+                    style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: palette.textPrimary),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      color: palette.textMuted,
-                    ),
+                    style: GoogleFonts.dmSans(fontSize: 11, color: palette.textMuted),
                   ),
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Color(0xFF404040),
-              size: 20,
-            ),
+            Icon(Icons.chevron_right_rounded, color: palette.textDim, size: 20),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildRecentProducts() {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    final recientes = List<Map<String, dynamic>>.from(
-      _productos,
-    )..sort((a, b) => (b['created_at'] ?? '').compareTo(a['created_at'] ?? ''));
-
-    if (recientes.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: palette.cardColor,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: palette.borderLight),
-        ),
-        child: Center(
-          child: Text(
-            'No hay productos registrados',
-            style: GoogleFonts.dmSans(color: palette.textDark),
-          ),
-        ),
-      );
-    }
+  Widget _buildRecentProducts(ThemePalette palette) {
+    final recientes = List<Map<String, dynamic>>.from(_productos)
+      ..sort((a, b) => (b['created_at'] ?? '').compareTo(a['created_at'] ?? ''));
 
     return Column(
       children: recientes.take(5).map((p) {
@@ -581,89 +440,127 @@ body: Stack(
         final precio = (p['precio_venta'] as num?)?.toDouble() ?? 0.0;
         final bajo = stock <= minimo && minimo > 0;
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: palette.cardColor,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: bajo
-                  ? const Color(0xFFEF4444).withValues(alpha: 0.3)
-                  : palette.borderLight,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color:
-                      (bajo ? const Color(0xFFEF4444) : const Color(0xFFF59E0B))
-                          .withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  bajo
-                      ? Icons.warning_amber_rounded
-                      : Icons.inventory_2_rounded,
-                  color: bajo
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFFF59E0B),
-                  size: 18,
-                ),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: PPSwipeTile(
+            accentColor: bajo ? palette.errorRed : _inventarioColor,
+            onTap: () => _verDetalle(p),
+            onDelete: () => _eliminarProducto(p),
+            onEdit: _abrirProductoForm,
+            contextMenuItems: () => [
+              PPContextMenuItem(
+                icon: Icons.visibility_rounded,
+                label: 'Ver detalle',
+                onTap: () => _verDetalle(p),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      p['nombre'] ?? '',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: palette.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${p['codigo'] ?? 'S/C'}  â€¢  ${p['categoria'] ?? 'Sin categoría'}',
-                      style: GoogleFonts.dmMono(
-                        fontSize: 11,
-                        color: const Color(0xFF737373),
-                      ),
-                    ),
-                  ],
-                ),
+              PPContextMenuItem(
+                icon: Icons.edit_rounded,
+                label: 'Editar',
+                color: palette.infoBlue,
+                onTap: _abrirProductoForm,
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              PPContextMenuItem(
+                icon: Icons.delete_rounded,
+                label: 'Eliminar',
+                color: palette.errorRed,
+                onTap: () => _eliminarProducto(p),
+              ),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
                 children: [
-                  Text(
-                    'Stock: $stock',
-                    style: GoogleFonts.dmMono(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: bajo
-                          ? const Color(0xFFEF4444)
-                          : const Color(0xFF10B981),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: (bajo ? palette.errorRed : _inventarioColor).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      bajo ? Icons.warning_amber_rounded : Icons.inventory_2_rounded,
+                      color: bajo ? palette.errorRed : _inventarioColor,
+                      size: 18,
                     ),
                   ),
-                  Text(
-                    'L.${precio.toStringAsFixed(2)}',
-                    style: GoogleFonts.dmMono(
-                      fontSize: 11,
-                      color: const Color(0xFF737373),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p['nombre'] ?? '',
+                          style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: palette.textPrimary),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${p['codigo'] ?? 'S/C'} • ${p['categoria'] ?? 'Sin categoría'}',
+                          style: GoogleFonts.dmMono(fontSize: 11, color: palette.textDim),
+                        ),
+                      ],
                     ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Stock: $stock',
+                        style: GoogleFonts.dmMono(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: bajo ? palette.errorRed : palette.successGreen,
+                        ),
+                      ),
+                      Text(
+                        'L.${precio.toStringAsFixed(2)}',
+                        style: GoogleFonts.dmMono(fontSize: 11, color: palette.textDim),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         );
       }).toList(),
     );
+  }
+
+  void _verDetalle(Map<String, dynamic> p) {
+    PPNotifications.info(
+      context,
+      '${p['nombre'] ?? 'Producto'} — ${p['codigo'] ?? 'S/C'}',
+      title: 'Detalle de producto',
+    );
+  }
+
+  Future<void> _eliminarProducto(Map<String, dynamic> p) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Eliminar producto', style: TextStyle(color: Theme.of(ctx).colorScheme.onSurface, fontWeight: FontWeight.bold)),
+        content: Text('¿Seguro que deseas eliminar "${p['nombre'] ?? ''}"?', style: TextStyle(color: Theme.of(ctx).hintColor)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString('productos') ?? '[]';
+    final lista = List<Map<String, dynamic>>.from(jsonDecode(json));
+    final codigo = (p['codigo'] ?? '').toString();
+    lista.removeWhere((x) => (x['codigo'] ?? '').toString() == codigo);
+    await prefs.setString('productos', jsonEncode(lista));
+
+    if (mounted) {
+      PPNotifications.success(context, 'Producto eliminado correctamente', title: 'Eliminado');
+      await _cargarDatos();
+    }
   }
 
   String _formatNumber(double number) {

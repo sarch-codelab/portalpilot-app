@@ -6,6 +6,7 @@ import 'package:portal_pilot_app/Modules/RRHH/empleados/empleado_form.dart';
 import 'package:portal_pilot_app/Modules/RRHH/empleados/empleado_list.dart';
 import 'package:portal_pilot_app/Modules/RRHH/nomina/nomina_home.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 
 class RrhhHome extends StatefulWidget {
   const RrhhHome({super.key});
@@ -68,50 +69,14 @@ class _RrhhHomeState extends State<RrhhHome> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Scaffold(
-      backgroundColor: palette.bgPrimary,
-      appBar: AppBar(
-        backgroundColor: palette.appBarColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFFEC4899),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFEC4899), Color(0xFFDB2777)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.people_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'RRHH / NÃ“MINA',
-              style: GoogleFonts.syne(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: palette.textPrimary,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+    return PPModuleScaffold(
+      moduleId: 'rrhh',
+      screenTitle: 'RRHH / Nomina',
+      moduleIcon: Icons.people_rounded,
+      moduleColor: const Color(0xFFEC4899),
+      onNew: _nuevoEmpleado,
+      onRefresh: _cargarDatos,
+      actions: [
           IconButton(
             icon: Icon(
               appThemeNotifier.isDark
@@ -125,34 +90,7 @@ class _RrhhHomeState extends State<RrhhHome> {
             },
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const EmpleadoForm()),
-          );
-          _cargarDatos();
-        },
-        backgroundColor: const Color(0xFFEC4899),
-        icon: const Icon(
-          Icons.person_add_rounded,
-          color: Colors.white,
-          size: 22,
-        ),
-        label: Text(
-          'Nuevo Empleado',
-          style: GoogleFonts.dmSans(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _cargarDatos,
-        color: const Color(0xFFEC4899),
-        backgroundColor: const Color(0xFF1A1A1A),
-        child: ListView(
+      child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
             _buildStatsGrid(),
@@ -167,8 +105,15 @@ class _RrhhHomeState extends State<RrhhHome> {
             const SizedBox(height: 30),
           ],
         ),
-      ),
     );
+  }
+
+  Future<void> _nuevoEmpleado() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const EmpleadoForm()),
+    );
+    _cargarDatos();
   }
 
   Widget _buildStatsGrid() {
