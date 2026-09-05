@@ -355,46 +355,11 @@ class _HomeScreenState extends State<HomeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Image.asset(
-                'assets/img/robot_logo.png',
-                width: 48,
-                height: 48,
-                fit: BoxFit.contain,
-              ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Portal Pilot',
-                    style: GoogleFonts.syne(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    _empresaNombre.isNotEmpty ? _empresaNombre : _empresaCodigo,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      color: const Color(0xFFA3A3A3),
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            // Indicador de conexión para móvil
-            if (isMobile)
+        if (isMobile) ...[
+          // Barra de acciones arriba (derecha)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -429,9 +394,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ],
                 ),
               ),
-            if (isMobile) const SizedBox(width: 12),
-            // Menú hamburguesa para móvil
-            if (isMobile)
+              const SizedBox(width: 8),
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFF111111),
@@ -450,31 +413,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
               ),
-            if (isMobile) const SizedBox(width: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF111111),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0x29FFFFFF)),
-              ),
-              child: Tooltip(
-                message: 'Cambiar tema',
-                child: IconButton(
-                  icon: Icon(
-                    appThemeNotifier.isDark
-                        ? Icons.light_mode_rounded
-                        : Icons.dark_mode_rounded,
-                    color: const Color(0xFF8B5CF6),
-                    size: 16,
-                  ),
-                  onPressed: () async {
-                    await appThemeNotifier.toggle();
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            if (AuthController.instance.esRoot)
+              const SizedBox(width: 8),
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFF111111),
@@ -482,38 +421,171 @@ class _HomeScreenState extends State<HomeScreen>
                   border: Border.all(color: const Color(0x29FFFFFF)),
                 ),
                 child: Tooltip(
-                  message: 'Configuración Multi-Área',
+                  message: 'Cambiar tema',
+                  child: IconButton(
+                    icon: Icon(
+                      appThemeNotifier.isDark
+                          ? Icons.light_mode_rounded
+                          : Icons.dark_mode_rounded,
+                      color: const Color(0xFF8B5CF6),
+                      size: 16,
+                    ),
+                    onPressed: () async {
+                      await appThemeNotifier.toggle();
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111111),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0x29FFFFFF)),
+                ),
+                child: Tooltip(
+                  message: 'Cerrar sesión',
                   child: IconButton(
                     icon: const Icon(
-                      Icons.settings_rounded,
+                      Icons.logout_rounded,
                       color: Color(0xFF8B5CF6),
                       size: 18,
                     ),
-                    onPressed: () => _openMultiAreaConfig(),
+                    onPressed: () => _handleLogout(context),
                   ),
                 ),
               ),
-            const SizedBox(width: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF111111),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0x29FFFFFF)),
-              ),
-              child: Tooltip(
-                message: 'Cerrar sesión',
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.logout_rounded,
-                    color: Color(0xFF8B5CF6),
-                    size: 18,
-                  ),
-                  onPressed: () => _handleLogout(context),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Robot centrado + Portal Pilot debajo
+          Center(
+            child: Column(
+              children: [
+                Image.asset(
+                  'assets/img/robot_logo.png',
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.contain,
                 ),
-              ),
+                const SizedBox(height: 10),
+                Text(
+                  'Portal Pilot',
+                  style: GoogleFonts.syne(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                  maxLines: 1,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ] else ...[
+          // Desktop: row original
+          Row(
+            children: [
+              Image.asset(
+                'assets/img/robot_logo.png',
+                width: 48,
+                height: 48,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Portal Pilot',
+                      style: GoogleFonts.syne(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _empresaNombre.isNotEmpty ? _empresaNombre : _empresaCodigo,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: const Color(0xFFA3A3A3),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111111),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0x29FFFFFF)),
+                ),
+                child: Tooltip(
+                  message: 'Cambiar tema',
+                  child: IconButton(
+                    icon: Icon(
+                      appThemeNotifier.isDark
+                          ? Icons.light_mode_rounded
+                          : Icons.dark_mode_rounded,
+                      color: const Color(0xFF8B5CF6),
+                      size: 16,
+                    ),
+                    onPressed: () async {
+                      await appThemeNotifier.toggle();
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (AuthController.instance.esRoot)
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF111111),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0x29FFFFFF)),
+                  ),
+                  child: Tooltip(
+                    message: 'Configuración Multi-Área',
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.settings_rounded,
+                        color: Color(0xFF8B5CF6),
+                        size: 18,
+                      ),
+                      onPressed: () => _openMultiAreaConfig(),
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111111),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0x29FFFFFF)),
+                ),
+                child: Tooltip(
+                  message: 'Cerrar sesión',
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.logout_rounded,
+                      color: Color(0xFF8B5CF6),
+                      size: 18,
+                    ),
+                    onPressed: () => _handleLogout(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 32),
         Text(
           '$greeting, ${_userName.split(' ').first}',
