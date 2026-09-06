@@ -79,17 +79,17 @@ class _FacturacionHomeState extends State<FacturacionHome> {
     // Cargar resumen de facturas desde el backend
     try {
       final api = ApiService.instance;
-      final result = await api.get('/api/facturas/resumen');
+      final result = await api.get('/api/facturas/resumen', queryParams: {'empresaCodigo': api.empresaCodigo});
       if (result != null && api.isSuccess(result)) {
         final resumen = result['resumen'] ?? result;
         final hoy = DateTime.now();
 
         // También cargar lista para计算 facturasHoy
-        final listResult = await api.get('/api/facturas', queryParams: {'limit': '200'});
+        final listResult = await api.get('/api/facturas', queryParams: {'empresaCodigo': api.empresaCodigo, 'limit': '200'});
         int fHoy = 0;
         double tHoy = 0.0;
         if (listResult != null && api.isSuccess(listResult)) {
-          final facturas = listResult['facturas'] ?? [];
+          final facturas = listResult['facturas'] ?? listResult['data'] ?? [];
           for (final f in (facturas is List ? facturas : [])) {
             final fecha = DateTime.tryParse(f['created_at'] ?? '') ?? DateTime.now();
             if (fecha.year == hoy.year && fecha.month == hoy.month && fecha.day == hoy.day) {

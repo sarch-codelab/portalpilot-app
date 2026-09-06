@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 const String _defaultApiRoot = String.fromEnvironment(
   'WEB_DOMAIN',
-  defaultValue: 'https://portalpilot-app.vercel.app',
+  defaultValue: 'https://portal-pilot.vercel.app',
 );
 
 class ImageService {

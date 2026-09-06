@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String _defaultApiRoot = 'https://portalpilot-app.vercel.app';
+const String _defaultApiRoot = 'https://portal-pilot.vercel.app';
 
 class ApiService {
   ApiService._privateConstructor();

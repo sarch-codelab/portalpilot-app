@@ -2,12 +2,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 
 class PortalPilotDB {
   static const String apiRoot = String.fromEnvironment(
     'API_ROOT',
-    defaultValue: 'https://portalpilot-app.vercel.app',
+    defaultValue: 'https://portal-pilot.vercel.app',
   );
   static const Duration _timeout = Duration(seconds: 20);
 
@@ -127,9 +128,18 @@ class PortalPilotDB {
     return base.replace(queryParameters: query);
   }
 
+  /// Headers con autenticación Bearer para los endpoints de la WEB (producción).
+  static Map<String, String> get _headers {
+    final token = AuthController.instance.token;
+    return {
+      'Content-Type': 'application/json',
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
+
   static Future<dynamic> _postJson(String path, Map<String, dynamic> body) async {
     final response = await http
-        .post(_uri(path), headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))
+        .post(_uri(path), headers: _headers, body: jsonEncode(body))
         .timeout(_timeout);
     if (response.statusCode >= 400) {
       debugPrint('âš ï¸ POST $path -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
@@ -139,7 +149,7 @@ class PortalPilotDB {
   }
 
   static Future<dynamic> _getJson(String path, [Map<String, String>? query]) async {
-    final response = await http.get(_uri(path, query)).timeout(_timeout);
+    final response = await http.get(_uri(path, query), headers: _headers).timeout(_timeout);
     if (response.statusCode != 200) {
       debugPrint('âš ï¸ GET $path -> ${response.statusCode}');
       return null;
@@ -160,11 +170,10 @@ class PortalPilotDB {
 
   static Future<bool> anularFactura({required String id, required String empresaCodigo}) async {
     try {
-      final uri = _uri('/api/facturas', {'id': id});
       final response = await http
           .patch(
-            uri,
-            headers: {'Content-Type': 'application/json'},
+            _uri('/api/facturas/$id'),
+            headers: _headers,
             body: jsonEncode({
               'estado': 'anulada',
               'fecha_anulacion': DateTime.now().toIso8601String(),
@@ -218,14 +227,14 @@ class PortalPilotDB {
     }
   }
 
-  /// Productos - borrar en backend (por empresa_codigo + codigo)
-  static Future<bool> deleteProducto({required String codigo, required String empresaCodigo}) async {
+  /// Productos - borrar en backend (por id en la WEB)
+  static Future<bool> deleteProducto({required String id, required String codigo, required String empresaCodigo}) async {
     try {
+      if (id.isEmpty) return false;
       final response = await http
           .delete(
-            _uri('/api/productos'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'empresa_codigo': empresaCodigo, 'codigo': codigo}),
+            _uri('/api/productos/$id'),
+            headers: _headers,
           )
           .timeout(_timeout);
       if (response.statusCode >= 400) {
@@ -411,7 +420,7 @@ class UserModel {
       rango: user['rango']?.toString(),
       status: user['status']?.toString() ?? 'active',
       empresaCodigo: (user['empresa_codigo'] ?? '').toString().trim().toUpperCase(),
-      empresaNombre: user['empresa_nombre']?.toString(),
+      empresaNombre: user['empresa_nombre']?.toString() ?? user['tenant']?.toString(),
       token: token,
     );
   }

@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/services/navi_rules.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 
-const String _defaultAiApiRoot = 'https://portalpilot-app.vercel.app';
+const String _defaultAiApiRoot = 'https://portal-pilot.vercel.app';
 
 class AIResponse {
   final String text;

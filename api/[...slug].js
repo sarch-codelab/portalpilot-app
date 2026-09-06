@@ -16,6 +16,7 @@ const routes = {
   'compras': comprasHandler,
   'cotizaciones': cotizacionesHandler,
   'facturas': facturasHandler,
+  'facturas/resumen': facturasResumenHandler,
   'matriculas': matriculasHandler,
   'matriculas/stats': matriculasStatsHandler,
   'notas': notasHandler,
@@ -108,7 +109,7 @@ function loginHandler(req, res) {
 
   const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || '';
-  const jwtSecret = process.env.JWT_SECRET || 'portalpilot_production_jwt_secret_key_2026_secure';
+  const jwtSecret = process.env.JWT_SECRET || '';
 
   if (!supabaseUrl || !supabaseKey) {
     return res.status(503).json({ error: 'Supabase no estÃ¡ configurado en las variables de entorno de Vercel (SUPABASE_URL / SUPABASE_SERVICE_KEY).' });
@@ -713,7 +714,7 @@ async function clientesHandler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const empresaCodigo = req.query?.empresaCodigo || '';
+      const empresaCodigo = req.query?.empresaCodigo || empresaFromAuth(req);
       if (!empresaCodigo) return ok(res, []);
 
       const result = await supabaseRequest(
@@ -806,7 +807,7 @@ async function facturasHandler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const empresaCodigo = req.query?.empresaCodigo || '';
+      const empresaCodigo = req.query?.empresaCodigo || empresaFromAuth(req);
       if (!empresaCodigo) return ok(res, []);
 
       const result = await supabaseRequest(
@@ -882,6 +883,94 @@ async function facturasHandler(req, res) {
   }
 }
 
+// Extrae empresa_codigo del JWT (Authorization: Bearer <token>), con respaldo
+// al query param ?empresaCodigo= que usa el portal web.
+function empresaFromAuth(req) {
+  try {
+    const h = req.headers?.authorization || '';
+    const tk = h.startsWith('Bearer ') ? h.slice(7) : h;
+    if (!tk) return '';
+    const parts = tk.split('.');
+    if (parts.length !== 3) return '';
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'));
+    return payload.empresa_codigo || payload.tenant || '';
+  } catch {
+    return '';
+  }
+}
+
+// Resumen de facturas para el home de Facturación (períodos hoy/mes + acumulado).
+async function facturasResumenHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Metodo no permitido' });
+
+  const vacio = { resumen: { total_facturas: 0, total_facturado: 0, facturas_hoy: 0, facturado_hoy: 0, facturas_mes: 0, facturado_mes: 0 } };
+  try {
+    const empresaCodigo = req.query?.empresaCodigo || empresaFromAuth(req);
+    if (!empresaCodigo) return ok(res, vacio);
+
+    const select = 'select=total,estado,created_at';
+    let result = await supabaseRequest(
+      `/facturas?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&${select}&order=created_at.desc&limit=10000`
+    );
+    let rows = [];
+    if (result.status >= 400) {
+      const all = await supabaseRequest(`/facturas?${select}&limit=5000`);
+      if (all.status >= 400) return fail(res, { message: all.body });
+      const allRows = JSON.parse(all.body || '[]');
+      const empresas = await supabaseRequest('/empresas?select=id,codigo');
+      let mapa = {};
+      try {
+        const empRows = JSON.parse(empresas.body || '[]');
+        empRows.forEach((e) => (mapa[e.id] = e.codigo));
+      } catch {}
+      rows = allRows.filter((r) => mapa[r.empresa_id] === empresaCodigo);
+    } else {
+      rows = JSON.parse(result.body || '[]');
+    }
+
+    const ahora = new Date();
+    let totalFacturas = 0, totalFacturado = 0;
+    let hoy = 0, hoyTotal = 0;
+    let mes = 0, mesTotal = 0;
+    for (const f of rows) {
+      const estado = String(f.estado || '').toLowerCase();
+      if (estado === 'anulada') continue;
+      const t = Number(f.total) || 0;
+      totalFacturas++;
+      totalFacturado += t;
+      const d = f.created_at ? new Date(f.created_at) : null;
+      if (d && !isNaN(d.getTime())) {
+        if (d.getFullYear() === ahora.getFullYear() && d.getMonth() === ahora.getMonth() && d.getDate() === ahora.getDate()) {
+          hoy++;
+          hoyTotal += t;
+        }
+        if (d.getFullYear() === ahora.getFullYear() && d.getMonth() === ahora.getMonth()) {
+          mes++;
+          mesTotal += t;
+        }
+      }
+    }
+    return ok(res, {
+      resumen: {
+        total_facturas: totalFacturas,
+        total_facturado: totalFacturado,
+        facturas_hoy: hoy,
+        facturado_hoy: hoyTotal,
+        facturas_mes: mes,
+        facturado_mes: mesTotal,
+      },
+    });
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
 function matriculasHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -931,7 +1020,7 @@ async function productosHandler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const empresaCodigo = req.query?.empresaCodigo || '';
+      const empresaCodigo = req.query?.empresaCodigo || empresaFromAuth(req);
       if (!empresaCodigo) return ok(res, []);
 
       const result = await supabaseRequest(

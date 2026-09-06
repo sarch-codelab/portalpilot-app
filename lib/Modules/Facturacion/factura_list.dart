@@ -48,9 +48,9 @@ class _FacturaListState extends State<FacturaList> {
     // Cargar facturas desde el backend
     try {
       final api = ApiService.instance;
-      final result = await api.get('/api/facturas', queryParams: {'limit': '200'});
+      final result = await api.get('/api/facturas', queryParams: {'empresaCodigo': api.empresaCodigo, 'limit': '200'});
       if (result != null && api.isSuccess(result)) {
-        final remotas = result['facturas'] ?? [];
+        final remotas = result['facturas'] ?? result['data'] ?? [];
         if (remotas is List && remotas.isNotEmpty) {
           final remotasMaps = remotas.map((r) => Map<String, dynamic>.from(r)).toList();
           final sincronizadas = _fusionarFacturas(locales, remotasMaps);

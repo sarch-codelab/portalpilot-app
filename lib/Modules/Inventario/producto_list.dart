@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
@@ -133,14 +134,27 @@ class _ProductoListState extends State<ProductoList> {
       
       debugPrint('📡 Sincronizando productos de Supabase para empresa: $empresaCodigo');
       
-      final url = Uri.parse('https://portalpilot-app.vercel.app/api/productos?empresaCodigo=$empresaCodigo');
+      final url = Uri.parse('${PortalPilotDB.apiRoot}/api/productos?empresaCodigo=$empresaCodigo');
       debugPrint('🌐 URL completa: $url');
-      
-      final response = await http.get(url);
+
+      final token = AuthController.instance.token;
+      final headers = {
+        if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+      };
+      final response = await http.get(url, headers: headers);
       debugPrint('📥 Status code: ${response.statusCode}');
-      
+
       if (response.statusCode == 200) {
-        final List<dynamic> productosData = jsonDecode(response.body);
+        final decoded = jsonDecode(response.body);
+        final List<dynamic> productosData;
+        if (decoded is List) {
+          productosData = decoded;
+        } else if (decoded is Map) {
+          final arr = decoded['productos'];
+          productosData = arr is List ? arr : [];
+        } else {
+          productosData = [];
+        }
         debugPrint('📦 Productos recibidos: ${productosData.length}');
         
         if (productosData.isNotEmpty) {
