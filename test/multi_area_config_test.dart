@@ -17,7 +17,7 @@ void main() {
     test('porId devuelve el área correcta', () {
       expect(AreasNegocio.porId('retail').id, AreasNegocio.retail);
       expect(AreasNegocio.porId('CANAL_TRADICIONAL').id, AreasNegocio.canalTradicional);
-      expect(AreasNegocio.porId('Educacion').id, AreasNegocio.educacion);
+      expect(AreasNegocio.porId('General').id, AreasNegocio.general);
     });
 
     test('área desconocida cae a retail (default Honduras)', () {
@@ -41,7 +41,6 @@ void main() {
         'inventario',
       ]);
       expect(AreasNegocio.modulosPorDefecto('general'), [
-        'educacion',
         'facturacion',
         'inventario',
         'contabilidad',
@@ -128,11 +127,11 @@ void main() {
       final config = MultiAreaConfig.instance;
       await config.cargar(empresaCodigo: 'EMPRESA-1', areaNegocio: 'retail');
 
-      await config.setModuloActivo('educacion', true);
-      expect(config.moduloActivo('educacion'), isTrue);
+      await config.setModuloActivo('analytics', true);
+      expect(config.moduloActivo('analytics'), isTrue);
 
-      await config.setModuloActivo('educacion', false);
-      expect(config.moduloActivo('educacion'), isFalse);
+      await config.setModuloActivo('analytics', false);
+      expect(config.moduloActivo('analytics'), isFalse);
     });
 
     test('restablecerPorArea vuelve a los defaults del área', () async {
@@ -170,7 +169,7 @@ void main() {
         modulosAsignados: const [],
       );
 
-      expect(config.moduloActivo('educacion'), isTrue);
+      expect(config.moduloActivo('analytics'), isTrue);
       expect(config.moduloActivo('pos'), isTrue);
       expect(config.modulosActivos.length, AreasNegocio.todosModulos.length);
     });

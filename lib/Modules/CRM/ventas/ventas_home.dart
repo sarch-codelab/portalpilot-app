@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Modules/CRM/ventas/venta_form.dart';
+import 'package:portal_pilot_app/Shared/widgets/read_only_guard.dart';
 
 class VentasHome extends StatefulWidget {
   const VentasHome({super.key});
@@ -69,7 +70,10 @@ class _VentasHomeState extends State<VentasHome> {
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async { await Navigator.push(context, MaterialPageRoute(builder: (_) => const VentaForm())); _cargar(); },
+        onPressed: () async {
+          if (ReadOnlyGuard.bloqueado(context)) return;
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const VentaForm())); _cargar();
+        },
         backgroundColor: const Color(0xFFF59E0B),
         icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
         label: Text('Nueva Venta', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white)),

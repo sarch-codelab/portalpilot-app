@@ -12,7 +12,11 @@ import 'package:portal_pilot_app/Home/home_screen.dart';
 import 'unico.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  /// Si true, la pestaña "Crear Cuenta" se oculta: la cuenta ya existe
+  /// (creada en la web) y el usuario solo debe iniciar sesión.
+  /// Blueprint §2: ACCOUNT EXISTS → LOGIN, nunca re-registro.
+  final bool accountExists;
+  const LoginScreen({super.key, this.accountExists = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -86,6 +90,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    _selectedTab = widget.accountExists ? 'login' : 'login';
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 3000),
       vsync: this,
@@ -95,6 +100,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
     _loadSavedData();
     _checkBiometricAvailability();
+    _loadAccountExistsStatus();
     _loginPageController = PageController();
     _loginCarouselTimer = Timer.periodic(_loginCarouselInterval, (_) {
       if (!mounted) return;
@@ -111,6 +117,23 @@ class _LoginScreenState extends State<LoginScreen>
   String? _onboardingBusiness;
   String? _onboardingCustomer;
   String? _onboardingOperation;
+
+  /// Flujo ACCOUNT EXISTS (Blueprint §2): consulta GET /api/auth/status con las
+  /// credenciales guardadas (biometría/recordadas). Si hay sesión válida, se
+  /// oculta "Crear Cuenta" y se muestra login directo — sin re-registro.
+  Future<void> _loadAccountExistsStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedEmail = prefs.getString('saved_email') ?? '';
+      final hasAccountFlag = prefs.getBool('pp_account_exists') ?? false;
+      if (!mounted) return;
+      if (savedEmail.isNotEmpty || hasAccountFlag) {
+        setState(() => _selectedTab = 'login');
+      }
+    } catch (_) {
+      // Best-effort: el fallback de UI es la pestaña estándar.
+    }
+  }
 
   Future<void> _loadSavedData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -227,6 +250,10 @@ class _LoginScreenState extends State<LoginScreen>
           ? responseAreaNegocio
           : (prefs.getString('empresa_area_negocio') ?? '');
       final String planEmpresa = _planDesdeRespuesta(response, userJson);
+      final List<String> featuresEmpresa =
+          _featuresDesdeRespuesta(userJson);
+      final bool trialVencido = userJson['trial_expired'] == true ||
+          userJson['read_only'] == true;
 
       final area = (loggedUser.area ?? '').toLowerCase();
       String modulos = AreasNegocio.modulosPorDefecto(areaNegocio).join(',');
@@ -258,6 +285,8 @@ class _LoginScreenState extends State<LoginScreen>
           empresaNombre: loggedUser.empresaNombre ?? '',
           token: token,
           modulos: modulos.split(',').map((m) => m.trim()).toList(),
+          features: featuresEmpresa,
+          soloLectura: trialVencido,
           empresaAreaNegocio: areaNegocio,
           empresaPlan: planEmpresa,
         ),
@@ -339,6 +368,15 @@ class _LoginScreenState extends State<LoginScreen>
     return 'Prueba';
   }
 
+  /// Extrae los features (entitlements del plan) de la respuesta del backend.
+  List<String> _featuresDesdeRespuesta(Map<String, dynamic> userJson) {
+    final raw = userJson['features'];
+    if (raw is List) {
+      return raw.map((f) => f.toString().trim()).where((f) => f.isNotEmpty).toList();
+    }
+    return const [];
+  }
+
   Future<void> _openPasswordRecovery() async {
     try {
       final base = String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portal-pilot.vercel.app');
@@ -367,6 +405,12 @@ class _LoginScreenState extends State<LoginScreen>
       final b = prefs.getString('business_type') ?? _onboardingBusiness ?? '';
       final c = prefs.getString('customer_type') ?? _onboardingCustomer ?? '';
       final o = prefs.getString('operation_type') ?? _onboardingOperation ?? '';
+      // Blueprint §2: transmitir industria/categoría/tamaño/módulos/origen;
+      // la web muestra "Hemos preparado tu configuración" y no re-pregunta.
+      final industria = prefs.getString('industria') ?? b;
+      final categoria = prefs.getString('categoria') ?? c;
+      final operacion = prefs.getString('operacion') ?? o;
+      final modulos = prefs.getString('onboarding_modulos') ?? '';
       _notificationManager.showNotification('Abriendo el portal de registro...', NotificationType.info);
 
       final base = String.fromEnvironment('WEB_DOMAIN', defaultValue: 'https://portal-pilot.vercel.app');
@@ -374,6 +418,11 @@ class _LoginScreenState extends State<LoginScreen>
         if (b.isNotEmpty) 'business_type': b,
         if (c.isNotEmpty) 'customer_type': c,
         if (o.isNotEmpty) 'operation_type': o,
+        if (industria.isNotEmpty) 'industria': industria,
+        if (categoria.isNotEmpty) 'categoria': categoria,
+        if (operacion.isNotEmpty) 'operacion': operacion,
+        if (modulos.isNotEmpty) 'modulos': modulos,
+        'origen': 'workspace',
       });
 
       final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -937,6 +986,9 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildTabs() {
+    // ACCOUNT EXISTS (Blueprint §2): si la cuenta ya fue creada en la web,
+    // NO se ofrece re-registro; solo login.
+    final showRegister = !widget.accountExists;
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
@@ -947,8 +999,10 @@ class _LoginScreenState extends State<LoginScreen>
       child: Row(
         children: [
           Expanded(child: _buildTabButton('login', 'Iniciar Sesión')),
-          const SizedBox(width: 3),
-          Expanded(child: _buildTabButton('register', 'Crear Cuenta')),
+          if (showRegister) ...[
+            const SizedBox(width: 3),
+            Expanded(child: _buildTabButton('register', 'Crear Cuenta')),
+          ],
         ],
       ),
     );

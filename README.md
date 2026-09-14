@@ -286,7 +286,11 @@ Para imágenes de productos, seguir `docs/supabase_storage_setup.md` (bucket pú
 
 ### 3. API (Vercel)
 
-Desplegar la carpeta raíz con `vercel` (el despachador vive en `api/[...slug].js`). Configurar las variables de entorno de la API en el dashboard, incluyendo `GROQ_API_KEY`.
+> **IMPORTANTE (2026-09-14): la API de la app es `PP Web/backend/server.js`, desplegada en
+> `https://portal-pilot.vercel.app`.** El despachador `api/[...slug].js` de este repo está
+> **OBSOLETO y SIN CONSUMIDOR** (ver `../PP Web/CONSOLIDACION_API.md`): la app Flutter apunta al
+> backend central y TODAS las rutas que usa ya existen allí. No se desarrolla nada nuevo en el
+> despachador legacy. No requiere despliegue ni variables de entorno propias.
 
 ---
 

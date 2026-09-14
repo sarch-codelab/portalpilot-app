@@ -24,6 +24,8 @@ class AuthController extends ChangeNotifier {
   String _empresaPlan = 'Prueba';
   String _token = '';
   List<String> _modulos = const [];
+  List<String> _features = const [];
+  bool _soloLectura = false;
   bool _isLoggedIn = false;
 
   String get nombre => _nombre;
@@ -39,6 +41,11 @@ class AuthController extends ChangeNotifier {
   String get token => _token;
   bool get isLoggedIn => _isLoggedIn;
   List<String> get modulos => _modulos;
+  List<String> get features => _features;
+
+  /// Verdadero cuando el trial de 15 días venció sin pago: la empresa puede
+  /// consultar y exportar datos, pero no registrar movimientos nuevos.
+  bool get soloLectura => _soloLectura;
 
   String get nombreCompleto {
     final n = _nombre.trim();
@@ -51,6 +58,14 @@ class AuthController extends ChangeNotifier {
       _empresaCodigo.toUpperCase() == 'ROOT' ||
       _rol.toLowerCase().contains('root') ||
       _rol.toLowerCase().contains('admin');
+
+  /// Devuelve `true` si el tenant tiene la feature indicada en su plan.
+  /// ROOT siempre tiene acceso a todo.
+  bool tieneFeature(String feature) {
+    if (esRoot) return true;
+    if (_features.isEmpty) return true; // sesión antigua sin features cargadas → no bloquear
+    return _features.contains(feature);
+  }
 
   /// Carga la sesión persistida desde SharedPreferences (arranque de la app).
   Future<void> restore() async {
@@ -74,6 +89,15 @@ class AuthController extends ChangeNotifier {
               .where((m) => m.isNotEmpty)
               .toList()
         : const ['facturacion', 'inventario', 'contabilidad', 'rrhh', 'crm', 'pos', 'comercial', 'membresias'];
+    final featuresRaw = prefs.getString('empresa_features') ?? '';
+    _features = featuresRaw.isNotEmpty
+        ? featuresRaw
+              .split(',')
+              .map((f) => f.trim())
+              .where((f) => f.isNotEmpty)
+              .toList()
+        : const [];
+    _soloLectura = prefs.getBool('empresa_solo_lectura') ?? false;
     _isLoggedIn = _token.isNotEmpty;
     notifyListeners();
   }
@@ -90,6 +114,8 @@ class AuthController extends ChangeNotifier {
     required String empresaNombre,
     required String token,
     List<String>? modulos,
+    List<String>? features,
+    bool? soloLectura,
     String? empresaAreaNegocio,
     String? empresaPlan,
   }) async {
@@ -106,6 +132,8 @@ class AuthController extends ChangeNotifier {
     _token = token;
     _isLoggedIn = true;
     if (modulos != null) _modulos = modulos;
+    if (features != null) _features = features;
+    if (soloLectura != null) _soloLectura = soloLectura;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('saved_email', email);
@@ -121,6 +149,8 @@ class AuthController extends ChangeNotifier {
     await prefs.setString('empresa_plan', _empresaPlan);
     await prefs.setString('auth_token', token);
     await prefs.setString('user_modulos', _modulos.join(','));
+    await prefs.setString('empresa_features', _features.join(','));
+    await prefs.setBool('empresa_solo_lectura', _soloLectura);
     notifyListeners();
     Logger().audit(
       'login',
@@ -154,8 +184,21 @@ class AuthController extends ChangeNotifier {
   /// Actualiza el plan de la empresa en tiempo real (cambio de suscripción).
   Future<void> setPlan(String plan) async {
     _empresaPlan = normalizarPlan(plan);
+    // Un plan pagado sale del modo solo lectura.
+    if (_empresaPlan != 'Prueba' && _soloLectura) {
+      await marcarSoloLectura(activo: false);
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('empresa_plan', _empresaPlan);
+    notifyListeners();
+  }
+
+  /// Activa/desactiva el modo solo lectura (trial vencido) y lo persiste.
+  Future<void> marcarSoloLectura({bool activo = true}) async {
+    if (_soloLectura == activo) return;
+    _soloLectura = activo;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('empresa_solo_lectura', activo);
     notifyListeners();
   }
 
@@ -174,6 +217,8 @@ class AuthController extends ChangeNotifier {
     _empresaPlan = 'Prueba';
     _token = '';
     _modulos = const [];
+    _features = const [];
+    _soloLectura = false;
     _isLoggedIn = false;
 
     final prefs = await SharedPreferences.getInstance();
@@ -189,6 +234,8 @@ class AuthController extends ChangeNotifier {
     await prefs.remove('empresa_plan');
     await prefs.remove('auth_token');
     await prefs.remove('user_modulos');
+    await prefs.remove('empresa_features');
+    await prefs.remove('empresa_solo_lectura');
     notifyListeners();
     Logger().audit(
       'logout',

@@ -3,6 +3,7 @@ import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/utils/mobile_utils.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_app_shell.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_skeleton.dart';
+import 'package:portal_pilot_app/Shared/widgets/read_only_guard.dart';
 
 /// Scaffold de módulo Portal Pilot todo-en-uno.
 ///
@@ -81,7 +82,12 @@ class PPModuleScaffold extends StatelessWidget {
       moduleIcon: moduleIcon,
       moduleColor: moduleColor,
       actions: actions,
-      onNew: onNew,
+      onNew: onNew == null
+          ? null
+          : () {
+              if (ReadOnlyGuard.bloqueado(context)) return;
+              onNew!();
+            },
       onGlobalSearch: onGlobalSearch,
       onLogout: onLogout,
       immersive: immersive,

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 
 const String _defaultApiRoot = 'https://portal-pilot.vercel.app';
 
@@ -157,7 +158,24 @@ class ApiService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return data is Map<String, dynamic> ? data : {'data': data};
       }
-      return {'error': data['error'] ?? 'Error ${response.statusCode}', 'statusCode': response.statusCode};
+      final code = data is Map<String, dynamic> ? data['code'] : null;
+      if (code == 'TRIAL_EXPIRED') {
+        try {
+          AuthController.instance.marcarSoloLectura(activo: true);
+        } catch (_) {}
+        return {
+          'error': (data is Map<String, dynamic> && data['error'] != null)
+              ? data['error'].toString()
+              : 'Tu prueba venció. La plataforma está en modo solo lectura.',
+          'statusCode': response.statusCode,
+          'code': 'TRIAL_EXPIRED',
+          'readOnly': true,
+        };
+      }
+      return {
+        'error': data is Map<String, dynamic> ? (data['error'] ?? 'Error ${response.statusCode}').toString() : 'Error ${response.statusCode}',
+        'statusCode': response.statusCode,
+      };
     } catch (e) {
       return {'error': 'Error parsing response: $e', 'statusCode': response.statusCode};
     }

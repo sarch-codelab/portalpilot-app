@@ -1,5 +1,32 @@
 import 'package:flutter/material.dart';
 
+/// Feature de plan requerida por cada módulo de la app.
+/// `null` = el módulo está disponible en todos los planes.
+/// Los valores deben coincidir con `PLAN_ENTITLEMENTS` del backend.
+const Map<String, String?> moduloFeatureRequerida = {
+  'chat_ia': 'ia',
+  'facturacion': 'facturacion_sar',
+  'inventario': 'inventario',
+  'contabilidad': 'operacion_completa',
+  'rrhh': 'operacion_completa',
+  'crm': 'clientes',
+  'pos': 'pos',
+  'comercial': 'compras',
+  'membresias': 'membresias',
+  'canal_moderno': 'sucursales',
+  'canal_tradicional': 'canal_tradicional',
+  'cotizaciones': 'operacion_completa',
+  'compras_proveedores': 'compras',
+  'sector_retail': 'operacion_completa',
+  'settings': null,
+  'analytics': 'reportes',
+  'supply_chain': 'fleet',
+  'crm_advanced': 'reportes_avanzados',
+  'fiscal_advanced': 'reportes_avanzados',
+  'seguridad': 'seguridad_avanzada',
+  'multi_empresa': 'multiempresa',
+};
+
 class Modulo {
   final String id;
   final String nombre;

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Auth/login.dart';
+import 'package:portal_pilot_app/Home/home_screen.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/onboarding/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -99,6 +101,17 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _navigateToLogin() async {
     if (!mounted) return;
+    // SESSION RESTORE: si ya hay una sesión persistida (token), se omite el
+    // Login y se entra directo al Workspace. Blueprint: no pedir credenciales
+    // dos veces cuando el usuario ya está autenticado.
+    await AuthController.instance.restore();
+    if (!mounted) return;
+    if (AuthController.instance.isLoggedIn) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     final completed = prefs.getBool('onboarding_completed') ?? false;
     if (!mounted) return;

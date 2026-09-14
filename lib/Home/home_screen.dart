@@ -227,6 +227,12 @@ class _HomeScreenState extends State<HomeScreen>
       _modulosDisponibles = visibles;
     }
 
+    // Gateo por plan: oculta módulos cuya feature no esté contratada.
+    _modulosDisponibles = _modulosDisponibles.where((m) {
+      final required = moduloFeatureRequerida[m.id];
+      return required == null || AuthController.instance.tieneFeature(required);
+    }).toList();
+
     if (_modulosDisponibles.isEmpty) {
       _modulosDisponibles = Modulo.modulosDisponibles
           .where((m) => m.id == 'chat_ia')
@@ -631,6 +637,10 @@ class _HomeScreenState extends State<HomeScreen>
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               _buildHeader(isMobile),
+              if (AuthController.instance.soloLectura) ...[
+                const SizedBox(height: 16),
+                _buildReadOnlyBanner(isMobile),
+              ],
               const SizedBox(height: 24),
               _buildModuleSearch(isMobile),
               const SizedBox(height: 32),
@@ -676,6 +686,73 @@ class _HomeScreenState extends State<HomeScreen>
           sliver: SliverToBoxAdapter(child: _buildFooter()),
         ),
       ],
+    );
+  }
+
+  Widget _buildReadOnlyBanner(bool isMobile) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF7F1D1D),
+            const Color(0xFFB91C1C).withValues(alpha: 0.85),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFCA5A5).withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7F1D1D).withValues(alpha: 0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.lock_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Prueba vencida · Modo solo lectura',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Puedes consultar y exportar tus datos, pero no registrar movimientos nuevos. Renueva tu plan para continuar operando.',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11.5,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
