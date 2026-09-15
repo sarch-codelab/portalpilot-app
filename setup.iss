@@ -4,7 +4,7 @@
 ; ═══════════════════════════════════════════════════════════════
 
 #define MyAppName "Portal Pilot"
-#define MyAppVersion "0.1.5"
+#define MyAppVersion "1.0.7"
 #define MyAppPublisher "sarch-codelab"
 #define MyAppURL "https://github.com/sarch-codelab/portalpilot-app"
 #define MyAppExeName "PortalPilotWorkspace.exe"
