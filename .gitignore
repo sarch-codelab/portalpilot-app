@@ -67,3 +67,6 @@ app.*.map.json
 
 # Local distribution builds
 /compilaciones/
+
+# Entorno local de Python (no es parte del release)
+.venv/

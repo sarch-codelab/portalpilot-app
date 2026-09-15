@@ -137,6 +137,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _loadSavedData() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('saved_password');
     _emailController.text = prefs.getString('saved_email') ?? '';
     final b = prefs.getString('business_type');
     final c = prefs.getString('customer_type');
@@ -169,23 +170,25 @@ class _LoginScreenState extends State<LoginScreen>
     
     final prefs = await SharedPreferences.getInstance();
     final savedEmail = prefs.getString('saved_email');
-    final savedPassword = prefs.getString('saved_password');
-    
-    if (savedEmail == null || savedPassword == null) {
+
+    if (savedEmail == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay credenciales guardadas para autenticación biométrica')),
+        const SnackBar(content: Text('No hay correo guardado para autenticación biométrica')),
       );
       return;
     }
-    
+
     final authenticated = await BiometricService.instance.authenticate(
       localizedReason: 'Inicia sesión con tu huella o Face ID',
     );
-    
+
     if (authenticated && mounted) {
       _emailController.text = savedEmail;
-      _passwordController.text = savedPassword;
-      await _handleLogin();
+      _passwordController.text = '';
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Verificación biométrica exitosa. Ingresa tu contraseña.')),
+      );
     }
   }
 
@@ -193,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen>
     if (_biometricEnabled) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('saved_email', email);
-      await prefs.setString('saved_password', password);
+      await prefs.remove('saved_password');
     }
   }
 

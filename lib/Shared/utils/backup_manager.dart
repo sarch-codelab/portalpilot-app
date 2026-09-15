@@ -35,7 +35,7 @@ class BackupManager {
       backupData['metadata'] = {
         'version': '1.0.0',
         'created_at': timestamp.toIso8601String(),
-        'app_version': '1.0.0', // Actualizar con versión real
+        'app_version': '1.0.7', // Actualizar con versión real
         'platform': Platform.operatingSystem,
       };
 

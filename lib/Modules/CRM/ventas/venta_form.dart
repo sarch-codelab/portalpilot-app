@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 class VentaForm extends StatefulWidget {
   const VentaForm({super.key});
@@ -22,25 +21,29 @@ class _VentaFormState extends State<VentaForm> {
 
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
-    final prefs = await SharedPreferences.getInstance();
-    final list = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('ventas_crm') ?? '[]'));
-    list.add({
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+    final api = ApiService.instance;
+    final result = await api.post('/api/ventas-crm', body: {
       'cliente': _clienteCtrl.text.trim(),
       'descripcion': _descripcionCtrl.text.trim(),
       'monto': double.tryParse(_montoCtrl.text) ?? 0.0,
       'estado': _estado,
-      'fecha': DateTime.now().toIso8601String(),
     });
-    await prefs.setString('ventas_crm', jsonEncode(list));
-    if (mounted) {
+    if (!mounted) return;
+    if (api.isSuccess(result)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Venta guardada correctamente', style: GoogleFonts.dmSans()),
+          content: Text('Venta registrada en el sistema', style: GoogleFonts.dmSans()),
           backgroundColor: const Color(0xFF10B981),
         ),
       );
-      Navigator.pop(context);
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar: ${result['error'] ?? 'sin conexión con el servidor'}', style: GoogleFonts.dmSans()),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
     }
   }
 

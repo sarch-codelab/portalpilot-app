@@ -309,7 +309,7 @@ class _SplashScreenState extends State<SplashScreen>
                               return Opacity(
                                 opacity: _versionFade.value,
                                 child: Text(
-                                  'v1.0.0',
+                                  'v1.0.7',
                                   style: GoogleFonts.spaceGrotesk(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,

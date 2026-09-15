@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Modules/CRM/ventas/venta_form.dart';
 import 'package:portal_pilot_app/Shared/widgets/read_only_guard.dart';
 
@@ -34,23 +33,32 @@ class _VentasHomeState extends State<VentasHome> {
   void initState() { super.initState(); _cargar(); }
 
   Future<void> _cargar() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() => _ventas = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('ventas_crm') ?? '[]')));
+    final api = ApiService.instance;
+    final result = await api.get('/api/ventas-crm');
+    if (api.isSuccess(result)) {
+      final ventas = result['ventas'] ?? [];
+      if (mounted) {
+        setState(() => _ventas = (ventas is List) ? ventas.map((v) => Map<String, dynamic>.from(v)).toList() : <Map<String, dynamic>>[]);
+      }
+    } else {
+      debugPrint('Error cargando ventas del backend: ${result['error']}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudieron cargar las ventas desde el servidor')),
+        );
+      }
+    }
   }
 
   Future<void> _cambiarEstado(String id, String nuevoEstado) async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('ventas_crm') ?? '[]'));
-    final idx = list.indexWhere((v) => v['id'] == id);
-    if (idx != -1) { list[idx]['estado'] = nuevoEstado; await prefs.setString('ventas_crm', jsonEncode(list)); }
+    final api = ApiService.instance;
+    await api.patch('/api/ventas-crm/$id', body: {'estado': nuevoEstado});
     _cargar();
   }
 
   Future<void> _eliminar(String id) async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('ventas_crm') ?? '[]'));
-    list.removeWhere((v) => v['id'] == id);
-    await prefs.setString('ventas_crm', jsonEncode(list));
+    final api = ApiService.instance;
+    await api.delete('/api/ventas-crm/$id');
     _cargar();
   }
 
