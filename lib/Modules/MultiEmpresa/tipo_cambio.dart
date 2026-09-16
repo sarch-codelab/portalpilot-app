@@ -68,7 +68,7 @@ class _TipoCambioState extends State<TipoCambio> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddTasaDialog(),
         backgroundColor: const Color(0xFF10B981),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Tasa',
           style: GoogleFonts.dmSans(

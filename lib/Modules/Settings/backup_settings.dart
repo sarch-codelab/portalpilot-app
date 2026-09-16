@@ -121,7 +121,7 @@ class _BackupSettingsState extends State<BackupSettings> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.cloud_upload_rounded, color: appPalette.cardColor, size: 32),
+          Icon(Icons.cloud_upload_rounded, color: appPalette.cardColor, size: 32),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -147,7 +147,7 @@ class _BackupSettingsState extends State<BackupSettings> {
             ),
           ),
           _isCreatingBackup
-              ? const SizedBox(
+              ? SizedBox(
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(

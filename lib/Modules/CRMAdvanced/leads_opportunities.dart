@@ -100,7 +100,7 @@ class _LeadsOpportunitiesState extends State<LeadsOpportunities> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddLeadDialog(),
         backgroundColor: const Color(0xFF8B5CF6),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nuevo Lead',
           style: GoogleFonts.dmSans(

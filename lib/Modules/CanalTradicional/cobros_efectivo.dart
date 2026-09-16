@@ -95,7 +95,7 @@ class _CobrosEfectivoState extends State<CobrosEfectivo> {
           _showAddCobroDialog();
         },
         backgroundColor: const Color(0xFF10B981),
-        icon: const Icon(Icons.payments_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.payments_rounded, color: appPalette.cardColor),
         label: Text(
           'Nuevo Cobro',
           style: GoogleFonts.dmSans(

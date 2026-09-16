@@ -147,7 +147,7 @@ class _ConfiguracionImpuestosState extends State<ConfiguracionImpuestos> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddImpuestoDialog(),
         backgroundColor: const Color(0xFF8B5CF6),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nuevo Impuesto',
           style: GoogleFonts.dmSans(
@@ -343,7 +343,7 @@ class _ConfiguracionImpuestosState extends State<ConfiguracionImpuestos> {
                   ),
                 ),
               ),
-              items: const [
+              items: [
                 DropdownMenuItem(value: 'Ventas', child: Text('Ventas')),
                 DropdownMenuItem(value: 'Retencion', child: Text('Retencion')),
                 DropdownMenuItem(value: 'Fijo', child: Text('Fijo')),

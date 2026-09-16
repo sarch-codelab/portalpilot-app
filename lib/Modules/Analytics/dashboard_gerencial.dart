@@ -678,7 +678,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.auto_awesome_rounded, color: appPalette.cardColor, size: 18),
+                  Icon(Icons.auto_awesome_rounded, color: appPalette.cardColor, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -691,7 +691,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, color: appPalette.cardColor, size: 18),
+                    icon: Icon(Icons.close_rounded, color: appPalette.cardColor, size: 18),
                     onPressed: _toggleAIChat,
                   ),
                 ],
@@ -781,7 +781,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
                   height: 34,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const RadialGradient(
+                    gradient: RadialGradient(
                       center: Alignment(0, 0),
                       radius: 1,
                       colors: [
@@ -1074,7 +1074,7 @@ class _AISendButtonState extends State<_AISendButton> {
           ),
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
               colors: [Color(0xFF292929), Color(0xFF555555), appPalette.borderLight],

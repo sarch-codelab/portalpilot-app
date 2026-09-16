@@ -250,11 +250,11 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                         fillColor: appPalette.bgSecondary,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: appPalette.borderLight),
+                          borderSide: BorderSide(color: appPalette.borderLight),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: appPalette.borderLight),
+                          borderSide: BorderSide(color: appPalette.borderLight),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -283,11 +283,11 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                                   fillColor: appPalette.bgSecondary,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(color: appPalette.borderLight),
+                                    borderSide: BorderSide(color: appPalette.borderLight),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(color: appPalette.borderLight),
+                                    borderSide: BorderSide(color: appPalette.borderLight),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
@@ -343,11 +343,11 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                         fillColor: appPalette.bgSecondary,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: appPalette.borderLight),
+                          borderSide: BorderSide(color: appPalette.borderLight),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: appPalette.borderLight),
+                          borderSide: BorderSide(color: appPalette.borderLight),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),

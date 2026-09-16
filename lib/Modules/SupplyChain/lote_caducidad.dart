@@ -90,7 +90,7 @@ class _LoteCaducidadState extends State<LoteCaducidad> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddLoteDialog(),
         backgroundColor: const Color(0xFFEF4444),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nuevo Lote',
           style: GoogleFonts.dmSans(

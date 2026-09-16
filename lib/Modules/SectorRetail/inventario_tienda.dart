@@ -132,7 +132,7 @@ class _InventarioTiendaState extends State<InventarioTienda> {
           _showAddTiendaDialog();
         },
         backgroundColor: const Color(0xFF10B981),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Agregar Tienda',
           style: GoogleFonts.dmSans(
@@ -263,7 +263,7 @@ class _InventarioTiendaState extends State<InventarioTienda> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: tipoSeleccionado,
-                items: const [
+                items: [
                   DropdownMenuItem(
                     value: 'tradicional',
                     child: Text('Canal Tradicional'),

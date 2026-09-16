@@ -152,7 +152,7 @@ class _MembresiaHomeState extends State<MembresiaHome> {
               color: appPalette.textPrimary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.card_membership_rounded,
+            child: Icon(Icons.card_membership_rounded,
                 color: appPalette.cardColor, size: 24),
           ),
           const SizedBox(width: 14),

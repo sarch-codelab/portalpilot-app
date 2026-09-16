@@ -199,7 +199,7 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddTransaccionDialog(),
         backgroundColor: const Color(0xFF3B82F6),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Transaccion',
           style: GoogleFonts.dmSans(
@@ -372,7 +372,7 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
                   ),
                 ),
               ),
-              items: const [
+              items: [
                 DropdownMenuItem(value: 'Ingreso', child: Text('Ingreso')),
                 DropdownMenuItem(value: 'Egreso', child: Text('Egreso')),
               ],

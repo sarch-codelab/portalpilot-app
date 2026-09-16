@@ -90,7 +90,7 @@ class _TrazabilidadState extends State<Trazabilidad> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddMovimientoDialog(),
         backgroundColor: const Color(0xFF14B8A6),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nuevo Movimiento',
           style: GoogleFonts.dmSans(

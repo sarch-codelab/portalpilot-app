@@ -100,7 +100,7 @@ class _SegmentacionState extends State<Segmentacion> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddSegmentoDialog(),
         backgroundColor: const Color(0xFFF59E0B),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nuevo Segmento',
           style: GoogleFonts.dmSans(

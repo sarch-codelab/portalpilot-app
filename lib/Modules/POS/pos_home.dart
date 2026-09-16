@@ -525,7 +525,7 @@ class _PosHomeState extends State<PosHome> {
                   Text('Asistente de Ventas', style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: appPalette.textPrimary)),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, color: appPalette.textMuted, size: 20),
+                    icon: Icon(Icons.close_rounded, color: appPalette.textMuted, size: 20),
                     onPressed: _toggleAIChat,
                   ),
                 ],
@@ -560,8 +560,8 @@ class _PosHomeState extends State<PosHome> {
                         hintStyle: GoogleFonts.dmSans(color: appPalette.textDim, fontSize: 13),
                         filled: true,
                         fillColor: appPalette.cardColor,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: appPalette.borderLight)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: appPalette.borderLight)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: appPalette.borderLight)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: appPalette.borderLight)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       ),
                     ),
@@ -570,7 +570,7 @@ class _PosHomeState extends State<PosHome> {
                   Container(
                     decoration: const BoxDecoration(color: Color(0xFFF97316), shape: BoxShape.circle),
                     child: IconButton(
-                      icon: const Icon(Icons.send_rounded, color: appPalette.cardColor, size: 18),
+                      icon: Icon(Icons.send_rounded, color: appPalette.cardColor, size: 18),
                       onPressed: _sendAIQuery,
                     ),
                   ),

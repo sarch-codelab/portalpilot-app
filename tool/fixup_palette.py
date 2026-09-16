@@ -14,7 +14,7 @@ for dirpath, _, files in os.walk(ROOT):
         if not fn.endswith('.dart'):
             continue
         p = os.path.join(dirpath, fn)
-        with open(p, 'r', encoding='utf-8', errors='replace') as f:
+        with open(p, 'r', encoding='utf-8', errors='replace', newline='') as f:
             src = f.read()
         orig = src
         # 1. prefijo residual del ternario dentro de appThemeNotifier.isDark

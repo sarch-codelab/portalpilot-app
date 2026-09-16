@@ -90,7 +90,7 @@ class _MultiBodegaState extends State<MultiBodega> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddBodegaDialog(),
         backgroundColor: const Color(0xFF8B5CF6),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Bodega',
           style: GoogleFonts.dmSans(

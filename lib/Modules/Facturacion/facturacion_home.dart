@@ -130,7 +130,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
       onRefresh: _cargarDatos,
       actions: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.settings_outlined,
               color: appPalette.bgTertiary,
               size: 20,
@@ -608,21 +608,21 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             Icons.receipt_long_rounded,
             const Color(0xFF10B981),
           ),
-          const Divider(color: appPalette.borderLight, height: 16),
+          Divider(color: appPalette.borderLight, height: 16),
           _buildDocTypeRow(
             'Nota de Crédito',
             'Devoluciones y anulaciones',
             Icons.undo_rounded,
             const Color(0xFF3B82F6),
           ),
-          const Divider(color: appPalette.borderLight, height: 16),
+          Divider(color: appPalette.borderLight, height: 16),
           _buildDocTypeRow(
             'Nota de Débito',
             'Ajustes al alza',
             Icons.redo_rounded,
             const Color(0xFFF59E0B),
           ),
-          const Divider(color: appPalette.borderLight, height: 16),
+          Divider(color: appPalette.borderLight, height: 16),
           _buildDocTypeRow(
             'Factura Exportación',
             'Ventas al exterior',
@@ -691,7 +691,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             'L.${_formatNumber(_montoTotal * 0.03)}',
             const Color(0xFFF59E0B),
           ),
-          const Divider(color: appPalette.borderLight, height: 16),
+          Divider(color: appPalette.borderLight, height: 16),
           _buildISVRow(
             'Total ISV a declarar',
             'L.${_formatNumber(_montoTotal * 0.18)}',

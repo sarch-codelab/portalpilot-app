@@ -174,12 +174,12 @@ class _SwipeActionBackground extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(color: appPalette.textPrimary, fontWeight: FontWeight.w600, fontSize: 12),
+              style: TextStyle(color: appPalette.textPrimary, fontWeight: FontWeight.w600, fontSize: 12),
             ),
           ] else ...[
             Text(
               label,
-              style: const TextStyle(color: appPalette.textPrimary, fontWeight: FontWeight.w600, fontSize: 12),
+              style: TextStyle(color: appPalette.textPrimary, fontWeight: FontWeight.w600, fontSize: 12),
             ),
             const SizedBox(width: 8),
             Icon(icon, color: appPalette.textPrimary, size: 22),

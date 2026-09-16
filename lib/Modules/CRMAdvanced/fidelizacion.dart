@@ -87,7 +87,7 @@ class _FidelizacionState extends State<Fidelizacion> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddProgramaDialog(),
         backgroundColor: const Color(0xFFEC4899),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nuevo Programa',
           style: GoogleFonts.dmSans(

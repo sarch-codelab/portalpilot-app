@@ -80,7 +80,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.route_rounded,
                 color: appPalette.cardColor,
                 size: 16,
@@ -102,7 +102,7 @@ class _RutaScreenState extends State<RutaScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _crearRuta,
         backgroundColor: const Color(0xFF8B5CF6),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor, size: 22),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor, size: 22),
         label: Text(
           'Nueva Ruta',
           style: GoogleFonts.dmSans(
@@ -325,7 +325,7 @@ class _RutaScreenState extends State<RutaScreen> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.person_rounded,
                     color: appPalette.bgTertiary,
                     size: 14,
@@ -426,14 +426,14 @@ class _RutaScreenState extends State<RutaScreen> {
               ...clientesRuta.map(
                 (c) => Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(color: appPalette.cardColor),
                     ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.person_rounded,
                         color: appPalette.bgTertiary,
                         size: 15,
@@ -863,11 +863,11 @@ class _RutaScreenState extends State<RutaScreen> {
       fillColor: appPalette.bgSecondary,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: appPalette.borderLight),
+        borderSide: BorderSide(color: appPalette.borderLight),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: appPalette.borderLight),
+        borderSide: BorderSide(color: appPalette.borderLight),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),

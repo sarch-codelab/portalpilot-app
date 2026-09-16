@@ -129,7 +129,7 @@ class _PromocionesState extends State<Promociones> {
           _showAddPromoDialog();
         },
         backgroundColor: const Color(0xFFF59E0B),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Promoción',
           style: GoogleFonts.dmSans(
@@ -277,7 +277,7 @@ class _PromocionesState extends State<Promociones> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: tipoSeleccionado,
-                items: const [
+                items: [
                   DropdownMenuItem(
                     value: 'bundle',
                     child: Text('Bundle (2x1, 3x2)'),

@@ -87,7 +87,7 @@ class _RetencionesState extends State<Retenciones> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddRetencionDialog(),
         backgroundColor: const Color(0xFFDC2626),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Retención',
           style: GoogleFonts.dmSans(

@@ -155,7 +155,6 @@ class _ThemeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return ;
+    return const SizedBox.shrink();
   }
 }

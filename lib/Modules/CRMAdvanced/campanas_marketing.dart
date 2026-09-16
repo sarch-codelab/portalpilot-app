@@ -90,7 +90,7 @@ class _CampanasMarketingState extends State<CampanasMarketing> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddCampanaDialog(),
         backgroundColor: const Color(0xFF10B981),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Campana',
           style: GoogleFonts.dmSans(

@@ -564,7 +564,7 @@ class _PPAppShellState extends State<PPAppShell> {
   }
 
   Widget _buildThemeToggle(ThemePalette palette) {
-    return ;
+    return const SizedBox.shrink();
   }
 
   // ─────────────────────────── Bottom nav (Móvil) ───────────────────────────
@@ -685,7 +685,7 @@ class _PPAppShellState extends State<PPAppShell> {
               BoxShadow(color: palette.brand.withValues(alpha: 0.5), blurRadius: 18, spreadRadius: 2),
             ],
           ),
-          child: const Icon(Icons.co_present_rounded, color: appPalette.cardColor, size: 26),
+          child: Icon(Icons.co_present_rounded, color: appPalette.cardColor, size: 26),
         ),
       ),
     );

@@ -84,7 +84,7 @@ class _HoldingFilialState extends State<HoldingFilial> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddEmpresaDialog(),
         backgroundColor: const Color(0xFFEC4899),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Empresa',
           style: GoogleFonts.dmSans(

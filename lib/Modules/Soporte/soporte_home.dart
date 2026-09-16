@@ -274,11 +274,11 @@ class _SoporteHomeState extends State<SoporteHome> {
                   fillColor: appPalette.cardColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: appPalette.borderLight),
+                    borderSide: BorderSide(color: appPalette.borderLight),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: appPalette.borderLight),
+                    borderSide: BorderSide(color: appPalette.borderLight),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -295,7 +295,7 @@ class _SoporteHomeState extends State<SoporteHome> {
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(Icons.send_rounded, color: appPalette.cardColor, size: 20),
+                icon: Icon(Icons.send_rounded, color: appPalette.cardColor, size: 20),
                 onPressed: _sendMessage,
               ),
             ),

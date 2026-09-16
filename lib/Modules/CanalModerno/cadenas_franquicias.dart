@@ -76,7 +76,7 @@ class _CadenasFranquiciasState extends State<CadenasFranquicias> {
           _showAddCadenaDialog();
         },
         backgroundColor: const Color(0xFFEC4899),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Cadena',
           style: GoogleFonts.dmSans(

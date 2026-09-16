@@ -121,7 +121,7 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
           _showAddNivelDialog();
         },
         backgroundColor: const Color(0xFFCD7F32),
-        icon: const Icon(Icons.workspace_premium_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.workspace_premium_rounded, color: appPalette.cardColor),
         label: Text(
           'Nuevo Nivel',
           style: GoogleFonts.dmSans(

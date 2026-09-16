@@ -108,13 +108,13 @@ class ThemePalette {
 
   /// Gradiente de marca (para cabeceras, botones primarios, sidebar).
   List<Color> get brandGradient =>
-      isDark ? const [Color(0xFFB94DDC), Color(0xFF6D28D9)] : const [Color(0xFFB94DDC), Color(0xFF6D28D9)];
+      isDark ? [Color(0xFFB94DDC), Color(0xFF6D28D9)] : [Color(0xFFB94DDC), Color(0xFF6D28D9)];
   List<Color> get brandGradientSoft =>
-      isDark ? const [Color(0xFF2A1850), Color(0xFF1A1E3C)] : const [Color(0xFFF3E8FD), Color(0xFFE0E7FB)];
+      isDark ? [Color(0xFF2A1850), Color(0xFF1A1E3C)] : [Color(0xFFF3E8FD), Color(0xFFE0E7FB)];
 
   /// Gradiente de fondo "aurora" para pantallas principales.
   List<Color> get aurora =>
-      isDark ? const [Color(0xFF070510), Color(0xFF1A0F2E), Color(0xFF101426)] : const [Color(0xFFF6F4FB), Color(0xFFF1E8FD), Color(0xFFE3E9FB)];
+      isDark ? [Color(0xFF070510), Color(0xFF1A0F2E), Color(0xFF101426)] : [Color(0xFFF6F4FB), Color(0xFFF1E8FD), Color(0xFFE3E9FB)];
 
   // ─── Texto ────────────────────────────────────────────────────────────────
   Color get textPrimary => isDark ? const Color(0xFFF5F2FF) : const Color(0xFF1E1B2A);

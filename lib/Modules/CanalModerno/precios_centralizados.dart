@@ -86,7 +86,7 @@ class _PreciosCentralizadosState extends State<PreciosCentralizados> {
           _showAddProductDialog();
         },
         backgroundColor: const Color(0xFF6366F1),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Agregar Producto',
           style: GoogleFonts.dmSans(

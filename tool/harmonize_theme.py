@@ -355,7 +355,7 @@ for dirpath, _, files in os.walk(ROOT):
         p = os.path.join(dirpath, fn)
         if is_excluded(p, fn):
             continue
-        with open(p, 'r', encoding='utf-8', errors='replace') as f:
+        with open(p, 'r', encoding='utf-8', errors='replace', newline='') as f:
             src = f.read()
         orig = src
         if not is_theme_aware(src):

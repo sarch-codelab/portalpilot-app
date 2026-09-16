@@ -90,7 +90,7 @@ class _RolesUsuarioState extends State<RolesUsuario> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddRolDialog(),
         backgroundColor: const Color(0xFF6366F1),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nuevo Rol',
           style: GoogleFonts.dmSans(

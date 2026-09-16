@@ -90,7 +90,7 @@ class _RecepcionState extends State<Recepcion> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddRecepcionDialog(),
         backgroundColor: const Color(0xFF14B8A6),
-        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Recepcion',
           style: GoogleFonts.dmSans(

@@ -241,10 +241,10 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(color: const Color(0xFF7F1D1D).withValues(alpha: 0.9), borderRadius: BorderRadius.circular(12)),
                         child: Row(children: [
-                          const Icon(Icons.error_outline_rounded, color: appPalette.cardColor, size: 16),
+                          Icon(Icons.error_outline_rounded, color: appPalette.cardColor, size: 16),
                           const SizedBox(width: 8),
                           Expanded(child: Text(_errorBanner!, style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textPrimary))),
-                          IconButton(icon: const Icon(Icons.close_rounded, color: appPalette.textPrimary, size: 16), onPressed: () => setState(() => _errorBanner = null)),
+                          IconButton(icon: Icon(Icons.close_rounded, color: appPalette.textPrimary, size: 16), onPressed: () => setState(() => _errorBanner = null)),
                         ]),
                       ),
                     Expanded(
@@ -301,7 +301,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withValues(alpha: 0.4), blurRadius: 16)],
                 ),
-                child: const Icon(Icons.auto_awesome_rounded, color: appPalette.cardColor, size: 16),
+                child: Icon(Icons.auto_awesome_rounded, color: appPalette.cardColor, size: 16),
               ),
             ],
           ),
@@ -337,7 +337,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
         Tooltip(
           message: 'Limpiar chat actual',
           child: IconButton(
-            icon: const Icon(Icons.cleaning_services_rounded, color: appPalette.bgTertiary, size: 18),
+            icon: Icon(Icons.cleaning_services_rounded, color: appPalette.bgTertiary, size: 18),
             onPressed: _current.messages.isEmpty ? null : _clearCurrent,
           ),
         ),
@@ -380,7 +380,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 onPressed: _newChat,
-                icon: const Icon(Icons.add_rounded, size: 18, color: appPalette.cardColor),
+                icon: Icon(Icons.add_rounded, size: 18, color: appPalette.cardColor),
                 label: Text('Nuevo chat', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: appPalette.textPrimary)),
               ),
             ),
@@ -480,7 +480,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
               height: 68,
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.blur_on_rounded, color: appPalette.cardColor, size: 32),
+                  Icon(Icons.blur_on_rounded, color: appPalette.cardColor, size: 32),
             ),
           const SizedBox(height: 18),
           Text('¿En qué puedo ayudarte hoy?', style: GoogleFonts.syne(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? appPalette.textPrimary : Colors.black)),
@@ -526,7 +526,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                           Text(s.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 11, color: p.textMuted, height: 1.3)),
                         ]),
                       ),
-                      const Icon(Icons.arrow_outward_rounded, size: 16, color: appPalette.textMuted),
+                      Icon(Icons.arrow_outward_rounded, size: 16, color: appPalette.textMuted),
                     ]),
                   ),
                 );
@@ -554,7 +554,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
     return ActionChip(
       label: Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textPrimary)),
       backgroundColor: const Color(0xFF1B1B1B),
-      side: const BorderSide(color: appPalette.borderLight),
+      side: BorderSide(color: appPalette.borderLight),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       onPressed: onTap,
     );
@@ -611,7 +611,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)]), borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.auto_awesome_rounded, color: appPalette.cardColor, size: 12),
+                child: Icon(Icons.auto_awesome_rounded, color: appPalette.cardColor, size: 12),
               ),
               const SizedBox(width: 8),
               Text('Portal Pilot IA', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: p.textMuted)),
@@ -722,7 +722,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
             _buildGradientInput(p, isDark),
             const SizedBox(height: 8),
             Row(children: [
-              const Icon(Icons.lock_rounded, size: 11, color: appPalette.bgTertiary),
+              Icon(Icons.lock_rounded, size: 11, color: appPalette.bgTertiary),
               const SizedBox(width: 6),
               Expanded(child: Text('La IA puede cometer errores. Verifica información importante.', style: GoogleFonts.dmSans(fontSize: 10, color: p.textMuted))),
               Text('Portal Pilot • v2', style: GoogleFonts.dmSans(fontSize: 10, color: p.textMuted.withValues(alpha: 0.7))),

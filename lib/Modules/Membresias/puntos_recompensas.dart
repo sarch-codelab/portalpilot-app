@@ -108,7 +108,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
           _showAddPointsDialog();
         },
         backgroundColor: const Color(0xFF8B5CF6),
-        icon: const Icon(Icons.card_giftcard_rounded, color: appPalette.cardColor),
+        icon: Icon(Icons.card_giftcard_rounded, color: appPalette.cardColor),
         label: Text(
           'Agregar Puntos',
           style: GoogleFonts.dmSans(
