@@ -76,25 +76,11 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFFEC4899),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFEC4899)))
           : _kpis.isEmpty
@@ -103,7 +89,7 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
                     'No hay datos disponibles',
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
-                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                      color: appThemeNotifier.isDark ? appPalette.textMuted : appPalette.textMuted,
                     ),
                   ),
                 )
@@ -173,8 +159,8 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
         fontSize: 12,
         fontWeight: FontWeight.w800,
         color: appThemeNotifier.isDark
-            ? const Color(0xFFA3A3A3)
-            : const Color(0xFF6B7280),
+            ? appPalette.textMuted
+            : appPalette.textMuted,
         letterSpacing: 1.5,
       ),
     );
@@ -216,8 +202,8 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
                     color: appThemeNotifier.isDark
-                        ? const Color(0xFFA3A3A3)
-                        : const Color(0xFF6B7280),
+                        ? appPalette.textMuted
+                        : appPalette.textMuted,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -271,7 +257,7 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
       ),
@@ -283,7 +269,7 @@ class _ForecastingDashboardState extends State<ForecastingDashboard> {
             style: GoogleFonts.syne(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
           Column(

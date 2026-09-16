@@ -160,25 +160,11 @@ class _CierresMensualesState extends State<CierresMensuales> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF8B5CF6),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: _cargando
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF8B5CF6)),
@@ -202,7 +188,7 @@ class _CierresMensualesState extends State<CierresMensuales> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
       ),
@@ -217,7 +203,7 @@ class _CierresMensualesState extends State<CierresMensuales> {
                 style: GoogleFonts.syne(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                  color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                 ),
               ),
               const SizedBox(height: 4),
@@ -251,7 +237,7 @@ class _CierresMensualesState extends State<CierresMensuales> {
             label: const Text('Ver'),
             style: ElevatedButton.styleFrom(
               backgroundColor: color,
-              foregroundColor: Colors.white,
+              foregroundColor: appPalette.cardColor,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
           ),
@@ -266,14 +252,12 @@ class _CierresMensualesState extends State<CierresMensuales> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Detalle: $mes',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Column(
@@ -303,7 +287,7 @@ class _CierresMensualesState extends State<CierresMensuales> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cerrar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           ElevatedButton(
@@ -316,7 +300,7 @@ class _CierresMensualesState extends State<CierresMensuales> {
             ),
             child: Text(
               'Generar Reporte',
-              style: GoogleFonts.dmSans(color: Colors.white),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
             ),
           ),
         ],
@@ -351,15 +335,15 @@ class _CierresMensualesState extends State<CierresMensuales> {
             label,
             style: GoogleFonts.dmSans(
               color: appThemeNotifier.isDark
-                  ? const Color(0xFFA3A3A3)
-                  : const Color(0xFF6B7280),
+                  ? appPalette.textMuted
+                  : appPalette.textMuted,
             ),
           ),
           Text(
             value,
             style: GoogleFonts.syne(
               fontWeight: FontWeight.w600,
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
         ],

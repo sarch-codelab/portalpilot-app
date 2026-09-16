@@ -47,18 +47,6 @@ class _MembresiaHomeState extends State<MembresiaHome> {
       screenTitle: 'Membresias',
       moduleIcon: Icons.badge_rounded,
       moduleColor: const Color(0xFF8B5CF6),
-      actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-              color: const Color(0xFF8B5CF6),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
       child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
@@ -71,7 +59,7 @@ class _MembresiaHomeState extends State<MembresiaHome> {
               style: GoogleFonts.syne(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: appPalette.textPrimary,
                 letterSpacing: 0.8,
               ),
             ),
@@ -161,11 +149,11 @@ class _MembresiaHomeState extends State<MembresiaHome> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
+              color: appPalette.textPrimary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.card_membership_rounded,
-                color: Colors.white, size: 24),
+                color: appPalette.cardColor, size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -178,7 +166,7 @@ class _MembresiaHomeState extends State<MembresiaHome> {
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.8,
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: appPalette.textPrimary.withValues(alpha: 0.8),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -187,7 +175,7 @@ class _MembresiaHomeState extends State<MembresiaHome> {
                   style: GoogleFonts.syne(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
-                    color: Colors.white,
+                    color: appPalette.textPrimary,
                   ),
                 ),
               ],
@@ -228,13 +216,13 @@ class _MembresiaHomeState extends State<MembresiaHome> {
               style: GoogleFonts.syne(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: appPalette.textPrimary,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
-              style: GoogleFonts.dmSans(fontSize: 10, color: const Color(0xFF737373)),
+              style: GoogleFonts.dmSans(fontSize: 10, color: appPalette.textMuted),
             ),
           ],
         ),
@@ -254,9 +242,9 @@ class _MembresiaHomeState extends State<MembresiaHome> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF262626)),
+          border: Border.all(color: appPalette.borderLight),
         ),
         child: Row(
           children: [
@@ -278,7 +266,7 @@ class _MembresiaHomeState extends State<MembresiaHome> {
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: appPalette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -286,7 +274,7 @@ class _MembresiaHomeState extends State<MembresiaHome> {
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: const Color(0xFF737373),
+                      color: appPalette.textMuted,
                     ),
                   ),
                 ],

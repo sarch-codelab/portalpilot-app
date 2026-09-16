@@ -167,25 +167,11 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF3B82F6),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: _cargando
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
@@ -197,8 +183,8 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
                 style: GoogleFonts.dmSans(
                   fontSize: 14,
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
               ),
             )
@@ -213,12 +199,12 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddTransaccionDialog(),
         backgroundColor: const Color(0xFF3B82F6),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Transaccion',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: appPalette.textPrimary,
           ),
         ),
       ),
@@ -240,12 +226,10 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF262626)
-              : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -259,7 +243,7 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
                 style: GoogleFonts.syne(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                  color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                 ),
               ),
               Row(
@@ -327,14 +311,12 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Nueva Transaccion',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Column(
@@ -346,14 +328,12 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
                 labelText: 'Descripcion',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -366,14 +346,12 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
                 labelText: 'Monto (L.)',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -385,14 +363,12 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
                 labelText: 'Tipo',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -411,7 +387,7 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           ElevatedButton(
@@ -430,7 +406,7 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
             ),
             child: Text(
               'Guardar',
-              style: GoogleFonts.dmSans(color: Colors.white),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
             ),
           ),
         ],

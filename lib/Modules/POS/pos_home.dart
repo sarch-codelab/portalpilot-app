@@ -137,25 +137,13 @@ class _PosHomeState extends State<PosHome> {
           onPressed: _toggleAIChat,
           tooltip: 'Asistente IA',
         ),
-        IconButton(
-          icon: Icon(
-            appThemeNotifier.isDark
-                ? Icons.light_mode_rounded
-                : Icons.dark_mode_rounded,
-            color: const Color(0xFFF97316),
-            size: 20,
-          ),
-          onPressed: () async {
-            await appThemeNotifier.toggle();
-          },
-        ),
-      ],
+        ],
       child: Stack(
         children: [
           RefreshIndicator(
             onRefresh: _cargarDatos,
             color: const Color(0xFFF97316),
-            backgroundColor: const Color(0xFF1A1A1A),
+            backgroundColor: appPalette.cardColor,
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
@@ -249,7 +237,7 @@ class _PosHomeState extends State<PosHome> {
                   style: GoogleFonts.syne(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
-                    color: Colors.white,
+                    color: appPalette.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -259,7 +247,7 @@ class _PosHomeState extends State<PosHome> {
                   label,
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
-                    color: const Color(0xFF737373),
+                    color: appPalette.textMuted,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -278,7 +266,7 @@ class _PosHomeState extends State<PosHome> {
       style: GoogleFonts.syne(
         fontSize: 14,
         fontWeight: FontWeight.w800,
-        color: Colors.white,
+        color: appPalette.textPrimary,
         letterSpacing: 0.8,
       ),
     );
@@ -393,9 +381,9 @@ class _PosHomeState extends State<PosHome> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF262626)),
+          border: Border.all(color: appPalette.borderLight),
         ),
         child: Row(
           children: [
@@ -417,7 +405,7 @@ class _PosHomeState extends State<PosHome> {
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: appPalette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -425,7 +413,7 @@ class _PosHomeState extends State<PosHome> {
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: const Color(0xFF737373),
+                      color: appPalette.textMuted,
                     ),
                   ),
                 ],
@@ -446,9 +434,9 @@ class _PosHomeState extends State<PosHome> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF262626)),
+        border: Border.all(color: appPalette.borderLight),
       ),
       child: Column(
         children: [
@@ -493,7 +481,7 @@ class _PosHomeState extends State<PosHome> {
           label,
           style: GoogleFonts.dmSans(
             fontSize: 10,
-            color: const Color(0xFF737373),
+            color: appPalette.textMuted,
           ),
         ),
       ],
@@ -515,7 +503,7 @@ class _PosHomeState extends State<PosHome> {
       child: Container(
         height: MediaQuery.of(context).size.height * 0.55,
         decoration: BoxDecoration(
-          color: const Color(0xFF111111),
+          color: appPalette.cardColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.3)),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)],
@@ -534,10 +522,10 @@ class _PosHomeState extends State<PosHome> {
                 children: [
                   const Icon(Icons.auto_awesome, color: Color(0xFFF97316), size: 18),
                   const SizedBox(width: 8),
-                  Text('Asistente de Ventas', style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                  Text('Asistente de Ventas', style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: appPalette.textPrimary)),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Color(0xFF737373), size: 20),
+                    icon: const Icon(Icons.close_rounded, color: appPalette.textMuted, size: 20),
                     onPressed: _toggleAIChat,
                   ),
                 ],
@@ -565,15 +553,15 @@ class _PosHomeState extends State<PosHome> {
                   Expanded(
                     child: TextField(
                       controller: _aiQueryController,
-                      style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13),
+                      style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 13),
                       onSubmitted: (_) => _sendAIQuery(),
                       decoration: InputDecoration(
                         hintText: 'Pregunta sobre tus ventas...',
-                        hintStyle: GoogleFonts.dmSans(color: const Color(0xFF525252), fontSize: 13),
+                        hintStyle: GoogleFonts.dmSans(color: appPalette.textDim, fontSize: 13),
                         filled: true,
-                        fillColor: const Color(0xFF1A1A1A),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                        fillColor: appPalette.cardColor,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: appPalette.borderLight)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: appPalette.borderLight)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       ),
                     ),
@@ -582,7 +570,7 @@ class _PosHomeState extends State<PosHome> {
                   Container(
                     decoration: const BoxDecoration(color: Color(0xFFF97316), shape: BoxShape.circle),
                     child: IconButton(
-                      icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                      icon: const Icon(Icons.send_rounded, color: appPalette.cardColor, size: 18),
                       onPressed: _sendAIQuery,
                     ),
                   ),
@@ -610,7 +598,7 @@ class _PosHomeState extends State<PosHome> {
           children: [
             const Icon(Icons.auto_awesome, color: Color(0xFFF97316), size: 32),
             const SizedBox(height: 12),
-            Text('Pregúntale a la IA sobre tus ventas', style: GoogleFonts.dmSans(color: Color(0xFF737373), fontSize: 13)),
+            Text('Pregúntale a la IA sobre tus ventas', style: GoogleFonts.dmSans(color: appPalette.textMuted, fontSize: 13)),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
@@ -643,7 +631,7 @@ class _PosHomeState extends State<PosHome> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -651,7 +639,7 @@ class _PosHomeState extends State<PosHome> {
           children: [
             SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFFF97316))),
             const SizedBox(width: 10),
-            Text(msg.text, style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 12)),
+            Text(msg.text, style: GoogleFonts.dmSans(color: appPalette.textMuted, fontSize: 12)),
           ],
         ),
       );
@@ -663,15 +651,15 @@ class _PosHomeState extends State<PosHome> {
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: msg.isUser ? const Color(0xFFF97316) : (msg.isError ? const Color(0xFFEF4444).withValues(alpha: 0.15) : const Color(0xFF1A1A1A)),
+          color: msg.isUser ? const Color(0xFFF97316) : (msg.isError ? const Color(0xFFEF4444).withValues(alpha: 0.15) : appPalette.cardColor),
           borderRadius: BorderRadius.circular(12),
-          border: msg.isUser ? null : Border.all(color: msg.isError ? const Color(0xFFEF4444).withValues(alpha: 0.3) : const Color(0xFF262626)),
+          border: msg.isUser ? null : Border.all(color: msg.isError ? const Color(0xFFEF4444).withValues(alpha: 0.3) : appPalette.borderLight),
         ),
         child: Text(
           msg.text,
           style: GoogleFonts.dmSans(
             fontSize: 13,
-            color: msg.isUser ? Colors.white : (msg.isError ? const Color(0xFFEF4444) : const Color(0xFFE5E5E5)),
+            color: msg.isUser ? appPalette.textPrimary : (msg.isError ? const Color(0xFFEF4444) : const Color(0xFFE5E5E5)),
           ),
         ),
       ),

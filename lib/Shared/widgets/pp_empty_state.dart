@@ -119,7 +119,7 @@ class PPEmptyState extends StatelessWidget {
               gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: palette.brandGradient),
               boxShadow: palette.glowShadow(accent, blur: 18),
             ),
-            child: Icon(icon ?? Icons.rocket_launch_rounded, color: Colors.white, size: compact ? 18 : 24),
+            child: Icon(icon ?? Icons.rocket_launch_rounded, color: appPalette.cardColor, size: compact ? 18 : 24),
           ),
         ],
       ),

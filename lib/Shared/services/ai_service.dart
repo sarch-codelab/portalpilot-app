@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/services/navi_rules.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/session_guard.dart';
 
 const String _defaultAiApiRoot = 'https://portal-pilot.vercel.app';
 
@@ -195,6 +196,9 @@ class AIManager {
       }
 
       if (response.statusCode != 200 || data['reply'] == null) {
+        if (SessionGuard.isTokenExpired(response.statusCode, data)) {
+          unawaited(SessionGuard.forceLogoutToLogin());
+        }
         return AIResponse(text: '', modelId: modelId, provider: 'unknown',
           tokensUsed: 0, duration: duration, success: false,
           error: _mapBackendError(response.statusCode, data));
@@ -265,6 +269,9 @@ class AIManager {
       }
 
       if (response.statusCode != 200 || data['reply'] == null) {
+        if (SessionGuard.isTokenExpired(response.statusCode, data)) {
+          unawaited(SessionGuard.forceLogoutToLogin());
+        }
         return AIResponse(text: '', modelId: 'vision', provider: 'unknown',
           tokensUsed: 0, duration: duration, success: false,
           error: _mapBackendError(response.statusCode, data));

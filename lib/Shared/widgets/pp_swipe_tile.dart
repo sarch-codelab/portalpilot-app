@@ -170,19 +170,19 @@ class _SwipeActionBackground extends StatelessWidget {
         children: [
           if (alignment == Alignment.centerRight) ...[
             const SizedBox(width: 4),
-            Icon(icon, color: Colors.white, size: 22),
+            Icon(icon, color: appPalette.cardColor, size: 22),
             const SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+              style: const TextStyle(color: appPalette.textPrimary, fontWeight: FontWeight.w600, fontSize: 12),
             ),
           ] else ...[
             Text(
               label,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+              style: const TextStyle(color: appPalette.textPrimary, fontWeight: FontWeight.w600, fontSize: 12),
             ),
             const SizedBox(width: 8),
-            Icon(icon, color: Colors.white, size: 22),
+            Icon(icon, color: appPalette.textPrimary, size: 22),
           ],
         ],
       ),

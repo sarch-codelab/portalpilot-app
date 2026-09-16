@@ -69,7 +69,7 @@ class PPActionToolbar extends StatelessWidget {
         onPressed: item.onTap,
         style: ElevatedButton.styleFrom(
           backgroundColor: palette.brand,
-          foregroundColor: Colors.white,
+          foregroundColor: appPalette.cardColor,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -77,7 +77,7 @@ class PPActionToolbar extends StatelessWidget {
         icon: Icon(item.icon, size: 18),
         label: Text(
           item.label,
-          style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+          style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: appPalette.textPrimary),
         ),
       );
     }

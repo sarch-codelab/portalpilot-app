@@ -4,6 +4,7 @@ import 'package:portal_pilot_app/Shared/utils/mobile_utils.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_app_shell.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_skeleton.dart';
 import 'package:portal_pilot_app/Shared/widgets/read_only_guard.dart';
+import 'package:portal_pilot_app/Shared/services/background_service.dart';
 
 /// Scaffold de módulo Portal Pilot todo-en-uno.
 ///
@@ -51,19 +52,52 @@ class PPModuleScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = ThemePalette(isDark: appThemeNotifier.isDark);
 
-    Widget body = Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: palette.aurora,
+    Widget body;
+    if (heroBackground) {
+      body = Stack(
+        children: [
+          Positioned.fill(
+            child: BackgroundService.instance.buildBackground(
+              context: context,
+              isDark: appThemeNotifier.isDark,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              colorFilter: ColorFilter.mode(
+                Colors.black.withValues(alpha: appThemeNotifier.isDark ? 0.3 : 0.1),
+                BlendMode.darken,
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: palette.aurora.map((c) => c.withValues(alpha: 0.3)).toList(),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: loading ? _buildLoading(context, palette) : child,
+            ),
+          ),
+        ],
+      );
+    } else {
+      body = Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: palette.aurora,
+          ),
         ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: loading ? _buildLoading(context, palette) : child,
-      ),
-    );
+        child: SafeArea(
+          top: false,
+          child: loading ? _buildLoading(context, palette) : child,
+        ),
+      );
+    }
 
     if (onRefresh != null) {
       body = RefreshIndicator(

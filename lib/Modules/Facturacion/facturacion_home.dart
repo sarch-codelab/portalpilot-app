@@ -130,21 +130,9 @@ class _FacturacionHomeState extends State<FacturacionHome> {
       onRefresh: _cargarDatos,
       actions: [
           IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF10B981),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-          IconButton(
             icon: const Icon(
               Icons.settings_outlined,
-              color: Color(0xFF737373),
+              color: appPalette.bgTertiary,
               size: 20,
             ),
             onPressed: _mostrarConfiguracion,
@@ -214,7 +202,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
                       style: GoogleFonts.syne(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: appPalette.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -289,7 +277,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
                     'Editar',
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
-                      color: const Color(0xFF737373),
+                      color: appPalette.textMuted,
                     ),
                   ),
                 ),
@@ -301,7 +289,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
               '$_empresaNombre  â€¢  RTN: $_rtn',
               style: GoogleFonts.dmSans(
                 fontSize: 11,
-                color: const Color(0xFFA3A3A3),
+                color: appPalette.textMuted,
               ),
             ),
             const SizedBox(height: 6),
@@ -310,7 +298,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             'CAI: $_cai',
             style: GoogleFonts.dmMono(
               fontSize: 13,
-              color: Colors.white,
+              color: appPalette.textPrimary,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -319,7 +307,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             'Rango: $_rangoInicio  â†’  $_rangoFin',
             style: GoogleFonts.dmMono(
               fontSize: 12,
-              color: const Color(0xFFA3A3A3),
+              color: appPalette.textMuted,
             ),
           ),
           if (_fechaLimite.isNotEmpty) ...[
@@ -330,7 +318,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
                 fontSize: 11,
                 color: vencido
                     ? const Color(0xFFEF4444)
-                    : const Color(0xFF737373),
+                    : appPalette.textMuted,
               ),
             ),
           ],
@@ -414,7 +402,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
                     style: GoogleFonts.syne(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: appPalette.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -424,7 +412,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
                     label,
                     style: GoogleFonts.dmSans(
                       fontSize: 10,
-                      color: const Color(0xFF737373),
+                      color: appPalette.textMuted,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -455,7 +443,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             style: GoogleFonts.syne(
               fontSize: 18,
               fontWeight: FontWeight.w900,
-              color: Colors.white,
+              color: appPalette.textPrimary,
             ),
           ),
           const SizedBox(height: 2),
@@ -463,7 +451,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             label,
             style: GoogleFonts.dmSans(
               fontSize: 11,
-              color: const Color(0xFF737373),
+              color: appPalette.textMuted,
             ),
           ),
         ],
@@ -477,7 +465,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
       style: GoogleFonts.syne(
         fontSize: 14,
         fontWeight: FontWeight.w800,
-        color: Colors.white,
+        color: appPalette.textPrimary,
         letterSpacing: 0.8,
       ),
     );
@@ -555,9 +543,9 @@ class _FacturacionHomeState extends State<FacturacionHome> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF262626)),
+          border: Border.all(color: appPalette.borderLight),
         ),
         child: Row(
           children: [
@@ -579,7 +567,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: appPalette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -587,7 +575,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: const Color(0xFF737373),
+                      color: appPalette.textMuted,
                     ),
                   ),
                 ],
@@ -608,9 +596,9 @@ class _FacturacionHomeState extends State<FacturacionHome> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF262626)),
+        border: Border.all(color: appPalette.borderLight),
       ),
       child: Column(
         children: [
@@ -620,21 +608,21 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             Icons.receipt_long_rounded,
             const Color(0xFF10B981),
           ),
-          const Divider(color: Color(0xFF262626), height: 16),
+          const Divider(color: appPalette.borderLight, height: 16),
           _buildDocTypeRow(
             'Nota de Crédito',
             'Devoluciones y anulaciones',
             Icons.undo_rounded,
             const Color(0xFF3B82F6),
           ),
-          const Divider(color: Color(0xFF262626), height: 16),
+          const Divider(color: appPalette.borderLight, height: 16),
           _buildDocTypeRow(
             'Nota de Débito',
             'Ajustes al alza',
             Icons.redo_rounded,
             const Color(0xFFF59E0B),
           ),
-          const Divider(color: Color(0xFF262626), height: 16),
+          const Divider(color: appPalette.borderLight, height: 16),
           _buildDocTypeRow(
             'Factura Exportación',
             'Ventas al exterior',
@@ -665,14 +653,14 @@ class _FacturacionHomeState extends State<FacturacionHome> {
                 style: GoogleFonts.dmSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: appPalette.textPrimary,
                 ),
               ),
               Text(
                 subtitle,
                 style: GoogleFonts.dmSans(
                   fontSize: 11,
-                  color: const Color(0xFF737373),
+                  color: appPalette.textMuted,
                 ),
               ),
             ],
@@ -686,9 +674,9 @@ class _FacturacionHomeState extends State<FacturacionHome> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF262626)),
+        border: Border.all(color: appPalette.borderLight),
       ),
       child: Column(
         children: [
@@ -703,7 +691,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             'L.${_formatNumber(_montoTotal * 0.03)}',
             const Color(0xFFF59E0B),
           ),
-          const Divider(color: Color(0xFF262626), height: 16),
+          const Divider(color: appPalette.borderLight, height: 16),
           _buildISVRow(
             'Total ISV a declarar',
             'L.${_formatNumber(_montoTotal * 0.18)}',
@@ -724,7 +712,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.dmSans(
               fontSize: 13,
-              color: const Color(0xFFA3A3A3),
+              color: appPalette.textMuted,
             ),
           ),
         ),

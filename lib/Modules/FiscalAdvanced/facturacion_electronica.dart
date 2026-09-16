@@ -47,25 +47,11 @@ class _FacturacionElectronicaState extends State<FacturacionElectronica> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF10B981),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -73,9 +59,7 @@ class _FacturacionElectronicaState extends State<FacturacionElectronica> {
             Icon(
               Icons.receipt_long_rounded,
               size: 64,
-              color: appThemeNotifier.isDark
-                  ? const Color(0xFF262626)
-                  : const Color(0xFFE5E7EB),
+              color: appPalette.borderLight,
             ),
             const SizedBox(height: 16),
             Text(
@@ -83,7 +67,7 @@ class _FacturacionElectronicaState extends State<FacturacionElectronica> {
               style: GoogleFonts.syne(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
               ),
             ),
             const SizedBox(height: 8),
@@ -91,8 +75,8 @@ class _FacturacionElectronicaState extends State<FacturacionElectronica> {
               'Timbrado y generación XML',
               style: GoogleFonts.dmSans(
                 color: appThemeNotifier.isDark
-                    ? const Color(0xFFA3A3A3)
-                    : const Color(0xFF6B7280),
+                    ? appPalette.textMuted
+                    : appPalette.textMuted,
               ),
             ),
           ],

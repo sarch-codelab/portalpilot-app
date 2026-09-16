@@ -85,25 +85,11 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF3B82F6),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF3B82F6)))
           : _membresias.isEmpty
@@ -112,8 +98,8 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
                 'No hay membresías registradas',
                 style: GoogleFonts.dmSans(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
               ),
             )
@@ -139,19 +125,17 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
     final planColor = membresia['plan'] == 'Oro'
         ? const Color(0xFFF59E0B)
         : membresia['plan'] == 'Plata'
-        ? const Color(0xFF9CA3AF)
+        ? appPalette.textMuted
         : const Color(0xFFCD7F32);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF262626)
-              : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -170,7 +154,7 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: appThemeNotifier.isDark
-                            ? Colors.white
+                            ? appPalette.textPrimary
                             : Colors.black,
                       ),
                     ),
@@ -201,8 +185,8 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
                           style: GoogleFonts.dmSans(
                             fontSize: 11,
                             color: appThemeNotifier.isDark
-                                ? const Color(0xFFA3A3A3)
-                                : const Color(0xFF6B7280),
+                                ? appPalette.textMuted
+                                : appPalette.textMuted,
                           ),
                         ),
                       ],
@@ -232,8 +216,8 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
                     : Icons.payments_rounded,
                 size: 16,
                 color: appThemeNotifier.isDark
-                    ? const Color(0xFFA3A3A3)
-                    : const Color(0xFF6B7280),
+                    ? appPalette.bgTertiary
+                    : appPalette.textMuted,
               ),
               const SizedBox(width: 6),
               Text(
@@ -241,8 +225,8 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
                 style: GoogleFonts.dmSans(
                   fontSize: 12,
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
               ),
             ],

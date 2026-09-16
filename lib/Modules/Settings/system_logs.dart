@@ -61,23 +61,11 @@ class _SystemLogsState extends State<SystemLogs> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFFF59E0B),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFFF59E0B)),
             onPressed: _loadLogs,
@@ -94,17 +82,15 @@ class _SystemLogsState extends State<SystemLogs> {
                   Icon(
                     Icons.bug_report_rounded,
                     size: 64,
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No hay logs disponibles',
                     style: GoogleFonts.dmSans(
                       color: appThemeNotifier.isDark
-                          ? const Color(0xFFA3A3A3)
-                          : const Color(0xFF6B7280),
+                          ? appPalette.textMuted
+                          : appPalette.textMuted,
                     ),
                   ),
                 ],
@@ -146,9 +132,7 @@ class _SystemLogsState extends State<SystemLogs> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF111111)
-              : Colors.white,
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: levelColor.withValues(alpha: 0.3),
@@ -185,8 +169,8 @@ class _SystemLogsState extends State<SystemLogs> {
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
                       color: appThemeNotifier.isDark
-                          ? const Color(0xFFA3A3A3)
-                          : const Color(0xFF6B7280),
+                          ? appPalette.textMuted
+                          : appPalette.textMuted,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -202,14 +186,10 @@ class _SystemLogsState extends State<SystemLogs> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF111111)
-              : Colors.white,
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: appThemeNotifier.isDark
-                ? const Color(0xFF262626)
-                : const Color(0xFFE5E7EB),
+            color: appPalette.borderLight,
           ),
         ),
         child: Text(
@@ -217,8 +197,8 @@ class _SystemLogsState extends State<SystemLogs> {
           style: GoogleFonts.dmSans(
             fontSize: 11,
             color: appThemeNotifier.isDark
-                ? const Color(0xFFA3A3A3)
-                : const Color(0xFF6B7280),
+                ? appPalette.textMuted
+                : appPalette.textMuted,
           ),
         ),
       );

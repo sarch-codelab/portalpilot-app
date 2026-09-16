@@ -76,20 +76,6 @@ class _RrhhHomeState extends State<RrhhHome> {
       moduleColor: const Color(0xFFEC4899),
       onNew: _nuevoEmpleado,
       onRefresh: _cargarDatos,
-      actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFFEC4899),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
       child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
@@ -187,7 +173,7 @@ class _RrhhHomeState extends State<RrhhHome> {
                   style: GoogleFonts.syne(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
-                    color: Colors.white,
+                    color: appPalette.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -197,7 +183,7 @@ class _RrhhHomeState extends State<RrhhHome> {
                   label,
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
-                    color: const Color(0xFF737373),
+                    color: appPalette.textMuted,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -216,7 +202,7 @@ class _RrhhHomeState extends State<RrhhHome> {
       style: GoogleFonts.syne(
         fontSize: 14,
         fontWeight: FontWeight.w800,
-        color: Colors.white,
+        color: appPalette.textPrimary,
         letterSpacing: 0.8,
       ),
     );
@@ -294,9 +280,9 @@ class _RrhhHomeState extends State<RrhhHome> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF262626)),
+          border: Border.all(color: appPalette.borderLight),
         ),
         child: Row(
           children: [
@@ -318,7 +304,7 @@ class _RrhhHomeState extends State<RrhhHome> {
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: appPalette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -326,7 +312,7 @@ class _RrhhHomeState extends State<RrhhHome> {
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: const Color(0xFF737373),
+                      color: appPalette.textMuted,
                     ),
                   ),
                 ],
@@ -352,14 +338,14 @@ class _RrhhHomeState extends State<RrhhHome> {
       return Container(
         padding: const EdgeInsets.all(30),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF262626)),
+          border: Border.all(color: appPalette.borderLight),
         ),
         child: Center(
           child: Text(
             'No hay empleados registrados',
-            style: GoogleFonts.dmSans(color: const Color(0xFF525252)),
+            style: GoogleFonts.dmSans(color: appPalette.textDim),
           ),
         ),
       );
@@ -376,11 +362,11 @@ class _RrhhHomeState extends State<RrhhHome> {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF141414),
+            color: appPalette.cardColor,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: activo
-                  ? const Color(0xFF262626)
+                  ? appPalette.borderLight
                   : const Color(0xFFEF4444).withValues(alpha: 0.3),
             ),
           ),
@@ -414,7 +400,7 @@ class _RrhhHomeState extends State<RrhhHome> {
                       style: GoogleFonts.dmSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: appPalette.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -422,7 +408,7 @@ class _RrhhHomeState extends State<RrhhHome> {
                       cargo,
                       style: GoogleFonts.dmMono(
                         fontSize: 11,
-                        color: const Color(0xFF737373),
+                        color: appPalette.textMuted,
                       ),
                     ),
                   ],

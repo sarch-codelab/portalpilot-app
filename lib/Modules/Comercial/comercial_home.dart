@@ -36,21 +36,7 @@ class _ComercialHomeState extends State<ComercialHome> {
       moduleId: 'comercial',
       screenTitle: 'Comercial',
       moduleIcon: Icons.storefront_rounded,
-      moduleColor: const Color(0xFF6B7280),
-      actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF6B7280),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
+      moduleColor: appPalette.textMuted,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -58,7 +44,7 @@ class _ComercialHomeState extends State<ComercialHome> {
             Icons.people_outline,
             'Proveedores',
             'Gestión de proveedores y contactos',
-            const Color(0xFF6B7280),
+            appPalette.textMuted,
             () => Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const ProveedorList())),
@@ -110,14 +96,10 @@ class _ComercialHomeState extends State<ComercialHome> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF111111)
-              : Colors.white,
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: appThemeNotifier.isDark
-                ? const Color(0xFF262626)
-                : const Color(0xFFE5E7EB),
+            color: appPalette.borderLight,
           ),
         ),
         child: Row(
@@ -141,7 +123,7 @@ class _ComercialHomeState extends State<ComercialHome> {
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: appThemeNotifier.isDark
-                          ? Colors.white
+                          ? appPalette.textPrimary
                           : Colors.black,
                     ),
                   ),
@@ -151,8 +133,8 @@ class _ComercialHomeState extends State<ComercialHome> {
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       color: appThemeNotifier.isDark
-                          ? const Color(0xFFA3A3A3)
-                          : const Color(0xFF6B7280),
+                          ? appPalette.textMuted
+                          : appPalette.textMuted,
                     ),
                   ),
                 ],
@@ -161,8 +143,8 @@ class _ComercialHomeState extends State<ComercialHome> {
             Icon(
               Icons.arrow_forward_ios_rounded,
               color: appThemeNotifier.isDark
-                  ? const Color(0xFF525252)
-                  : const Color(0xFF9CA3AF),
+                  ? appPalette.bgTertiary
+                  : appPalette.textMuted,
               size: 16,
             ),
           ],

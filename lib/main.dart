@@ -9,6 +9,7 @@ import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 import 'package:portal_pilot_app/Shared/services/window_manager.dart';
 import 'package:portal_pilot_app/Shared/services/orientation_service.dart';
 import 'package:portal_pilot_app/Shared/services/offline_sync_service.dart';
+import 'package:portal_pilot_app/Shared/services/session_guard.dart';
 import 'package:portal_pilot_app/launch_screen.dart';
 
 void main() async {
@@ -102,6 +103,7 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Portal Pilot',
+          navigatorKey: SessionGuard.navigatorKey,
           themeMode: themeMode,
           darkTheme: ThemePalette.buildTheme(isDark: true),
           theme: ThemePalette.buildTheme(isDark: false),

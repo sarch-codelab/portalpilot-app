@@ -81,23 +81,11 @@ class _AuditoriaState extends State<Auditoria> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF10B981),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFF10B981)),
             onPressed: _loadLogs,
@@ -153,15 +141,13 @@ class _AuditoriaState extends State<Auditoria> {
           color: selected
               ? const Color(0xFF10B981).withValues(alpha: 0.15)
               : appThemeNotifier.isDark
-                  ? const Color(0xFF141414)
-                  : Colors.white,
+                  ? appPalette.cardColor
+                  : appPalette.cardColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
                 ? const Color(0xFF10B981)
-                : appThemeNotifier.isDark
-                    ? const Color(0xFF262626)
-                    : const Color(0xFFE5E7EB),
+                : appPalette.borderLight,
           ),
         ),
         child: Text(
@@ -172,8 +158,8 @@ class _AuditoriaState extends State<Auditoria> {
             color: selected
                 ? const Color(0xFF10B981)
                 : appThemeNotifier.isDark
-                    ? const Color(0xFFA3A3A3)
-                    : const Color(0xFF6B7280),
+                    ? appPalette.textMuted
+                    : appPalette.textMuted,
           ),
         ),
       ),
@@ -188,9 +174,7 @@ class _AuditoriaState extends State<Auditoria> {
           Icon(
             Icons.history_rounded,
             size: 64,
-            color: appThemeNotifier.isDark
-                ? const Color(0xFF262626)
-                : const Color(0xFFE5E7EB),
+            color: appPalette.borderLight,
           ),
           const SizedBox(height: 16),
           Text(
@@ -198,7 +182,7 @@ class _AuditoriaState extends State<Auditoria> {
             style: GoogleFonts.syne(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
           const SizedBox(height: 8),
@@ -206,8 +190,8 @@ class _AuditoriaState extends State<Auditoria> {
             'Las acciones del sistema aparecerán aquí',
             style: GoogleFonts.dmSans(
               color: appThemeNotifier.isDark
-                  ? const Color(0xFFA3A3A3)
-                  : const Color(0xFF6B7280),
+                  ? appPalette.textMuted
+                  : appPalette.textMuted,
             ),
           ),
         ],
@@ -230,9 +214,7 @@ class _AuditoriaState extends State<Auditoria> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: levelColor.withValues(alpha: 0.3), width: 1),
       ),
@@ -263,8 +245,8 @@ class _AuditoriaState extends State<Auditoria> {
                   style: GoogleFonts.dmMono(
                     fontSize: 10,
                     color: appThemeNotifier.isDark
-                        ? const Color(0xFF737373)
-                        : const Color(0xFF9CA3AF),
+                        ? appPalette.textMuted
+                        : appPalette.textMuted,
                   ),
                 ),
               const Spacer(),
@@ -274,8 +256,8 @@ class _AuditoriaState extends State<Auditoria> {
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     color: appThemeNotifier.isDark
-                        ? const Color(0xFF737373)
-                        : const Color(0xFF9CA3AF),
+                        ? appPalette.textMuted
+                        : appPalette.textMuted,
                   ),
                 ),
             ],

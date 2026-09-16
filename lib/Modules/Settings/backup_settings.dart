@@ -62,25 +62,11 @@ class _BackupSettingsState extends State<BackupSettings> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF3B82F6),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: Column(
         children: [
           _buildCreateBackupButton(palette),
@@ -95,17 +81,15 @@ class _BackupSettingsState extends State<BackupSettings> {
                         Icon(
                           Icons.backup_rounded,
                           size: 64,
-                          color: appThemeNotifier.isDark
-                              ? const Color(0xFF262626)
-                              : const Color(0xFFE5E7EB),
+                          color: appPalette.borderLight,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'No hay backups disponibles',
                           style: GoogleFonts.dmSans(
                             color: appThemeNotifier.isDark
-                                ? const Color(0xFFA3A3A3)
-                                : const Color(0xFF6B7280),
+                                ? appPalette.textMuted
+                                : appPalette.textMuted,
                           ),
                         ),
                       ],
@@ -137,7 +121,7 @@ class _BackupSettingsState extends State<BackupSettings> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.cloud_upload_rounded, color: Colors.white, size: 32),
+          const Icon(Icons.cloud_upload_rounded, color: appPalette.cardColor, size: 32),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -148,7 +132,7 @@ class _BackupSettingsState extends State<BackupSettings> {
                   style: GoogleFonts.syne(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: appPalette.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -156,7 +140,7 @@ class _BackupSettingsState extends State<BackupSettings> {
                   'Guarda una copia de seguridad completa',
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: appPalette.textPrimary.withValues(alpha: 0.8),
                   ),
                 ),
               ],
@@ -167,7 +151,7 @@ class _BackupSettingsState extends State<BackupSettings> {
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(
-                    color: Colors.white,
+                    color: appPalette.cardColor,
                     strokeWidth: 2,
                   ),
                 )
@@ -176,7 +160,7 @@ class _BackupSettingsState extends State<BackupSettings> {
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: const Text('Crear'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: appPalette.textPrimary,
                     foregroundColor: const Color(0xFF3B82F6),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -194,12 +178,10 @@ class _BackupSettingsState extends State<BackupSettings> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF262626)
-              : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -218,7 +200,7 @@ class _BackupSettingsState extends State<BackupSettings> {
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: appThemeNotifier.isDark
-                            ? Colors.white
+                            ? appPalette.textPrimary
                             : Colors.black,
                       ),
                     ),
@@ -228,8 +210,8 @@ class _BackupSettingsState extends State<BackupSettings> {
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
                         color: appThemeNotifier.isDark
-                            ? const Color(0xFFA3A3A3)
-                            : const Color(0xFF6B7280),
+                            ? appPalette.textMuted
+                            : appPalette.textMuted,
                       ),
                     ),
                   ],
@@ -262,7 +244,7 @@ class _BackupSettingsState extends State<BackupSettings> {
                   label: const Text('Restaurar'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
+                    foregroundColor: appPalette.cardColor,
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
@@ -275,7 +257,7 @@ class _BackupSettingsState extends State<BackupSettings> {
                   label: const Text('Eliminar'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFEF4444),
-                    foregroundColor: Colors.white,
+                    foregroundColor: appPalette.cardColor,
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
@@ -315,22 +297,20 @@ class _BackupSettingsState extends State<BackupSettings> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Confirmar Restauración',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Text(
           'Esta acción reemplazará todos los datos actuales. ¿Deseas continuar?',
           style: GoogleFonts.dmSans(
             color: appThemeNotifier.isDark
-                ? const Color(0xFFA3A3A3)
-                : const Color(0xFF6B7280),
+                ? appPalette.textMuted
+                : appPalette.textMuted,
           ),
         ),
         actions: [
@@ -338,7 +318,7 @@ class _BackupSettingsState extends State<BackupSettings> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           ElevatedButton(
@@ -348,7 +328,7 @@ class _BackupSettingsState extends State<BackupSettings> {
             ),
             child: Text(
               'Restaurar',
-              style: GoogleFonts.dmSans(color: Colors.white),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
             ),
           ),
         ],
@@ -379,22 +359,20 @@ class _BackupSettingsState extends State<BackupSettings> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Eliminar Backup',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Text(
           '¿Estás seguro de eliminar este backup? Esta acción no se puede deshacer.',
           style: GoogleFonts.dmSans(
             color: appThemeNotifier.isDark
-                ? const Color(0xFFA3A3A3)
-                : const Color(0xFF6B7280),
+                ? appPalette.textMuted
+                : appPalette.textMuted,
           ),
         ),
         actions: [
@@ -402,7 +380,7 @@ class _BackupSettingsState extends State<BackupSettings> {
             onPressed: () => Navigator.pop(context, false),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           ElevatedButton(
@@ -412,7 +390,7 @@ class _BackupSettingsState extends State<BackupSettings> {
             ),
             child: Text(
               'Eliminar',
-              style: GoogleFonts.dmSans(color: Colors.white),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
             ),
           ),
         ],

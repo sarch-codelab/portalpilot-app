@@ -71,25 +71,11 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFFEC4899),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _productos.length,
@@ -103,12 +89,12 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
           _showAddProductDialog();
         },
         backgroundColor: const Color(0xFFEC4899),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Agregar Producto',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: appPalette.textPrimary,
           ),
         ),
       ),
@@ -123,12 +109,10 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF262626)
-              : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -139,7 +123,7 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
             style: GoogleFonts.syne(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
           const SizedBox(height: 12),
@@ -189,7 +173,7 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
           style: GoogleFonts.syne(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
       ],
@@ -205,14 +189,12 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Agregar Producto',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Column(
@@ -224,14 +206,12 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
                 labelText: 'Nombre del producto',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -244,14 +224,12 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
                 labelText: 'Precio Pulpería',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -264,14 +242,12 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
                 labelText: 'Precio Supermercado',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -284,14 +260,12 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
                 labelText: 'Precio Membresía',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -303,7 +277,7 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           ElevatedButton(
@@ -326,7 +300,7 @@ class _PreciosPorCanalState extends State<PreciosPorCanal> {
             ),
             child: Text(
               'Guardar',
-              style: GoogleFonts.dmSans(color: Colors.white),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
             ),
           ),
         ],

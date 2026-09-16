@@ -82,25 +82,11 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFFF59E0B),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFF59E0B)))
           : ListView(
@@ -112,14 +98,14 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+                      color: appPalette.cardColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       'No hay productos registrados',
                       style: GoogleFonts.dmSans(
                         fontSize: 14,
-                        color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                        color: appThemeNotifier.isDark ? appPalette.textMuted : appPalette.textMuted,
                       ),
                     ),
                   )
@@ -148,14 +134,14 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+                      color: appPalette.cardColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       'No hay compras registradas',
                       style: GoogleFonts.dmSans(
                         fontSize: 14,
-                        color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                        color: appThemeNotifier.isDark ? appPalette.textMuted : appPalette.textMuted,
                       ),
                     ),
                   )
@@ -165,10 +151,10 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+                        color: appPalette.cardColor,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
+                          color: appPalette.borderLight,
                         ),
                       ),
                       child: Row(
@@ -182,14 +168,14 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
                                   c['proveedor_nombre'] ?? 'Sin proveedor',
                                   style: GoogleFonts.dmSans(
                                     fontSize: 14, fontWeight: FontWeight.w600,
-                                    color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                                    color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                                   ),
                                 ),
                                 Text(
                                   'Estado: ${c['estado'] ?? 'N/A'}',
                                   style: GoogleFonts.dmSans(
                                     fontSize: 12,
-                                    color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                                    color: appThemeNotifier.isDark ? appPalette.textMuted : appPalette.textMuted,
                                   ),
                                 ),
                               ],
@@ -217,8 +203,8 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
         fontSize: 12,
         fontWeight: FontWeight.w800,
         color: appThemeNotifier.isDark
-            ? const Color(0xFFA3A3A3)
-            : const Color(0xFF6B7280),
+            ? appPalette.textMuted
+            : appPalette.textMuted,
         letterSpacing: 1.5,
       ),
     );
@@ -228,12 +214,10 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF262626)
-              : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Row(
@@ -244,7 +228,7 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
             style: GoogleFonts.dmSans(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
           Row(
@@ -253,9 +237,7 @@ class _MargenesAnalisisState extends State<MargenesAnalisis> {
                 width: 100,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: appThemeNotifier.isDark
-                      ? const Color(0xFF262626)
-                      : const Color(0xFFE5E7EB),
+                  color: appPalette.borderLight,
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: FractionallySizedBox(

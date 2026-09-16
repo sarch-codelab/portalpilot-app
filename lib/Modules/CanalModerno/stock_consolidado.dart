@@ -74,25 +74,11 @@ class _StockConsolidadoState extends State<StockConsolidado> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF3B82F6),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _productos.length,
@@ -112,12 +98,10 @@ class _StockConsolidadoState extends State<StockConsolidado> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF262626)
-              : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -131,7 +115,7 @@ class _StockConsolidadoState extends State<StockConsolidado> {
                 style: GoogleFonts.syne(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                  color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                 ),
               ),
               Container(
@@ -183,8 +167,8 @@ class _StockConsolidadoState extends State<StockConsolidado> {
           style: GoogleFonts.dmSans(
             fontSize: 12,
             color: appThemeNotifier.isDark
-                ? const Color(0xFFA3A3A3)
-                : const Color(0xFF6B7280),
+                ? appPalette.textMuted
+                : appPalette.textMuted,
           ),
         ),
         Row(
@@ -193,9 +177,7 @@ class _StockConsolidadoState extends State<StockConsolidado> {
               width: 100,
               height: 6,
               decoration: BoxDecoration(
-                color: appThemeNotifier.isDark
-                    ? const Color(0xFF262626)
-                    : const Color(0xFFE5E7EB),
+                color: appPalette.borderLight,
                 borderRadius: BorderRadius.circular(3),
               ),
               child: FractionallySizedBox(

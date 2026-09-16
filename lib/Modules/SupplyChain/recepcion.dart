@@ -74,25 +74,11 @@ class _RecepcionState extends State<Recepcion> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF14B8A6),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _recepciones.length,
@@ -104,12 +90,12 @@ class _RecepcionState extends State<Recepcion> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddRecepcionDialog(),
         backgroundColor: const Color(0xFF14B8A6),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
           'Nueva Recepcion',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: appPalette.textPrimary,
           ),
         ),
       ),
@@ -128,12 +114,10 @@ class _RecepcionState extends State<Recepcion> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF262626)
-              : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -147,7 +131,7 @@ class _RecepcionState extends State<Recepcion> {
                 style: GoogleFonts.syne(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                  color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                 ),
               ),
               Container(
@@ -198,8 +182,8 @@ class _RecepcionState extends State<Recepcion> {
           style: GoogleFonts.dmSans(
             fontSize: 11,
             color: appThemeNotifier.isDark
-                ? const Color(0xFFA3A3A3)
-                : const Color(0xFF6B7280),
+                ? appPalette.textMuted
+                : appPalette.textMuted,
           ),
         ),
         const SizedBox(height: 4),
@@ -208,7 +192,7 @@ class _RecepcionState extends State<Recepcion> {
           style: GoogleFonts.syne(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
       ],
@@ -223,14 +207,12 @@ class _RecepcionState extends State<Recepcion> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Nueva Recepcion',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Column(
@@ -242,14 +224,12 @@ class _RecepcionState extends State<Recepcion> {
                 labelText: 'Proveedor',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -261,14 +241,12 @@ class _RecepcionState extends State<Recepcion> {
                 labelText: 'Producto',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -281,14 +259,12 @@ class _RecepcionState extends State<Recepcion> {
                 labelText: 'Cantidad',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -300,7 +276,7 @@ class _RecepcionState extends State<Recepcion> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           ElevatedButton(
@@ -322,7 +298,7 @@ class _RecepcionState extends State<Recepcion> {
             ),
             child: Text(
               'Guardar',
-              style: GoogleFonts.dmSans(color: Colors.white),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
             ),
           ),
         ],

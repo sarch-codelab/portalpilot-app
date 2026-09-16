@@ -72,25 +72,11 @@ class _DevolucionesProveedorState extends State<DevolucionesProveedor> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFFEF4444),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFEF4444)))
           : _compras.isEmpty
@@ -99,12 +85,12 @@ class _DevolucionesProveedorState extends State<DevolucionesProveedor> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.assignment_return_rounded, size: 64,
-                        color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+                        color: appPalette.borderLight),
                       const SizedBox(height: 16),
                       Text('No hay compras registradas',
                         style: GoogleFonts.dmSans(
                           fontSize: 14,
-                          color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                          color: appThemeNotifier.isDark ? appPalette.textMuted : appPalette.textMuted,
                         )),
                     ],
                   ),
@@ -124,10 +110,10 @@ class _DevolucionesProveedorState extends State<DevolucionesProveedor> {
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+                        color: appPalette.cardColor,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
+                          color: appPalette.borderLight,
                         ),
                       ),
                       child: Row(
@@ -147,11 +133,11 @@ class _DevolucionesProveedorState extends State<DevolucionesProveedor> {
                               children: [
                                 Text(c['correlativo'] ?? 'S/N',
                                   style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w700,
-                                    color: appThemeNotifier.isDark ? Colors.white : Colors.black)),
+                                    color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black)),
                                 const SizedBox(height: 4),
                                 Text(c['proveedor_nombre'] ?? 'Sin proveedor',
                                   style: GoogleFonts.dmSans(fontSize: 12,
-                                    color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280))),
+                                    color: appThemeNotifier.isDark ? appPalette.textMuted : appPalette.textMuted)),
                               ],
                             ),
                           ),

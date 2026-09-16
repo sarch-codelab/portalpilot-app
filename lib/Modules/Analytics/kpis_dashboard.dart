@@ -78,25 +78,11 @@ class _KPIsDashboardState extends State<KPIsDashboard> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF10B981),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
           : _kpis.isEmpty
@@ -105,7 +91,7 @@ class _KPIsDashboardState extends State<KPIsDashboard> {
                     'No hay datos disponibles',
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
-                      color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                      color: appThemeNotifier.isDark ? appPalette.textMuted : appPalette.textMuted,
                     ),
                   ),
                 )
@@ -184,7 +170,7 @@ class _KPIsDashboardState extends State<KPIsDashboard> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
       ),
@@ -208,8 +194,8 @@ class _KPIsDashboardState extends State<KPIsDashboard> {
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
                     color: appThemeNotifier.isDark
-                        ? const Color(0xFFA3A3A3)
-                        : const Color(0xFF6B7280),
+                        ? appPalette.textMuted
+                        : appPalette.textMuted,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -219,7 +205,7 @@ class _KPIsDashboardState extends State<KPIsDashboard> {
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
                     color: appThemeNotifier.isDark
-                        ? Colors.white
+                        ? appPalette.textPrimary
                         : Colors.black,
                   ),
                 ),

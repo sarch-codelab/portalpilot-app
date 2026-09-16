@@ -68,7 +68,7 @@ class PPModuleAppBar extends StatelessWidget implements PreferredSizeWidget {
                   BoxShadow(color: moduleColor.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 3)),
                 ],
               ),
-              child: Icon(moduleIcon, color: Colors.white, size: 17),
+              child: Icon(moduleIcon, color: appPalette.cardColor, size: 17),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -127,7 +127,7 @@ class PPModuleAppBar extends StatelessWidget implements PreferredSizeWidget {
                   BoxShadow(color: moduleColor.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 3)),
                 ],
               ),
-              child: Icon(moduleIcon, color: Colors.white, size: 17),
+              child: Icon(moduleIcon, color: appPalette.cardColor, size: 17),
             ),
             const SizedBox(width: 10),
             Text(
@@ -156,19 +156,6 @@ class _ThemeToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Container(
-      decoration: BoxDecoration(color: palette.bgSecondary, borderRadius: BorderRadius.circular(10)),
-      child: Tooltip(
-        message: appThemeNotifier.isDark ? 'Modo claro' : 'Modo oscuro',
-        child: IconButton(
-          icon: Icon(
-            appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-            color: color,
-            size: 18,
-          ),
-          onPressed: () async => appThemeNotifier.toggle(),
-        ),
-      ),
-    );
+    return ;
   }
 }

@@ -125,7 +125,7 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
@@ -139,19 +139,7 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
             tooltip: 'Asistente IA',
             onPressed: _toggleAIChat,
           ),
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF6366F1),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
+          ],
       ),
       body: Stack(
         children: [
@@ -188,13 +176,13 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: appThemeNotifier.isDark
-            ? const Color(0xFF1A1A1A).withValues(alpha: 0.8)
+            ? appPalette.borderLight.withValues(alpha: 0.8)
             : const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: appThemeNotifier.isDark
               ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
-              : const Color(0xFFE5E7EB),
+              : appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -205,7 +193,7 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
             style: GoogleFonts.syne(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
           const SizedBox(height: 8),
@@ -232,7 +220,7 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
                     a['titulo'],
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                      color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                     ),
                   ),
                 ),
@@ -264,14 +252,14 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
                 style: GoogleFonts.syne(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: appPalette.textPrimary.withValues(alpha: 0.8),
                   letterSpacing: 1.5,
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: appPalette.textPrimary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -279,7 +267,7 @@ class _DashboardGerencialState extends State<DashboardGerencial> {
                   style: GoogleFonts.dmSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: appPalette.textPrimary,
                   ),
                 ),
               ),
@@ -327,7 +315,7 @@ const SizedBox(height: 16),
           label,
           style: GoogleFonts.dmSans(
             fontSize: 10,
-            color: Colors.white.withValues(alpha: 0.8),
+            color: appPalette.textPrimary.withValues(alpha: 0.8),
           ),
         ),
         const SizedBox(height: 4),
@@ -336,7 +324,7 @@ const SizedBox(height: 16),
           style: GoogleFonts.syne(
             fontSize: 18,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
           ),
         ),
         const SizedBox(height: 4),
@@ -364,10 +352,10 @@ const SizedBox(height: 16),
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -377,12 +365,12 @@ const SizedBox(height: 16),
             'GASTOS POR CATEGORÍA',
             style: GoogleFonts.syne(
               fontSize: 14, fontWeight: FontWeight.w700,
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
           const SizedBox(height: 16),
           if (gastos.isEmpty)
-            Text('Sin datos de gastos', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373)))
+            Text('Sin datos de gastos', style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted))
           else
             ...gastos.take(4).toList().asMap().entries.map((entry) {
               final idx = entry.key;
@@ -416,7 +404,7 @@ const SizedBox(height: 16),
               style: GoogleFonts.dmSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
               ),
             ),
             Text(
@@ -433,9 +421,7 @@ const SizedBox(height: 16),
         Container(
           height: 8,
           decoration: BoxDecoration(
-            color: appThemeNotifier.isDark
-                ? const Color(0xFF262626)
-                : const Color(0xFFE5E7EB),
+            color: appPalette.borderLight,
             borderRadius: BorderRadius.circular(4),
           ),
           child: FractionallySizedBox(
@@ -461,10 +447,10 @@ Widget _buildChannelPerformance(ThemePalette palette) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -474,7 +460,7 @@ Widget _buildChannelPerformance(ThemePalette palette) {
             'RESUMEN DE OPERACIONES',
             style: GoogleFonts.syne(
               fontSize: 14, fontWeight: FontWeight.w700,
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
           const SizedBox(height: 16),
@@ -551,7 +537,7 @@ Widget _buildChannelPerformance(ThemePalette palette) {
             value,
             style: GoogleFonts.syne(
               fontSize: 16, fontWeight: FontWeight.w700,
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
           const SizedBox(height: 4),
@@ -559,7 +545,7 @@ Widget _buildChannelPerformance(ThemePalette palette) {
             subtitle,
             style: GoogleFonts.dmSans(
               fontSize: 10,
-              color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+              color: appThemeNotifier.isDark ? appPalette.textMuted : appPalette.textMuted,
             ),
           ),
         ],
@@ -576,10 +562,10 @@ Widget _buildKeyMetrics(ThemePalette palette) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -589,7 +575,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
             'MÉTRICAS CLAVE',
             style: GoogleFonts.syne(
               fontSize: 14, fontWeight: FontWeight.w700,
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
           const SizedBox(height: 16),
@@ -639,8 +625,8 @@ Widget _buildKeyMetrics(ThemePalette palette) {
             style: GoogleFonts.dmSans(
               fontSize: 10,
               color: appThemeNotifier.isDark
-                  ? const Color(0xFFA3A3A3)
-                  : const Color(0xFF6B7280),
+                  ? appPalette.textMuted
+                  : appPalette.textMuted,
             ),
           ),
           const SizedBox(height: 4),
@@ -665,13 +651,11 @@ Widget _buildKeyMetrics(ThemePalette palette) {
       child: Container(
         height: 420,
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+          color: appPalette.cardColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           border: Border(
             top: BorderSide(
-              color: appThemeNotifier.isDark
-                  ? const Color(0xFF262626)
-                  : const Color(0xFFE5E7EB),
+              color: appPalette.borderLight,
             ),
           ),
           boxShadow: [
@@ -694,7 +678,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
+                  const Icon(Icons.auto_awesome_rounded, color: appPalette.cardColor, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -702,12 +686,12 @@ Widget _buildKeyMetrics(ThemePalette palette) {
                       style: GoogleFonts.syne(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: appPalette.textPrimary,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
+                    icon: const Icon(Icons.close_rounded, color: appPalette.cardColor, size: 18),
                     onPressed: _toggleAIChat,
                   ),
                 ],
@@ -721,8 +705,8 @@ Widget _buildKeyMetrics(ThemePalette palette) {
                         style: GoogleFonts.dmSans(
                           fontSize: 12,
                           color: appThemeNotifier.isDark
-                              ? const Color(0xFFA3A3A3)
-                              : const Color(0xFF6B7280),
+                              ? appPalette.textMuted
+                              : appPalette.textMuted,
                         ),
                       ),
                     )
@@ -736,9 +720,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: appThemeNotifier.isDark
-                    ? const Color(0xFF111111)
-                    : const Color(0xFFF9FAFB),
+                color: appPalette.bgSecondary,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -780,7 +762,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
           children: [
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF000000).withValues(alpha: 0.5),
+                color: appPalette.bgPrimary.withValues(alpha: 0.5),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -803,7 +785,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
                       center: Alignment(0, 0),
                       radius: 1,
                       colors: [
-                        Colors.white,
+                        appPalette.cardColor,
                         Color(0x4DFFFFFF),
                         Color(0x1AFFFFFF),
                         Colors.transparent,
@@ -837,7 +819,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
       maxLines: 4,
       style: GoogleFonts.dmSans(
         fontSize: 12.5,
-        color: Colors.white,
+        color: appPalette.textPrimary,
       ),
       decoration: InputDecoration(
         hintText: 'Imagina algo extraordinario... ✦',
@@ -936,7 +918,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
                 ),
                 child: Text(
                   s,
-                  style: GoogleFonts.dmSans(fontSize: 10, color: Colors.white),
+                  style: GoogleFonts.dmSans(fontSize: 10, color: appPalette.textPrimary),
                 ),
               ),
             ),
@@ -960,9 +942,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
               ? const Color(0xFFEF4444).withValues(alpha: 0.15)
               : isUser
                   ? const Color(0xFF6366F1)
-                  : appThemeNotifier.isDark
-                      ? const Color(0xFF262626)
-                      : const Color(0xFFF3F4F6),
+                  : appPalette.bgSecondary,
           borderRadius: BorderRadius.circular(14),
         ),
         child: message.isLoading
@@ -979,7 +959,7 @@ Widget _buildKeyMetrics(ThemePalette palette) {
                     message.text,
                     style: GoogleFonts.dmSans(
                       fontSize: 13,
-                      color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                      color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                     ),
                   ),
                 ],
@@ -991,9 +971,9 @@ Widget _buildKeyMetrics(ThemePalette palette) {
                   color: message.isError
                       ? const Color(0xFFEF4444)
                       : isUser
-                          ? Colors.white
+                          ? appPalette.textPrimary
                           : appThemeNotifier.isDark
-                              ? Colors.white
+                              ? appPalette.textPrimary
                               : Colors.black,
                 ),
               ),
@@ -1048,8 +1028,8 @@ class _AIToolButtonState extends State<_AIToolButton> {
                 widget.icon,
                 size: 20,
                 color: enabled
-                    ? (_hover ? Colors.white : Colors.white.withValues(alpha: 0.15))
-                    : Colors.white.withValues(alpha: 0.08),
+                    ? (_hover ? appPalette.textPrimary : appPalette.textPrimary.withValues(alpha: 0.15))
+                    : appPalette.textPrimary.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -1097,12 +1077,12 @@ class _AISendButtonState extends State<_AISendButton> {
             gradient: const LinearGradient(
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
-              colors: [Color(0xFF292929), Color(0xFF555555), Color(0xFF292929)],
+              colors: [Color(0xFF292929), Color(0xFF555555), appPalette.borderLight],
             ),
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
-                color: _hover ? Colors.white.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.12),
+                color: _hover ? Colors.white.withValues(alpha: 0.4) : appPalette.textPrimary.withValues(alpha: 0.12),
                 blurRadius: _hover ? 8 : 3,
                 spreadRadius: 0,
                 offset: const Offset(0, -1),

@@ -86,25 +86,11 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFFCD7F32),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFCD7F32)))
           : _niveles.isEmpty
@@ -113,8 +99,8 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
                 'No hay niveles de membresía',
                 style: GoogleFonts.dmSans(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
               ),
             )
@@ -135,12 +121,12 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
           _showAddNivelDialog();
         },
         backgroundColor: const Color(0xFFCD7F32),
-        icon: const Icon(Icons.workspace_premium_rounded, color: Colors.white),
+        icon: const Icon(Icons.workspace_premium_rounded, color: appPalette.cardColor),
         label: Text(
           'Nuevo Nivel',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: appPalette.textPrimary,
           ),
         ),
       ),
@@ -151,14 +137,14 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
     final color = nivel['nombre'] == 'Oro'
         ? const Color(0xFFF59E0B)
         : nivel['nombre'] == 'Plata'
-        ? const Color(0xFF9CA3AF)
+        ? appPalette.textMuted
         : const Color(0xFFCD7F32);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
       ),
@@ -223,8 +209,8 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
             style: GoogleFonts.dmSans(
               fontSize: 12,
               color: appThemeNotifier.isDark
-                  ? const Color(0xFFA3A3A3)
-                  : const Color(0xFF6B7280),
+                  ? appPalette.textMuted
+                  : appPalette.textMuted,
             ),
           ),
           const SizedBox(height: 12),
@@ -234,8 +220,8 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: appThemeNotifier.isDark
-                  ? const Color(0xFFA3A3A3)
-                  : const Color(0xFF6B7280),
+                  ? appPalette.textMuted
+                  : appPalette.textMuted,
             ),
           ),
           const SizedBox(height: 8),
@@ -255,7 +241,7 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
                     style: GoogleFonts.dmSans(
                       fontSize: 13,
                       color: appThemeNotifier.isDark
-                          ? Colors.white
+                          ? appPalette.textPrimary
                           : Colors.black,
                     ),
                   ),
@@ -276,14 +262,12 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Nuevo Nivel',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Column(
@@ -295,14 +279,12 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
                 labelText: 'Nombre del nivel',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -315,14 +297,12 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
                 labelText: 'Puntos mínimos',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -335,14 +315,12 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
                 labelText: 'Descuento (%)',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -354,7 +332,7 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           ElevatedButton(
@@ -375,7 +353,7 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
             ),
             child: Text(
               'Guardar',
-              style: GoogleFonts.dmSans(color: Colors.white),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
             ),
           ),
         ],

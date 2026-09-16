@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/session_guard.dart';
 
 const String _defaultApiRoot = 'https://portal-pilot.vercel.app';
 
@@ -158,14 +159,18 @@ class ApiService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return data is Map<String, dynamic> ? data : {'data': data};
       }
-      final code = data is Map<String, dynamic> ? data['code'] : null;
+      final parsed = data is Map<String, dynamic> ? data : <String, dynamic>{};
+      if (_detectSessionExpired(response.statusCode, parsed)) {
+        unawaited(SessionGuard.forceLogoutToLogin());
+      }
+      final code = parsed['code'];
       if (code == 'TRIAL_EXPIRED') {
         try {
           AuthController.instance.marcarSoloLectura(activo: true);
         } catch (_) {}
         return {
-          'error': (data is Map<String, dynamic> && data['error'] != null)
-              ? data['error'].toString()
+          'error': (parsed['error'] != null)
+              ? parsed['error'].toString()
               : 'Tu prueba venció. La plataforma está en modo solo lectura.',
           'statusCode': response.statusCode,
           'code': 'TRIAL_EXPIRED',
@@ -173,12 +178,20 @@ class ApiService {
         };
       }
       return {
-        'error': data is Map<String, dynamic> ? (data['error'] ?? 'Error ${response.statusCode}').toString() : 'Error ${response.statusCode}',
+        'error': (parsed['error'] ?? 'Error ${response.statusCode}').toString(),
         'statusCode': response.statusCode,
       };
     } catch (e) {
       return {'error': 'Error parsing response: $e', 'statusCode': response.statusCode};
     }
+  }
+
+  bool _detectSessionExpired(int statusCode, Map<String, dynamic> data) {
+    if (SessionGuard.isTokenExpired(statusCode, data)) {
+      debugPrint('[ApiService] Sesión expirada (HTTP $statusCode). Forzando re-login...');
+      return true;
+    }
+    return false;
   }
 
   bool isSuccess(Map<String, dynamic> result) => !result.containsKey('error');

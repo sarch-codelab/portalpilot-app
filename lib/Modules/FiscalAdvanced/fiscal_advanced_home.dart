@@ -36,20 +36,6 @@ class _FiscalAdvancedHomeState extends State<FiscalAdvancedHome> {
       screenTitle: 'Fiscal Avanzado',
       moduleIcon: Icons.gavel_rounded,
       moduleColor: const Color(0xFFDC2626),
-      actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFFDC2626),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -104,14 +90,10 @@ class _FiscalAdvancedHomeState extends State<FiscalAdvancedHome> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF111111)
-              : Colors.white,
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: appThemeNotifier.isDark
-                ? const Color(0xFF262626)
-                : const Color(0xFFE5E7EB),
+            color: appPalette.borderLight,
           ),
         ),
         child: Row(
@@ -135,7 +117,7 @@ class _FiscalAdvancedHomeState extends State<FiscalAdvancedHome> {
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: appThemeNotifier.isDark
-                          ? Colors.white
+                          ? appPalette.textPrimary
                           : Colors.black,
                     ),
                   ),
@@ -145,8 +127,8 @@ class _FiscalAdvancedHomeState extends State<FiscalAdvancedHome> {
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       color: appThemeNotifier.isDark
-                          ? const Color(0xFFA3A3A3)
-                          : const Color(0xFF6B7280),
+                          ? appPalette.textMuted
+                          : appPalette.textMuted,
                     ),
                   ),
                 ],
@@ -155,8 +137,8 @@ class _FiscalAdvancedHomeState extends State<FiscalAdvancedHome> {
             Icon(
               Icons.arrow_forward_ios_rounded,
               color: appThemeNotifier.isDark
-                  ? const Color(0xFF525252)
-                  : const Color(0xFF9CA3AF),
+                  ? appPalette.bgTertiary
+                  : appPalette.textMuted,
               size: 16,
             ),
           ],

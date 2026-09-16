@@ -82,7 +82,7 @@ class _RutaScreenState extends State<RutaScreen> {
               ),
               child: const Icon(
                 Icons.route_rounded,
-                color: Colors.white,
+                color: appPalette.cardColor,
                 size: 16,
               ),
             ),
@@ -92,7 +92,7 @@ class _RutaScreenState extends State<RutaScreen> {
               style: GoogleFonts.syne(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: appPalette.textPrimary,
                 letterSpacing: 1.5,
               ),
             ),
@@ -102,19 +102,19 @@ class _RutaScreenState extends State<RutaScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _crearRuta,
         backgroundColor: const Color(0xFF8B5CF6),
-        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+        icon: const Icon(Icons.add_rounded, color: appPalette.cardColor, size: 22),
         label: Text(
           'Nueva Ruta',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: appPalette.textPrimary,
           ),
         ),
       ),
       body: RefreshIndicator(
         onRefresh: _cargar,
         color: const Color(0xFF8B5CF6),
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: appPalette.cardColor,
         child: _cargando
             ? const Center(
                 child: CircularProgressIndicator(color: Color(0xFF8B5CF6)),
@@ -195,7 +195,7 @@ class _RutaScreenState extends State<RutaScreen> {
               style: GoogleFonts.syne(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: appPalette.textPrimary,
               ),
             ),
             const SizedBox(height: 2),
@@ -203,7 +203,7 @@ class _RutaScreenState extends State<RutaScreen> {
               label,
               style: GoogleFonts.dmSans(
                 fontSize: 10,
-                color: const Color(0xFF737373),
+                color: appPalette.textMuted,
               ),
             ),
           ],
@@ -216,9 +216,9 @@ class _RutaScreenState extends State<RutaScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF262626)),
+        border: Border.all(color: appPalette.borderLight),
       ),
       child: Column(
         children: [
@@ -229,7 +229,7 @@ class _RutaScreenState extends State<RutaScreen> {
             style: GoogleFonts.syne(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: appPalette.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -238,7 +238,7 @@ class _RutaScreenState extends State<RutaScreen> {
             textAlign: TextAlign.center,
             style: GoogleFonts.dmSans(
               fontSize: 12,
-              color: const Color(0xFF737373),
+              color: appPalette.textMuted,
             ),
           ),
         ],
@@ -253,9 +253,9 @@ class _RutaScreenState extends State<RutaScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF262626)),
+          border: Border.all(color: appPalette.borderLight),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,7 +286,7 @@ class _RutaScreenState extends State<RutaScreen> {
                         style: GoogleFonts.dmSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          color: appPalette.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -294,7 +294,7 @@ class _RutaScreenState extends State<RutaScreen> {
                         '${RutaFrecuencia.etiqueta(r.frecuencia)} · ${RutaFrecuencia.diaEtiqueta(r.diaSemana)}',
                         style: GoogleFonts.dmSans(
                           fontSize: 11,
-                          color: const Color(0xFF737373),
+                          color: appPalette.textMuted,
                         ),
                       ),
                     ],
@@ -327,7 +327,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 children: [
                   const Icon(
                     Icons.person_rounded,
-                    color: Color(0xFF737373),
+                    color: appPalette.bgTertiary,
                     size: 14,
                   ),
                   const SizedBox(width: 6),
@@ -335,7 +335,7 @@ class _RutaScreenState extends State<RutaScreen> {
                     r.vendedor!,
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
-                      color: const Color(0xFFA3A3A3),
+                      color: appPalette.textMuted,
                     ),
                   ),
                 ],
@@ -349,7 +349,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.dmSans(
                   fontSize: 11,
-                  color: const Color(0xFF737373),
+                  color: appPalette.textMuted,
                 ),
               ),
             ],
@@ -365,7 +365,7 @@ class _RutaScreenState extends State<RutaScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: appPalette.cardColor,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -381,7 +381,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF262626),
+                  color: appPalette.borderLight,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -392,7 +392,7 @@ class _RutaScreenState extends State<RutaScreen> {
               style: GoogleFonts.syne(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: appPalette.textPrimary,
               ),
             ),
             const SizedBox(height: 4),
@@ -400,7 +400,7 @@ class _RutaScreenState extends State<RutaScreen> {
               '${RutaFrecuencia.etiqueta(info.ruta.frecuencia)} · ${RutaFrecuencia.diaEtiqueta(info.ruta.diaSemana)}',
               style: GoogleFonts.dmSans(
                 fontSize: 12,
-                color: const Color(0xFF737373),
+                color: appPalette.textMuted,
               ),
             ),
             const SizedBox(height: 18),
@@ -409,7 +409,7 @@ class _RutaScreenState extends State<RutaScreen> {
               style: GoogleFonts.syne(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFFA3A3A3),
+                color: appPalette.textMuted,
                 letterSpacing: 1,
               ),
             ),
@@ -419,7 +419,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 'Sin clientes asignados.',
                 style: GoogleFonts.dmSans(
                   fontSize: 12,
-                  color: const Color(0xFF737373),
+                  color: appPalette.textMuted,
                 ),
               )
             else
@@ -428,14 +428,14 @@ class _RutaScreenState extends State<RutaScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: const BoxDecoration(
                     border: Border(
-                      bottom: BorderSide(color: Color(0xFF1F1F1F)),
+                      bottom: BorderSide(color: appPalette.cardColor),
                     ),
                   ),
                   child: Row(
                     children: [
                       const Icon(
                         Icons.person_rounded,
-                        color: Color(0xFF737373),
+                        color: appPalette.bgTertiary,
                         size: 15,
                       ),
                       const SizedBox(width: 8),
@@ -444,7 +444,7 @@ class _RutaScreenState extends State<RutaScreen> {
                           c.clienteNombre ?? c.clienteId,
                           style: GoogleFonts.dmSans(
                             fontSize: 13,
-                            color: Colors.white,
+                            color: appPalette.textPrimary,
                           ),
                         ),
                       ),
@@ -452,7 +452,7 @@ class _RutaScreenState extends State<RutaScreen> {
                         '#${c.orden + 1}',
                         style: GoogleFonts.dmSans(
                           fontSize: 11,
-                          color: const Color(0xFF737373),
+                          color: appPalette.textMuted,
                         ),
                       ),
                     ],
@@ -531,7 +531,7 @@ class _RutaScreenState extends State<RutaScreen> {
               style: GoogleFonts.dmSans(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: appPalette.textPrimary,
               ),
             ),
           ],
@@ -596,14 +596,14 @@ class _RutaScreenState extends State<RutaScreen> {
     return showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141414),
+        backgroundColor: appPalette.cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           inicial == null ? 'Nueva ruta' : 'Editar ruta',
           style: GoogleFonts.syne(
             fontSize: 16,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: appPalette.textPrimary,
           ),
         ),
         content: StatefulBuilder(
@@ -614,20 +614,20 @@ class _RutaScreenState extends State<RutaScreen> {
               children: [
                 TextField(
                   controller: nombreController,
-                  style: GoogleFonts.dmSans(fontSize: 14, color: Colors.white),
+                  style: GoogleFonts.dmSans(fontSize: 14, color: appPalette.textPrimary),
                   decoration: _inputDecoration('Nombre de la ruta'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: vendedorController,
-                  style: GoogleFonts.dmSans(fontSize: 14, color: Colors.white),
+                  style: GoogleFonts.dmSans(fontSize: 14, color: appPalette.textPrimary),
                   decoration: _inputDecoration('Vendedor / repartidor'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: frecuencia,
-                  dropdownColor: const Color(0xFF1A1A1A),
-                  style: GoogleFonts.dmSans(fontSize: 14, color: Colors.white),
+                  dropdownColor: appPalette.cardColor,
+                  style: GoogleFonts.dmSans(fontSize: 14, color: appPalette.textPrimary),
                   decoration: _inputDecoration('Frecuencia'),
                   items: RutaFrecuencia.opciones
                       .map(
@@ -644,8 +644,8 @@ class _RutaScreenState extends State<RutaScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int?>(
                   value: diaSemana,
-                  dropdownColor: const Color(0xFF1A1A1A),
-                  style: GoogleFonts.dmSans(fontSize: 14, color: Colors.white),
+                  dropdownColor: appPalette.cardColor,
+                  style: GoogleFonts.dmSans(fontSize: 14, color: appPalette.textPrimary),
                   decoration: _inputDecoration('Día de visita'),
                   items: [
                     const DropdownMenuItem<int?>(
@@ -665,7 +665,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 TextField(
                   controller: descripcionController,
                   maxLines: 2,
-                  style: GoogleFonts.dmSans(fontSize: 14, color: Colors.white),
+                  style: GoogleFonts.dmSans(fontSize: 14, color: appPalette.textPrimary),
                   decoration: _inputDecoration('Descripción (opcional)'),
                 ),
               ],
@@ -677,7 +677,7 @@ class _RutaScreenState extends State<RutaScreen> {
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFF737373)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           TextButton(
@@ -720,14 +720,14 @@ class _RutaScreenState extends State<RutaScreen> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141414),
+        backgroundColor: appPalette.cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Clientes en ruta',
           style: GoogleFonts.syne(
             fontSize: 16,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: appPalette.textPrimary,
           ),
         ),
         content: SizedBox(
@@ -737,7 +737,7 @@ class _RutaScreenState extends State<RutaScreen> {
                   'No hay clientes registrados.',
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
-                    color: const Color(0xFF737373),
+                    color: appPalette.textMuted,
                   ),
                 )
               : ListView(
@@ -751,7 +751,7 @@ class _RutaScreenState extends State<RutaScreen> {
                         c.nombre,
                         style: GoogleFonts.dmSans(
                           fontSize: 13,
-                          color: Colors.white,
+                          color: appPalette.textPrimary,
                         ),
                       ),
                       onChanged: (v) => setState(() {
@@ -770,7 +770,7 @@ class _RutaScreenState extends State<RutaScreen> {
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFF737373)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           TextButton(
@@ -810,26 +810,26 @@ class _RutaScreenState extends State<RutaScreen> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141414),
+        backgroundColor: appPalette.cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Eliminar ruta',
           style: GoogleFonts.syne(
             fontSize: 16,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: appPalette.textPrimary,
           ),
         ),
         content: Text(
           '¿Eliminar "${info.ruta.nombre}"? También se quitarán sus clientes asignados.',
-          style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+          style: GoogleFonts.dmSans(color: appPalette.textMuted),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFF737373)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           TextButton(
@@ -857,17 +857,17 @@ class _RutaScreenState extends State<RutaScreen> {
       labelText: label,
       labelStyle: GoogleFonts.dmSans(
         fontSize: 13,
-        color: const Color(0xFF737373),
+        color: appPalette.textMuted,
       ),
       filled: true,
-      fillColor: const Color(0xFF0F0F0F),
+      fillColor: appPalette.bgSecondary,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFF262626)),
+        borderSide: const BorderSide(color: appPalette.borderLight),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFF262626)),
+        borderSide: const BorderSide(color: appPalette.borderLight),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),

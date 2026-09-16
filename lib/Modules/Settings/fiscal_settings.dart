@@ -77,25 +77,11 @@ class _FiscalSettingsState extends State<FiscalSettings> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF10B981),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -193,7 +179,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                     'Guardar Configuración',
                     style: GoogleFonts.dmSans(
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: appPalette.textPrimary,
                       fontSize: 16,
                     ),
                   ),
@@ -210,8 +196,8 @@ class _FiscalSettingsState extends State<FiscalSettings> {
         fontSize: 12,
         fontWeight: FontWeight.w800,
         color: appThemeNotifier.isDark
-            ? const Color(0xFFA3A3A3)
-            : const Color(0xFF6B7280),
+            ? appPalette.textMuted
+            : appPalette.textMuted,
         letterSpacing: 1.5,
       ),
     );
@@ -232,20 +218,18 @@ class _FiscalSettingsState extends State<FiscalSettings> {
         hintText: hintText,
         labelStyle: TextStyle(
           color: appThemeNotifier.isDark
-              ? const Color(0xFFA3A3A3)
-              : const Color(0xFF6B7280),
+              ? appPalette.textMuted
+              : appPalette.textMuted,
         ),
         border: OutlineInputBorder(
           borderSide: BorderSide(
-            color: appThemeNotifier.isDark
-                ? const Color(0xFF262626)
-                : const Color(0xFFE5E7EB),
+            color: appPalette.borderLight,
           ),
         ),
         counterText: '',
       ),
       style: GoogleFonts.dmSans(
-        color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+        color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
       ),
     );
   }
@@ -258,12 +242,10 @@ class _FiscalSettingsState extends State<FiscalSettings> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF262626)
-              : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Row(
@@ -272,7 +254,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
           Text(
             label,
             style: GoogleFonts.dmSans(
-              color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+              color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
           Text(
@@ -296,12 +278,10 @@ class _FiscalSettingsState extends State<FiscalSettings> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF262626)
-              : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Row(
@@ -316,7 +296,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                   style: GoogleFonts.syne(
                     fontWeight: FontWeight.w700,
                     color: appThemeNotifier.isDark
-                        ? Colors.white
+                        ? appPalette.textPrimary
                         : Colors.black,
                   ),
                 ),
@@ -326,8 +306,8 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
                     color: appThemeNotifier.isDark
-                        ? const Color(0xFFA3A3A3)
-                        : const Color(0xFF6B7280),
+                        ? appPalette.textMuted
+                        : appPalette.textMuted,
                   ),
                 ),
               ],

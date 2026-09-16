@@ -29,6 +29,7 @@ import 'package:portal_pilot_app/Modules/Seguridad/seguridad_home.dart';
 import 'package:portal_pilot_app/Modules/MultiEmpresa/multi_empresa_home.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/multi_area_config.dart';
+import 'package:portal_pilot_app/Shared/services/background_service.dart';
 import 'package:portal_pilot_app/Shared/services/connectivity_service.dart';
 import 'package:portal_pilot_app/Shared/services/haptic_service.dart';
 import 'package:portal_pilot_app/Shared/services/offline_sync_service.dart';
@@ -266,13 +267,13 @@ class _HomeScreenState extends State<HomeScreen>
           drawer: isMobile ? _buildMobileDrawer() : null,
           body: Stack(
             children: [
-              // Fondo original a pantalla completa, sin bordes
+              // Fondo adaptativo según dispositivo y tema
               Positioned.fill(
-                child: Image.asset(
-                  'img/fondos-img/fondo-panel-modulos.jpg',
+                child: BackgroundService.instance.buildBackground(
+                  context: context,
+                  isDark: appThemeNotifier.isDark,
                   fit: BoxFit.cover,
                   alignment: Alignment.center,
-                  gaplessPlayback: true,
                 ),
               ),
               SafeArea(

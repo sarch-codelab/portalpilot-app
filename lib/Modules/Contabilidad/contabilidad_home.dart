@@ -111,7 +111,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
     if (!mounted) return;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: appPalette.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -144,7 +144,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                       style: GoogleFonts.syne(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: appPalette.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -161,12 +161,12 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                               decoration: BoxDecoration(
                                 color: tipo == 'ingreso'
                                     ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                                    : const Color(0xFF141414),
+                                    : appPalette.cardColor,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: tipo == 'ingreso'
                                       ? const Color(0xFF10B981)
-                                      : const Color(0xFF262626),
+                                      : appPalette.borderLight,
                                 ),
                               ),
                               child: Column(
@@ -174,7 +174,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                                   Icon(Icons.trending_up_rounded,
                                       color: tipo == 'ingreso'
                                           ? const Color(0xFF10B981)
-                                          : const Color(0xFF737373),
+                                          : appPalette.textMuted,
                                       size: 22),
                                   const SizedBox(height: 4),
                                   Text(
@@ -184,7 +184,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                                       fontWeight: FontWeight.w600,
                                       color: tipo == 'ingreso'
                                           ? const Color(0xFF10B981)
-                                          : const Color(0xFF737373),
+                                          : appPalette.textMuted,
                                     ),
                                   ),
                                 ],
@@ -204,12 +204,12 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                               decoration: BoxDecoration(
                                 color: tipo == 'gasto'
                                     ? const Color(0xFFEF4444).withValues(alpha: 0.15)
-                                    : const Color(0xFF141414),
+                                    : appPalette.cardColor,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: tipo == 'gasto'
                                       ? const Color(0xFFEF4444)
-                                      : const Color(0xFF262626),
+                                      : appPalette.borderLight,
                                 ),
                               ),
                               child: Column(
@@ -217,7 +217,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                                   Icon(Icons.trending_down_rounded,
                                       color: tipo == 'gasto'
                                           ? const Color(0xFFEF4444)
-                                          : const Color(0xFF737373),
+                                          : appPalette.textMuted,
                                       size: 22),
                                   const SizedBox(height: 4),
                                   Text(
@@ -227,7 +227,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                                       fontWeight: FontWeight.w600,
                                       color: tipo == 'gasto'
                                           ? const Color(0xFFEF4444)
-                                          : const Color(0xFF737373),
+                                          : appPalette.textMuted,
                                     ),
                                   ),
                                 ],
@@ -238,23 +238,23 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    Text('Concepto', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+                    Text('Concepto', style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted)),
                     const SizedBox(height: 6),
                     TextField(
                       controller: conceptoController,
-                      style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+                      style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: 'Descripción de la transacción',
                         hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
                         filled: true,
-                        fillColor: const Color(0xFF0F0F0F),
+                        fillColor: appPalette.bgSecondary,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFF262626)),
+                          borderSide: const BorderSide(color: appPalette.borderLight),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFF262626)),
+                          borderSide: const BorderSide(color: appPalette.borderLight),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -270,24 +270,24 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Monto (L.)', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+                              Text('Monto (L.)', style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted)),
                               const SizedBox(height: 6),
                               TextField(
                                 controller: montoController,
                                 keyboardType: TextInputType.number,
-                                style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+                                style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 14),
                                 decoration: InputDecoration(
                                   hintText: '0.00',
                                   hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
                                   filled: true,
-                                  fillColor: const Color(0xFF0F0F0F),
+                                  fillColor: appPalette.bgSecondary,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(color: Color(0xFF262626)),
+                                    borderSide: const BorderSide(color: appPalette.borderLight),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(color: Color(0xFF262626)),
+                                    borderSide: const BorderSide(color: appPalette.borderLight),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
@@ -304,21 +304,21 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Categoría', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+                              Text('Categoría', style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted)),
                               const SizedBox(height: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF0F0F0F),
+                                  color: appPalette.bgSecondary,
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFF262626)),
+                                  border: Border.all(color: appPalette.borderLight),
                                 ),
                                 child: DropdownButton<String>(
                                   value: categoria,
                                   isExpanded: true,
-                                  dropdownColor: const Color(0xFF1A1A1A),
+                                  dropdownColor: appPalette.cardColor,
                                   underline: const SizedBox(),
-                                  style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13),
+                                  style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 13),
                                   items: (categorias[tipo] ?? []).map((c) =>
                                     DropdownMenuItem(value: c, child: Text(c))
                                   ).toList(),
@@ -331,23 +331,23 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text('Referencia (opcional)', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+                    Text('Referencia (opcional)', style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted)),
                     const SizedBox(height: 6),
                     TextField(
                       controller: referenciaController,
-                      style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+                      style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: 'N° factura, recibo, etc.',
                         hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
                         filled: true,
-                        fillColor: const Color(0xFF0F0F0F),
+                        fillColor: appPalette.bgSecondary,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFF262626)),
+                          borderSide: const BorderSide(color: appPalette.borderLight),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFF262626)),
+                          borderSide: const BorderSide(color: appPalette.borderLight),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -357,21 +357,21 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text('Método de Pago', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+                    Text('Método de Pago', style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted)),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F0F0F),
+                        color: appPalette.bgSecondary,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFF262626)),
+                        border: Border.all(color: appPalette.borderLight),
                       ),
                       child: DropdownButton<String>(
                         value: metodoPago,
                         isExpanded: true,
-                        dropdownColor: const Color(0xFF1A1A1A),
+                        dropdownColor: appPalette.cardColor,
                         underline: const SizedBox(),
-                        style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13),
+                        style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 13),
                         items: ['efectivo', 'tarjeta', 'transferencia', 'cheque', 'otro'].map((m) =>
                           DropdownMenuItem(value: m, child: Text(m[0].toUpperCase() + m.substring(1)))
                         ).toList(),
@@ -432,7 +432,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                         ),
                         child: Text(
                           'Guardar Transacción',
-                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.white),
+                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: appPalette.textPrimary),
                         ),
                       ),
                     ),
@@ -461,18 +461,6 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
       moduleIcon: Icons.account_balance_rounded,
       moduleColor: const Color(0xFF3B82F6),
       onNew: _agregarTransaccion,
-      actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-              color: const Color(0xFF3B82F6),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
       child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
@@ -516,7 +504,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
               style: GoogleFonts.syne(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF737373),
+                color: appPalette.textMuted,
                 letterSpacing: 0.8,
               ),
             ),
@@ -525,14 +513,14 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
               Container(
                 padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF141414),
+                  color: appPalette.cardColor,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF262626)),
+                  border: Border.all(color: appPalette.borderLight),
                 ),
                 child: Center(
                   child: Text(
                     'No hay transacciones este mes',
-                    style: GoogleFonts.dmSans(color: const Color(0xFF525252)),
+                    style: GoogleFonts.dmSans(color: appPalette.textDim),
                   ),
                 ),
               )
@@ -564,7 +552,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
         children: [
           Text(
             'Balance Total',
-            style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF737373)),
+            style: GoogleFonts.dmSans(fontSize: 13, color: appPalette.textMuted),
           ),
           const SizedBox(height: 6),
           Text(
@@ -604,7 +592,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF525252))),
+        Text(label, style: GoogleFonts.dmSans(fontSize: 11, color: appPalette.textDim)),
         const SizedBox(height: 2),
         Text(
           value,
@@ -622,9 +610,9 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF262626)),
+        border: Border.all(color: appPalette.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,7 +622,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
             style: GoogleFonts.syne(
               fontSize: 12,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: appPalette.textPrimary,
               letterSpacing: 1,
             ),
           ),
@@ -662,7 +650,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
   Widget _buildResumenItem(String label, double monto, Color color) {
     return Column(
       children: [
-        Text(label, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+        Text(label, style: GoogleFonts.dmSans(fontSize: 11, color: appPalette.textMuted)),
         const SizedBox(height: 4),
         Text(
           'L.${monto.toStringAsFixed(0)}',
@@ -680,9 +668,9 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF262626)),
+          border: Border.all(color: appPalette.borderLight),
         ),
         child: Column(
           children: [
@@ -690,7 +678,7 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
             const SizedBox(height: 8),
             Text(
               label,
-              style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w600, color: appPalette.textMuted),
               textAlign: TextAlign.center,
             ),
           ],
@@ -712,9 +700,9 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF262626)),
+        border: Border.all(color: appPalette.borderLight),
       ),
       child: Row(
         children: [
@@ -737,14 +725,14 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
               children: [
                 Text(
                   t['descripcion'] ?? '',
-                  style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: appPalette.textPrimary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${t['categoria'] ?? ''}  •  ${dt != null ? '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}' : ''}',
-                  style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373)),
+                  style: GoogleFonts.dmSans(fontSize: 11, color: appPalette.textMuted),
                 ),
               ],
             ),

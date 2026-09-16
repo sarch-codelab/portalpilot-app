@@ -103,6 +103,17 @@ class _PPAppShellState extends State<PPAppShell> {
   final FocusNode _focusNode = FocusNode();
   final TextEditingController _searchController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    // Refresca topbar/sidebar/bottomnav cuando cambia el tema global.
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
+  }
+
   List<Modulo> get _allModules => Modulo.modulosDisponibles;
 
   Modulo get _currentModule {
@@ -114,6 +125,7 @@ class _PPAppShellState extends State<PPAppShell> {
 
   @override
   void dispose() {
+    appThemeNotifier.removeListener(_onThemeChanged);
     _focusNode.dispose();
     _searchController.dispose();
     super.dispose();
@@ -536,12 +548,12 @@ class _PPAppShellState extends State<PPAppShell> {
           ),
           child: Row(
             children: [
-              Icon(Icons.add_rounded, color: Colors.white, size: 18),
+              Icon(Icons.add_rounded, color: appPalette.cardColor, size: 18),
               if (!MobileUtils.isMobile(context)) ...[
                 const SizedBox(width: 6),
                 Text(
                   'Nuevo',
-                  style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.bold, color: appPalette.textPrimary),
                 ),
               ],
             ],
@@ -552,20 +564,7 @@ class _PPAppShellState extends State<PPAppShell> {
   }
 
   Widget _buildThemeToggle(ThemePalette palette) {
-    return Container(
-      decoration: BoxDecoration(color: palette.bgSecondary, borderRadius: BorderRadius.circular(10)),
-      child: Tooltip(
-        message: appThemeNotifier.isDark ? 'Modo claro' : 'Modo oscuro',
-        child: IconButton(
-          icon: Icon(
-            appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-            color: palette.brand,
-            size: 18,
-          ),
-          onPressed: () async => appThemeNotifier.toggle(),
-        ),
-      ),
-    );
+    return ;
   }
 
   // ─────────────────────────── Bottom nav (Móvil) ───────────────────────────
@@ -681,12 +680,12 @@ class _PPAppShellState extends State<PPAppShell> {
               end: Alignment.bottomRight,
               colors: [palette.brandBright, palette.brandDeep],
             ),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2),
+            border: Border.all(color: appPalette.borderLight.withValues(alpha: 0.8), width: 2),
             boxShadow: [
               BoxShadow(color: palette.brand.withValues(alpha: 0.5), blurRadius: 18, spreadRadius: 2),
             ],
           ),
-          child: const Icon(Icons.co_present_rounded, color: Colors.white, size: 26),
+          child: const Icon(Icons.co_present_rounded, color: appPalette.cardColor, size: 26),
         ),
       ),
     );
@@ -720,11 +719,11 @@ class _PPAppShellState extends State<PPAppShell> {
                           children: [
                             Text(
                               'Portal Pilot',
-                              style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+                              style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w900, color: appPalette.textPrimary),
                             ),
                             Text(
                               'WORKSPACE',
-                              style: GoogleFonts.spaceGrotesk(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.white70, letterSpacing: 1.2),
+                              style: GoogleFonts.spaceGrotesk(fontSize: 8, fontWeight: FontWeight.w800, color: appPalette.textMuted, letterSpacing: 1.2),
                             ),
                           ],
                         ),
@@ -734,11 +733,11 @@ class _PPAppShellState extends State<PPAppShell> {
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Icon(Icons.wifi_rounded, color: Colors.white, size: 14),
+                      Icon(Icons.wifi_rounded, color: appPalette.cardColor, size: 14),
                       const SizedBox(width: 6),
                       Text(
                         'Conectado',
-                        style: GoogleFonts.dmSans(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500),
+                        style: GoogleFonts.dmSans(fontSize: 11, color: appPalette.textPrimary, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),

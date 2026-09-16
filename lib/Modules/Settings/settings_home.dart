@@ -40,21 +40,7 @@ class _SettingsHomeState extends State<SettingsHome> {
       moduleId: 'settings',
       screenTitle: 'Configuracion',
       moduleIcon: Icons.settings_rounded,
-      moduleColor: const Color(0xFF6B7280),
-      actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF6B7280),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
+      moduleColor: appPalette.textMuted,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -122,8 +108,8 @@ class _SettingsHomeState extends State<SettingsHome> {
         fontSize: 12,
         fontWeight: FontWeight.w800,
         color: appThemeNotifier.isDark
-            ? const Color(0xFFA3A3A3)
-            : const Color(0xFF6B7280),
+            ? appPalette.textMuted
+            : appPalette.textMuted,
         letterSpacing: 1.5,
       ),
     );
@@ -141,14 +127,10 @@ class _SettingsHomeState extends State<SettingsHome> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF111111)
-              : Colors.white,
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: appThemeNotifier.isDark
-                ? const Color(0xFF262626)
-                : const Color(0xFFE5E7EB),
+            color: appPalette.borderLight,
           ),
         ),
         child: Row(
@@ -172,7 +154,7 @@ class _SettingsHomeState extends State<SettingsHome> {
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: appThemeNotifier.isDark
-                          ? Colors.white
+                          ? appPalette.textPrimary
                           : Colors.black,
                     ),
                   ),
@@ -182,8 +164,8 @@ class _SettingsHomeState extends State<SettingsHome> {
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       color: appThemeNotifier.isDark
-                          ? const Color(0xFFA3A3A3)
-                          : const Color(0xFF6B7280),
+                          ? appPalette.textMuted
+                          : appPalette.textMuted,
                     ),
                   ),
                 ],
@@ -192,8 +174,8 @@ class _SettingsHomeState extends State<SettingsHome> {
             Icon(
               Icons.arrow_forward_ios_rounded,
               color: appThemeNotifier.isDark
-                  ? const Color(0xFF525252)
-                  : const Color(0xFF9CA3AF),
+                  ? appPalette.bgTertiary
+                  : appPalette.textMuted,
               size: 16,
             ),
           ],
@@ -206,14 +188,12 @@ class _SettingsHomeState extends State<SettingsHome> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Opciones de Caché',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Column(
@@ -227,7 +207,7 @@ class _SettingsHomeState extends State<SettingsHome> {
               title: Text(
                 'Limpiar caché expirado',
                 style: GoogleFonts.dmSans(
-                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                  color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                 ),
               ),
               onTap: () async {
@@ -249,7 +229,7 @@ class _SettingsHomeState extends State<SettingsHome> {
               title: Text(
                 'Limpiar todo el caché',
                 style: GoogleFonts.dmSans(
-                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                  color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                 ),
               ),
               onTap: () async {
@@ -270,7 +250,7 @@ class _SettingsHomeState extends State<SettingsHome> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cerrar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
         ],
@@ -282,14 +262,12 @@ class _SettingsHomeState extends State<SettingsHome> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Limpieza de Datos',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Column(
@@ -303,7 +281,7 @@ class _SettingsHomeState extends State<SettingsHome> {
               title: Text(
                 'Limpiar logs antiguos (7 días)',
                 style: GoogleFonts.dmSans(
-                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                  color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                 ),
               ),
               onTap: () async {
@@ -325,7 +303,7 @@ class _SettingsHomeState extends State<SettingsHome> {
               title: Text(
                 'Limpiar todos los logs',
                 style: GoogleFonts.dmSans(
-                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                  color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                 ),
               ),
               onTap: () async {
@@ -347,7 +325,7 @@ class _SettingsHomeState extends State<SettingsHome> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cerrar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
         ],

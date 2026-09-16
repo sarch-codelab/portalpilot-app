@@ -72,25 +72,11 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
           style: GoogleFonts.syne(
             fontSize: 15,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: appPalette.textPrimary,
             letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF8B5CF6),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
-      ),
+        ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B5CF6)))
           : _socios.isEmpty
@@ -99,12 +85,12 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.card_giftcard_rounded, size: 64,
-                        color: appThemeNotifier.isDark ? const Color(0xFF262626) : const Color(0xFFE5E7EB)),
+                        color: appPalette.borderLight),
                       const SizedBox(height: 16),
                       Text('No hay socios registrados',
                         style: GoogleFonts.dmSans(
                           fontSize: 14,
-                          color: appThemeNotifier.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF6B7280),
+                          color: appThemeNotifier.isDark ? appPalette.textMuted : appPalette.textMuted,
                         )),
                     ],
                   ),
@@ -122,12 +108,12 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
           _showAddPointsDialog();
         },
         backgroundColor: const Color(0xFF8B5CF6),
-        icon: const Icon(Icons.card_giftcard_rounded, color: Colors.white),
+        icon: const Icon(Icons.card_giftcard_rounded, color: appPalette.cardColor),
         label: Text(
           'Agregar Puntos',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: appPalette.textPrimary,
           ),
         ),
       ),
@@ -140,19 +126,17 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
     final nivelColor = nivel.toString().toLowerCase().contains('oro')
         ? const Color(0xFFF59E0B)
         : nivel.toString().toLowerCase().contains('plata')
-        ? const Color(0xFF9CA3AF)
+        ? appPalette.textMuted
         : const Color(0xFF8B5CF6);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: appThemeNotifier.isDark ? const Color(0xFF111111) : Colors.white,
+        color: appPalette.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: appThemeNotifier.isDark
-              ? const Color(0xFF262626)
-              : const Color(0xFFE5E7EB),
+          color: appPalette.borderLight,
         ),
       ),
       child: Column(
@@ -166,7 +150,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                 style: GoogleFonts.syne(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+                  color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
                 ),
               ),
               Container(
@@ -206,7 +190,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                 label: const Text('Canjear'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF8B5CF6),
-                  foregroundColor: Colors.white,
+                  foregroundColor: appPalette.cardColor,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 8,
@@ -225,8 +209,8 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
               ),
               const SizedBox(height: 4),
@@ -246,8 +230,8 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                         style: GoogleFonts.dmSans(
                           fontSize: 11,
                           color: appThemeNotifier.isDark
-                              ? const Color(0xFFA3A3A3)
-                              : const Color(0xFF6B7280),
+                              ? appPalette.textMuted
+                              : appPalette.textMuted,
                         ),
                       ),
                     ],
@@ -267,14 +251,12 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Agregar Puntos',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Column(
@@ -287,14 +269,12 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
                 labelText: 'Cantidad de puntos',
                 labelStyle: TextStyle(
                   color: appThemeNotifier.isDark
-                      ? const Color(0xFFA3A3A3)
-                      : const Color(0xFF6B7280),
+                      ? appPalette.textMuted
+                      : appPalette.textMuted,
                 ),
                 border: OutlineInputBorder(
                   borderSide: BorderSide(
-                    color: appThemeNotifier.isDark
-                        ? const Color(0xFF262626)
-                        : const Color(0xFFE5E7EB),
+                    color: appPalette.borderLight,
                   ),
                 ),
               ),
@@ -306,7 +286,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           ElevatedButton(
@@ -324,7 +304,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
             ),
             child: Text(
               'Guardar',
-              style: GoogleFonts.dmSans(color: Colors.white),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
             ),
           ),
         ],
@@ -336,22 +316,20 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: appThemeNotifier.isDark
-            ? const Color(0xFF111111)
-            : Colors.white,
+        backgroundColor: appPalette.cardColor,
         title: Text(
           'Canjear Puntos',
           style: GoogleFonts.syne(
             fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? Colors.white : Colors.black,
+            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
           ),
         ),
         content: Text(
           'Tienes $puntosDisponibles puntos disponibles. ¿Cuántos deseas canjear?',
           style: GoogleFonts.dmSans(
             color: appThemeNotifier.isDark
-                ? const Color(0xFFA3A3A3)
-                : const Color(0xFF6B7280),
+                ? appPalette.textMuted
+                : appPalette.textMuted,
           ),
         ),
         actions: [
@@ -359,7 +337,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA3A3A3)),
+              style: GoogleFonts.dmSans(color: appPalette.textMuted),
             ),
           ),
           ElevatedButton(
@@ -377,7 +355,7 @@ class _PuntosRecompensasState extends State<PuntosRecompensas> {
             ),
             child: Text(
               'Canjear',
-              style: GoogleFonts.dmSans(color: Colors.white),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
             ),
           ),
         ],

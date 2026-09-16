@@ -255,11 +255,11 @@ class _InventarioHomeState extends State<InventarioHome> {
           ),
           child: Row(
             children: [
-              Icon(Icons.inventory_2_rounded, color: Colors.white, size: 16),
+              Icon(Icons.inventory_2_rounded, color: appPalette.cardColor, size: 16),
               const SizedBox(width: 6),
               Text(
                 'Nuevo',
-                style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.bold, color: appPalette.textPrimary),
               ),
             ],
           ),

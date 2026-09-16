@@ -8,24 +8,61 @@ class AppThemeNotifier extends ValueNotifier<ThemeMode> {
   }
 
   Future<void> _loadTheme() async {
+    // Soporta el esquema nuevo (theme_mode) y el legado (theme_is_dark).
     final prefs = await SharedPreferences.getInstance();
-    final hasTheme = prefs.containsKey('theme_is_dark');
-    final isDark = hasTheme ? (prefs.getBool('theme_is_dark') ?? true) : true;
-    value = isDark ? ThemeMode.dark : ThemeMode.light;
+    final stored = prefs.getString('theme_mode');
+    ThemeMode mode;
+    if (stored == 'dark' || stored == 'light' || stored == 'system') {
+      mode = ThemeMode.values.firstWhere(
+        (m) => m.name == stored,
+        orElse: () => ThemeMode.dark,
+      );
+    } else {
+      final isDark = prefs.getBool('theme_is_dark') ?? true;
+      mode = isDark ? ThemeMode.dark : ThemeMode.light;
+    }
+    value = mode;
+  }
+
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('theme_mode', value.name);
+    // Clave legada para componentes viejos que aún la leen.
+    await prefs.setBool('theme_is_dark', value == ThemeMode.dark);
   }
 
   Future<void> toggle() async {
-    final nextMode = value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-    value = nextMode;
+    // Ciclo completo: oscuro → claro → sistema → oscuro.
+    switch (value) {
+      case ThemeMode.dark:
+        value = ThemeMode.light;
+        break;
+      case ThemeMode.light:
+        value = ThemeMode.system;
+        break;
+      case ThemeMode.system:
+        value = ThemeMode.dark;
+        break;
+    }
+    await _persist();
+  }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('theme_is_dark', nextMode == ThemeMode.dark);
+  /// Fuerza un modo concreto (usado por Configuración → Apariencia).
+  Future<void> setMode(ThemeMode mode) async {
+    if (value == mode) return;
+    value = mode;
+    await _persist();
   }
 
   bool get isDark => value == ThemeMode.dark;
 }
 
 final appThemeNotifier = AppThemeNotifier();
+
+/// Paleta activa global: usar `appPalette` en lugar de crear instancias
+/// nuevas de [ThemePalette] en cada build, para que todos los widgets
+/// compartan exactamente el mismo estado de tema.
+ThemePalette get appPalette => ThemePalette(isDark: appThemeNotifier.isDark);
 
 /// Paleta de marca Portal Pilot — identidad única.
 ///
@@ -216,6 +253,54 @@ class ThemePalette {
         color: const Color(0xFFB94DDC),
         linearTrackColor: isDark ? const Color(0xFF1A1828) : const Color(0xFFE6E1F2),
       ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(
+            isDark ? const Color(0xFF1B1830) : Colors.white,
+          ),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: isDark ? const Color(0xFF1B1830) : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(
+            isDark ? const Color(0xFF1B1830) : Colors.white,
+          ),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: isDark ? const Color(0xFF9C95B5) : const Color(0xFF675F7D),
+        titleTextStyle: GoogleFonts.dmSans(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: isDark ? const Color(0xFFF5F2FF) : const Color(0xFF1E1B2A),
+        ),
+        subtitleTextStyle: GoogleFonts.dmSans(
+          fontSize: 12,
+          color: isDark ? const Color(0xFF9C95B5) : const Color(0xFF675F7D),
+        ),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1B1830) : const Color(0xFF1E1B2A),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        textStyle: GoogleFonts.dmSans(fontSize: 11, color: Colors.white),
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: isDark ? const Color(0xFFF5F2FF) : const Color(0xFF1E1B2A),
+        unselectedLabelColor: isDark ? const Color(0xFF9C95B5) : const Color(0xFF675F7D),
+        indicatorColor: const Color(0xFFB94DDC),
+        dividerColor: isDark ? const Color(0x299B8FF2) : const Color(0x1A1A1633),
+      ),
+      textTheme: GoogleFonts.dmSansTextTheme(base.textTheme),
+      primaryTextTheme: GoogleFonts.dmSansTextTheme(base.primaryTextTheme),
     );
   }
 }

@@ -64,20 +64,6 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
       screenTitle: 'Canal Moderno',
       moduleIcon: Icons.account_balance_rounded,
       moduleColor: const Color(0xFF3B82F6),
-      actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
-              color: const Color(0xFF3B82F6),
-              size: 20,
-            ),
-            onPressed: () async {
-              await appThemeNotifier.toggle();
-            },
-          ),
-        ],
       child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
@@ -88,7 +74,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
               style: GoogleFonts.syne(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: appPalette.textPrimary,
                 letterSpacing: 0.8,
               ),
             ),
@@ -224,7 +210,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
               style: GoogleFonts.syne(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: appPalette.textPrimary,
               ),
             ),
             const SizedBox(height: 2),
@@ -232,7 +218,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
               label,
               style: GoogleFonts.dmSans(
                 fontSize: 10,
-                color: const Color(0xFF737373),
+                color: appPalette.textMuted,
               ),
             ),
           ],
@@ -253,9 +239,9 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF262626)),
+          border: Border.all(color: appPalette.borderLight),
         ),
         child: Row(
           children: [
@@ -277,7 +263,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: appPalette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -285,7 +271,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: const Color(0xFF737373),
+                      color: appPalette.textMuted,
                     ),
                   ),
                 ],

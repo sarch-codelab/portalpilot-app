@@ -73,16 +73,6 @@ class _SoporteHomeState extends State<SoporteHome> {
       screenTitle: 'Centro de Soporte',
       moduleIcon: Icons.headset_mic_rounded,
       moduleColor: const Color(0xFF3B82F6),
-      actions: [
-          IconButton(
-            icon: Icon(
-              appThemeNotifier.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-              color: const Color(0xFF3B82F6),
-              size: 20,
-            ),
-            onPressed: () async => await appThemeNotifier.toggle(),
-          ),
-        ],
       child: Column(
         children: [
           Expanded(
@@ -135,9 +125,9 @@ class _SoporteHomeState extends State<SoporteHome> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Asistente de Soporte', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                      Text('Asistente de Soporte', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: appPalette.textPrimary)),
                       const SizedBox(height: 4),
-                      Text('Resuelve tus dudas sobre Portal Pilot', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+                      Text('Resuelve tus dudas sobre Portal Pilot', style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted)),
                     ],
                   ),
                 ),
@@ -147,7 +137,7 @@ class _SoporteHomeState extends State<SoporteHome> {
           const SizedBox(height: 24),
           Align(
             alignment: Alignment.centerLeft,
-            child: Text('¿En qué puedo ayudarte?', style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
+            child: Text('¿En qué puedo ayudarte?', style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: appPalette.textPrimary)),
           ),
           const SizedBox(height: 12),
           ...topics.map((t) => Padding(
@@ -160,9 +150,9 @@ class _SoporteHomeState extends State<SoporteHome> {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF141414),
+                  color: appPalette.cardColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF262626)),
+                  border: Border.all(color: appPalette.borderLight),
                 ),
                 child: Row(
                   children: [
@@ -179,8 +169,8 @@ class _SoporteHomeState extends State<SoporteHome> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(t.$1, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                          Text(t.$3, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+                          Text(t.$1, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: appPalette.textPrimary)),
+                          Text(t.$3, style: GoogleFonts.dmSans(fontSize: 11, color: appPalette.textMuted)),
                         ],
                       ),
                     ),
@@ -209,7 +199,7 @@ class _SoporteHomeState extends State<SoporteHome> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
+          color: appPalette.cardColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -221,7 +211,7 @@ class _SoporteHomeState extends State<SoporteHome> {
               child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFF3B82F6)),
             ),
             const SizedBox(width: 10),
-            Text(msg.text, style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 12)),
+            Text(msg.text, style: GoogleFonts.dmSans(color: appPalette.textMuted, fontSize: 12)),
           ],
         ),
       );
@@ -237,14 +227,14 @@ class _SoporteHomeState extends State<SoporteHome> {
               ? const Color(0xFF3B82F6)
               : (msg.isError
                   ? const Color(0xFFEF4444).withValues(alpha: 0.15)
-                  : const Color(0xFF1A1A1A)),
+                  : appPalette.cardColor),
           borderRadius: BorderRadius.circular(12),
           border: msg.isUser
               ? null
               : Border.all(
                   color: msg.isError
                       ? const Color(0xFFEF4444).withValues(alpha: 0.3)
-                      : const Color(0xFF262626),
+                      : appPalette.borderLight,
                 ),
         ),
         child: Text(
@@ -252,7 +242,7 @@ class _SoporteHomeState extends State<SoporteHome> {
           style: GoogleFonts.dmSans(
             fontSize: 13,
             color: msg.isUser
-                ? Colors.white
+                ? appPalette.textPrimary
                 : (msg.isError ? const Color(0xFFEF4444) : const Color(0xFFE5E5E5)),
           ),
         ),
@@ -266,7 +256,7 @@ class _SoporteHomeState extends State<SoporteHome> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: palette.bgSecondary,
-        border: Border(top: BorderSide(color: const Color(0xFF262626))),
+        border: Border(top: BorderSide(color: appPalette.borderLight)),
       ),
       child: SafeArea(
         top: false,
@@ -275,20 +265,20 @@ class _SoporteHomeState extends State<SoporteHome> {
             Expanded(
               child: TextField(
                 controller: _queryController,
-                style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+                style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 14),
                 onSubmitted: (_) => _sendMessage(),
                 decoration: InputDecoration(
                   hintText: 'Escribe tu pregunta...',
-                  hintStyle: GoogleFonts.dmSans(color: const Color(0xFF525252), fontSize: 14),
+                  hintStyle: GoogleFonts.dmSans(color: appPalette.textDim, fontSize: 14),
                   filled: true,
-                  fillColor: const Color(0xFF141414),
+                  fillColor: appPalette.cardColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF262626)),
+                    borderSide: const BorderSide(color: appPalette.borderLight),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF262626)),
+                    borderSide: const BorderSide(color: appPalette.borderLight),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -305,7 +295,7 @@ class _SoporteHomeState extends State<SoporteHome> {
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                icon: const Icon(Icons.send_rounded, color: appPalette.cardColor, size: 20),
                 onPressed: _sendMessage,
               ),
             ),

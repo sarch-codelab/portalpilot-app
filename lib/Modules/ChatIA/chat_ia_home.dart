@@ -198,7 +198,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
     final isWide = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF0F0F5),
+      backgroundColor: appPalette.bgSecondary,
       drawer: isWide ? null : Drawer(child: _buildHistoryDrawer(palette)),
       appBar: _buildAppBar(palette),
       body: Stack(
@@ -226,8 +226,8 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                 Container(
                   width: 280,
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF080808) : Colors.white,
-                    border: Border(right: BorderSide(color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFE5E7EB))),
+                    color: isDark ? appPalette.bgSecondary : appPalette.cardColor,
+                    border: Border(right: BorderSide(color: appPalette.borderLight)),
                   ),
                   child: _buildHistoryDrawer(palette),
                 ),
@@ -241,10 +241,10 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(color: const Color(0xFF7F1D1D).withValues(alpha: 0.9), borderRadius: BorderRadius.circular(12)),
                         child: Row(children: [
-                          const Icon(Icons.error_outline_rounded, color: Colors.white, size: 16),
+                          const Icon(Icons.error_outline_rounded, color: appPalette.cardColor, size: 16),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(_errorBanner!, style: GoogleFonts.dmSans(fontSize: 12, color: Colors.white))),
-                          IconButton(icon: const Icon(Icons.close_rounded, color: Colors.white, size: 16), onPressed: () => setState(() => _errorBanner = null)),
+                          Expanded(child: Text(_errorBanner!, style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textPrimary))),
+                          IconButton(icon: const Icon(Icons.close_rounded, color: appPalette.textPrimary, size: 16), onPressed: () => setState(() => _errorBanner = null)),
                         ]),
                       ),
                     Expanded(
@@ -264,7 +264,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
   PreferredSizeWidget _buildAppBar(ThemePalette p) {
     final isDark = p.isDark;
     return AppBar(
-      backgroundColor: isDark ? const Color(0xFF080808) : Colors.white,
+      backgroundColor: isDark ? appPalette.bgSecondary : appPalette.cardColor,
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: Builder(builder: (ctx) {
@@ -301,7 +301,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withValues(alpha: 0.4), blurRadius: 16)],
                 ),
-                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
+                child: const Icon(Icons.auto_awesome_rounded, color: appPalette.cardColor, size: 16),
               ),
             ],
           ),
@@ -309,7 +309,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text('Chat IA', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black)),
+                Text('Chat IA', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: isDark ? appPalette.textPrimary : Colors.black)),
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -337,22 +337,18 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
         Tooltip(
           message: 'Limpiar chat actual',
           child: IconButton(
-            icon: const Icon(Icons.cleaning_services_rounded, color: Color(0xFF6B7280), size: 18),
+            icon: const Icon(Icons.cleaning_services_rounded, color: appPalette.bgTertiary, size: 18),
             onPressed: _current.messages.isEmpty ? null : _clearCurrent,
           ),
         ),
         const SizedBox(width: 4),
         Container(width: 1, height: 22, color: p.borderLight),
         const SizedBox(width: 4),
-        IconButton(
-          icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded, color: const Color(0xFF8B5CF6), size: 18),
-          onPressed: () => appThemeNotifier.toggle(),
-        ),
         const SizedBox(width: 8),
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFE5E7EB)),
+        child: Container(height: 1, color: appPalette.borderLight),
       ),
     );
   }
@@ -372,7 +368,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                 child: const Icon(Icons.history_rounded, color: Color(0xFF8B5CF6), size: 18),
               ),
               const SizedBox(width: 10),
-              Text('Historial', style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black)),
+              Text('Historial', style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: isDark ? appPalette.textPrimary : Colors.black)),
               const Spacer(),
               Text('${_conversations.length}', style: GoogleFonts.dmSans(fontSize: 11, color: p.textMuted)),
             ]),
@@ -384,8 +380,8 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 onPressed: _newChat,
-                icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
-                label: Text('Nuevo chat', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                icon: const Icon(Icons.add_rounded, size: 18, color: appPalette.cardColor),
+                label: Text('Nuevo chat', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: appPalette.textPrimary)),
               ),
             ),
           ),
@@ -407,21 +403,21 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: selected ? const Color(0xFF8B5CF6).withValues(alpha: 0.12) : (isDark ? const Color(0xFF111111) : const Color(0xFFF9FAFB)),
+                            color: selected ? const Color(0xFF8B5CF6).withValues(alpha: 0.12) : (appPalette.bgSecondary),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: selected ? const Color(0xFF8B5CF6).withValues(alpha: 0.35) : (isDark ? const Color(0xFF1F1F1F) : const Color(0xFFE5E7EB))),
+                            border: Border.all(color: selected ? const Color(0xFF8B5CF6).withValues(alpha: 0.35) : (appPalette.borderLight)),
                           ),
                           child: Row(children: [
                             Container(
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(color: selected ? const Color(0xFF8B5CF6) : p.textMuted.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                              child: Icon(Icons.chat_bubble_outline_rounded, size: 16, color: selected ? Colors.white : p.textMuted),
+                              child: Icon(Icons.chat_bubble_outline_rounded, size: 16, color: selected ? appPalette.cardColor : p.textMuted),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text(c.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 12.5, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black)),
+                                Text(c.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 12.5, fontWeight: FontWeight.w600, color: isDark ? appPalette.textPrimary : Colors.black)),
                                 const SizedBox(height: 2),
                                 Text('${c.messages.length} mensajes • ${_fmtTime(c.createdAt)}', style: GoogleFonts.dmSans(fontSize: 10.5, color: p.textMuted)),
                               ]),
@@ -484,10 +480,10 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
               height: 68,
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.blur_on_rounded, color: Colors.white, size: 32),
+                  const Icon(Icons.blur_on_rounded, color: appPalette.cardColor, size: 32),
             ),
           const SizedBox(height: 18),
-          Text('¿En qué puedo ayudarte hoy?', style: GoogleFonts.syne(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black)),
+          Text('¿En qué puedo ayudarte hoy?', style: GoogleFonts.syne(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? appPalette.textPrimary : Colors.black)),
           const SizedBox(height: 8),
           Text('Pregunta, analiza, crea. Tu asistente conoce tu empresa, tus módulos y tu contexto.',
               textAlign: TextAlign.center, style: GoogleFonts.dmSans(fontSize: 13, color: p.textMuted, height: 1.5)),
@@ -512,7 +508,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF111111) : Colors.white,
+                      color: appPalette.cardColor,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: s.color.withValues(alpha: 0.22)),
                     ),
@@ -525,12 +521,12 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Text(s.title, style: GoogleFonts.dmSans(fontSize: 13.5, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black)),
+                          Text(s.title, style: GoogleFonts.dmSans(fontSize: 13.5, fontWeight: FontWeight.w700, color: isDark ? appPalette.textPrimary : Colors.black)),
                           const SizedBox(height: 2),
                           Text(s.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 11, color: p.textMuted, height: 1.3)),
                         ]),
                       ),
-                      const Icon(Icons.arrow_outward_rounded, size: 16, color: Color(0xFFA3A3A3)),
+                      const Icon(Icons.arrow_outward_rounded, size: 16, color: appPalette.textMuted),
                     ]),
                   ),
                 );
@@ -556,9 +552,9 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
 
   Widget _quickChip(String label, VoidCallback onTap) {
     return ActionChip(
-      label: Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: Colors.white)),
+      label: Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textPrimary)),
       backgroundColor: const Color(0xFF1B1B1B),
-      side: const BorderSide(color: Color(0xFF2A2A2A)),
+      side: const BorderSide(color: appPalette.borderLight),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       onPressed: onTap,
     );
@@ -590,9 +586,9 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
           boxShadow: [BoxShadow(color: const Color(0xFF6366F1).withValues(alpha: 0.25), blurRadius: 12)],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text(m.text, style: GoogleFonts.dmSans(fontSize: 13.5, color: Colors.white, height: 1.45)),
+          Text(m.text, style: GoogleFonts.dmSans(fontSize: 13.5, color: appPalette.textPrimary, height: 1.45)),
           const SizedBox(height: 6),
-          Text(_fmtClock(m.time), style: GoogleFonts.dmSans(fontSize: 10, color: Colors.white.withValues(alpha: 0.75))),
+          Text(_fmtClock(m.time), style: GoogleFonts.dmSans(fontSize: 10, color: appPalette.textPrimary.withValues(alpha: 0.75))),
         ]),
       ),
     );
@@ -604,9 +600,9 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12, right: 32),
         decoration: BoxDecoration(
-          color: m.isError ? const Color(0xFF7F1D1D).withValues(alpha: 0.14) : (isDark ? const Color(0xFF111111) : Colors.white),
+          color: m.isError ? const Color(0xFF7F1D1D).withValues(alpha: 0.14) : (appPalette.cardColor),
           borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(18), bottomLeft: Radius.circular(18), bottomRight: Radius.circular(18)),
-          border: Border.all(color: m.isError ? const Color(0xFFDC2626).withValues(alpha: 0.35) : (isDark ? const Color(0xFF1F1F1F) : const Color(0xFFE5E7EB))),
+          border: Border.all(color: m.isError ? const Color(0xFFDC2626).withValues(alpha: 0.35) : (appPalette.borderLight)),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
@@ -615,7 +611,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)]), borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 12),
+                child: const Icon(Icons.auto_awesome_rounded, color: appPalette.cardColor, size: 12),
               ),
               const SizedBox(width: 8),
               Text('Portal Pilot IA', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: p.textMuted)),
@@ -629,23 +625,23 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
               data: m.text,
               selectable: true,
               styleSheet: MarkdownStyleSheet(
-                p: GoogleFonts.dmSans(fontSize: 13.5, color: isDark ? Colors.white : Colors.black, height: 1.5),
-                strong: GoogleFonts.dmSans(fontSize: 13.5, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black),
-                em: GoogleFonts.dmSans(fontSize: 13.5, fontStyle: FontStyle.italic, color: isDark ? Colors.white : Colors.black),
-                h1: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black),
-                h2: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black),
-                h3: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black),
+                p: GoogleFonts.dmSans(fontSize: 13.5, color: isDark ? appPalette.textPrimary : Colors.black, height: 1.5),
+                strong: GoogleFonts.dmSans(fontSize: 13.5, fontWeight: FontWeight.w700, color: isDark ? appPalette.textPrimary : Colors.black),
+                em: GoogleFonts.dmSans(fontSize: 13.5, fontStyle: FontStyle.italic, color: isDark ? appPalette.textPrimary : Colors.black),
+                h1: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? appPalette.textPrimary : Colors.black),
+                h2: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w700, color: isDark ? appPalette.textPrimary : Colors.black),
+                h3: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? appPalette.textPrimary : Colors.black),
                 blockquote: GoogleFonts.dmSans(fontSize: 13, color: p.textMuted),
                 blockquoteDecoration: BoxDecoration(color: p.textMuted.withValues(alpha: 0.06), border: Border(left: BorderSide(color: const Color(0xFF8B5CF6).withValues(alpha: 0.5), width: 3))),
                 code: GoogleFonts.jetBrainsMono(fontSize: 12, color: const Color(0xFFA78BFA), backgroundColor: Colors.black.withValues(alpha: 0.35)),
-                codeblockDecoration: BoxDecoration(color: const Color(0xFF0B0B0B), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF1F1F1F))),
-                listBullet: GoogleFonts.dmSans(fontSize: 13.5, color: isDark ? Colors.white : Colors.black),
-                tableHead: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
-                tableBody: GoogleFonts.dmSans(fontSize: 12, color: isDark ? Colors.white : Colors.black),
+                codeblockDecoration: BoxDecoration(color: const Color(0xFF0B0B0B), borderRadius: BorderRadius.circular(10), border: Border.all(color: appPalette.cardColor)),
+                listBullet: GoogleFonts.dmSans(fontSize: 13.5, color: isDark ? appPalette.textPrimary : Colors.black),
+                tableHead: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, color: appPalette.textPrimary),
+                tableBody: GoogleFonts.dmSans(fontSize: 12, color: isDark ? appPalette.textPrimary : Colors.black),
               ),
             ),
           ),
-          Divider(height: 1, color: isDark ? const Color(0xFF1F1F1F) : const Color(0xFFE5E7EB)),
+          Divider(height: 1, color: appPalette.borderLight),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -665,7 +661,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: onTap,
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), child: Icon(icon, size: 14, color: const Color(0xFFA3A3A3))),
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), child: Icon(icon, size: 14, color: appPalette.bgTertiary)),
       ),
     );
   }
@@ -677,9 +673,9 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
         margin: const EdgeInsets.only(bottom: 12, right: 80),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF111111) : Colors.white,
+          color: appPalette.cardColor,
           borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(18), bottomLeft: Radius.circular(18), bottomRight: Radius.circular(18)),
-          border: Border.all(color: isDark ? const Color(0xFF1F1F1F) : const Color(0xFFE5E7EB)),
+          border: Border.all(color: appPalette.borderLight),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           _dot(0),
@@ -715,8 +711,8 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF080808) : Colors.white,
-        border: Border(top: BorderSide(color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFE5E7EB))),
+        color: isDark ? appPalette.bgSecondary : appPalette.cardColor,
+        border: Border(top: BorderSide(color: appPalette.borderLight)),
       ),
       child: SafeArea(
         top: false,
@@ -726,7 +722,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
             _buildGradientInput(p, isDark),
             const SizedBox(height: 8),
             Row(children: [
-              const Icon(Icons.lock_rounded, size: 11, color: Color(0xFF6B7280)),
+              const Icon(Icons.lock_rounded, size: 11, color: appPalette.bgTertiary),
               const SizedBox(width: 6),
               Expanded(child: Text('La IA puede cometer errores. Verifica información importante.', style: GoogleFonts.dmSans(fontSize: 10, color: p.textMuted))),
               Text('Portal Pilot • v2', style: GoogleFonts.dmSans(fontSize: 10, color: p.textMuted.withValues(alpha: 0.7))),
@@ -753,7 +749,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
         child: Stack(
           children: [
             Container(
-              decoration: BoxDecoration(color: const Color(0xFF000000).withValues(alpha: 0.55)),
+              decoration: BoxDecoration(color: appPalette.bgPrimary.withValues(alpha: 0.55)),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 TextField(
                   controller: _controller,
@@ -763,7 +759,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                   maxLines: 4,
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _send(),
-                  style: GoogleFonts.dmSans(fontSize: 12.5, color: Colors.white),
+                  style: GoogleFonts.dmSans(fontSize: 12.5, color: appPalette.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Imagina algo extraordinario… ✦',
                     hintStyle: GoogleFonts.dmSans(fontSize: 12.5, color: _focused ? const Color(0xFF3A3A3A) : const Color(0xFFF3F6FD)),
@@ -851,7 +847,7 @@ class _ChatToolBtnState extends State<_ChatToolBtn> {
             onTap: widget.onTap,
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: Icon(widget.icon, size: 20, color: enabled ? (_hover ? Colors.white : Colors.white.withValues(alpha: 0.15)) : Colors.white.withValues(alpha: 0.08)),
+              child: Icon(widget.icon, size: 20, color: enabled ? (_hover ? appPalette.textPrimary : appPalette.textPrimary.withValues(alpha: 0.15)) : appPalette.textPrimary.withValues(alpha: 0.08)),
             ),
           ),
         ),

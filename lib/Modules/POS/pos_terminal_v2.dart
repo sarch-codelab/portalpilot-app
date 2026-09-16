@@ -24,6 +24,7 @@ import 'package:portal_pilot_app/Shared/widgets/sync_status_indicator.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:lottie/lottie.dart';
 
 class PosTerminalV2 extends StatefulWidget {
   const PosTerminalV2({super.key});
@@ -501,6 +502,23 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
+  }
+
+  Future<void> _procesarPagoConBanco(double monto) async {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _DialogoProcesandoBanco(
+        monto: _posService.formatCurrency(monto),
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 4200));
+    if (!mounted) return;
+    if (Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+    HapticFeedback.mediumImpact();
   }
 
   Future<void> _imprimirTicket(dynamic venta, List<PosCarritoItem> items, double subtotal, double descuento, double isv15, double isv18, double total) async {
@@ -2125,6 +2143,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       if (Navigator.of(context, rootNavigator: true).canPop()) {
         Navigator.of(context, rootNavigator: true).pop();
       }
+      await _procesarPagoConBanco(_total);
+      if (!mounted) return;
       setState(() {
         _tarjetaDetectada = tarjeta;
         _leyendoTarjeta = false;
@@ -2259,6 +2279,63 @@ class _DialogoCargandoAnalisis extends StatelessWidget {
             Text(
               'La IA revisa ventas, pagos y arqueo',
               style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogoProcesandoBanco extends StatelessWidget {
+  final String monto;
+  const _DialogoProcesandoBanco({required this.monto});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF141414),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              height: 86,
+              child: Lottie.asset(
+                'assets/animaciones/banco_a_banco.json',
+                repeat: true,
+                fit: BoxFit.contain,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8B5CF6).withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.4)),
+              ),
+              child: Text(
+                'Validando pago $monto con el banco...',
+                style: GoogleFonts.syne(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFFC4B5FD),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Transferencia entre bancos en curso',
+              style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFA1A1AA)),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'No cierres la pantalla mientras el banco confirma el cobro.',
+              style: GoogleFonts.dmSans(fontSize: 10.5, color: const Color(0xFF737373)),
             ),
           ],
         ),
