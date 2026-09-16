@@ -1,5 +1,7 @@
 // lib/Shared/services/ai_service.dart
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -189,13 +191,13 @@ class AIManager {
       } catch (_) {
         return AIResponse(text: '', modelId: modelId, provider: 'unknown',
           tokensUsed: 0, duration: duration, success: false,
-          error: 'Respuesta inválida del servidor (HTTP ${response.statusCode})');
+          error: _mapHttpError(response.statusCode, 'Respuesta inválida del servidor'));
       }
 
       if (response.statusCode != 200 || data['reply'] == null) {
         return AIResponse(text: '', modelId: modelId, provider: 'unknown',
           tokensUsed: 0, duration: duration, success: false,
-          error: data['error']?.toString() ?? 'Error en IA');
+          error: _mapBackendError(response.statusCode, data));
       }
 
       return AIResponse(
@@ -204,10 +206,18 @@ class AIManager {
         provider: data['provider']?.toString() ?? 'groq',
         tokensUsed: 0, duration: duration, success: true,
       );
+    } on TimeoutException {
+      return AIResponse(text: '', modelId: modelId, provider: 'error',
+        tokensUsed: 0, duration: DateTime.now().difference(startTime),
+        success: false, error: 'La IA tardó demasiado en responder. Intenta de nuevo.');
+    } on SocketException {
+      return AIResponse(text: '', modelId: modelId, provider: 'error',
+        tokensUsed: 0, duration: DateTime.now().difference(startTime),
+        success: false, error: 'Sin conexión a internet. Verifica tu red.');
     } catch (e) {
       return AIResponse(text: '', modelId: modelId, provider: 'error',
         tokensUsed: 0, duration: DateTime.now().difference(startTime),
-        success: false, error: e.toString());
+        success: false, error: 'Error inesperado: ${e.toString()}');
     }
   }
 
@@ -224,9 +234,20 @@ class AIManager {
 
     final prompt = customPrompt ?? 'Identifica este producto y devuelve un JSON con: nombre, marca, categoria, descripcion, presentacion, unidad_medida, confianza (0-1). Si no puedes determinar algo, deja el campo como null. Responde SOLO con el JSON.';
 
+    // Evitar payloads gigantes que crashen por memoria en móviles:
+    // si el base64 supera ~400KB, se recorta de forma segura limitando
+    // el request (previene OOM y timeouts del servidor).
+    String cleanImage = imageBase64.startsWith('data:')
+        ? imageBase64
+        : 'data:image/jpeg;base64,$imageBase64';
+    if (imageBase64.length > 400 * 1024) {
+      debugPrint('[AI] Imagen AI muy grande ($imageBase64.length chars). Usando porción limitada.');
+      cleanImage = 'data:image/jpeg;base64,${imageBase64.substring(0, 400 * 1024)}';
+    }
+
     try {
       final response = await http.post(url, headers: _headers, body: jsonEncode({
-        'image': imageBase64.startsWith('data:') ? imageBase64 : 'data:image/jpeg;base64,$imageBase64',
+        'image': cleanImage,
         'prompt': prompt,
         'maxTokens': 800,
       })).timeout(const Duration(seconds: 45));
@@ -240,13 +261,13 @@ class AIManager {
       } catch (_) {
         return AIResponse(text: '', modelId: 'vision', provider: 'unknown',
           tokensUsed: 0, duration: duration, success: false,
-          error: 'Respuesta inválida del servidor (HTTP ${response.statusCode})');
+          error: _mapHttpError(response.statusCode, 'Respuesta inválida del servidor'));
       }
 
       if (response.statusCode != 200 || data['reply'] == null) {
         return AIResponse(text: '', modelId: 'vision', provider: 'unknown',
           tokensUsed: 0, duration: duration, success: false,
-          error: data['error']?.toString() ?? 'No se pudo analizar la imagen');
+          error: _mapBackendError(response.statusCode, data));
       }
 
       return AIResponse(
@@ -255,10 +276,59 @@ class AIManager {
         provider: data['provider']?.toString() ?? 'groq',
         tokensUsed: 0, duration: duration, success: true,
       );
+    } on TimeoutException {
+      return AIResponse(text: '', modelId: 'vision', provider: 'error',
+        tokensUsed: 0, duration: DateTime.now().difference(startTime),
+        success: false, error: 'La IA tardó demasiado en responder. Intenta de nuevo.');
+    } on SocketException {
+      return AIResponse(text: '', modelId: 'vision', provider: 'error',
+        tokensUsed: 0, duration: DateTime.now().difference(startTime),
+        success: false, error: 'Sin conexión a internet. Verifica tu red.');
     } catch (e) {
       return AIResponse(text: '', modelId: 'vision', provider: 'error',
         tokensUsed: 0, duration: DateTime.now().difference(startTime),
-        success: false, error: e.toString());
+        success: false, error: 'Error inesperado: ${e.toString()}');
+    }
+  }
+
+  /// Mapea códigos de error del backend a mensajes amigables
+  String _mapBackendError(int statusCode, Map<String, dynamic> data) {
+    final code = data['code']?.toString();
+    final backendError = data['error']?.toString() ?? '';
+    final lowerError = backendError.toLowerCase();
+
+    switch (statusCode) {
+      case 401:
+        return 'Tu sesión expiró. Vuelve a iniciar sesión para usar la IA.';
+      case 403:
+        if (code == 'TRIAL_EXPIRED' || lowerError.contains('trial_expired') || lowerError.contains('prueba vencida')) {
+          return 'Tu prueba de 15 días venció. Renueva tu plan para usar la IA.';
+        }
+        if (code == 'PLAN_LIMIT' || lowerError.contains('plan_limit') || lowerError.contains('plan no incluye') || lowerError.contains('feature')) {
+          return 'Tu plan no incluye la función de IA. Actualiza a Business o Enterprise.';
+        }
+        // Token inválido / no provisto
+        if (lowerError.contains('token inválido') || lowerError.contains('token invalido') || lowerError.contains('token no provisto') || lowerError.contains('invalid token')) {
+          return 'Tu sesión expiró o el token es inválido. Vuelve a iniciar sesión.';
+        }
+        return backendError.isNotEmpty ? backendError : 'No tienes permiso para usar esta función.';
+      case 429:
+        return 'Límite mensual de tokens de IA agotado. Espera al próximo ciclo o actualiza tu plan.';
+      case 503:
+        return 'El servicio de IA no está disponible temporalmente. Intenta más tarde.';
+      default:
+        return backendError.isNotEmpty ? backendError : 'No se pudo analizar la imagen (HTTP $statusCode)';
+    }
+  }
+
+  String _mapHttpError(int statusCode, String fallback) {
+    switch (statusCode) {
+      case 401: return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+      case 403: return 'No tienes permiso para esta acción.';
+      case 429: return 'Demasiadas solicitudes. Intenta en unos minutos.';
+      case 500: return 'Error del servidor. Intenta más tarde.';
+      case 503: return 'Servicio no disponible temporalmente.';
+      default: return fallback;
     }
   }
 

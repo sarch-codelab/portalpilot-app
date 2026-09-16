@@ -22,8 +22,10 @@ module.exports = async function handler(req, res) {
   } catch {
     visionModels = [requestedModel || 'qwen/qwen3.6-27b', 'qwen/qwen3.8-27b'];
   }
+  // Limitar a máximo 2 intentos para evitar timeout de Vercel (Hobby: 10s)
+  const modelsToTry = visionModels.slice(0, 2);
   let lastError = null;
-  for (const model of visionModels) {
+  for (const model of modelsToTry) {
     try {
       const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',

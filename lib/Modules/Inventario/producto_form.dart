@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,6 +15,11 @@ import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
+
+/// Función top-level para decode base64 en isolate (evita bloquear el hilo UI).
+Uint8List _decodeBase64Isolate(String input) {
+  return base64Decode(input);
+}
 
 class ProductoForm extends StatefulWidget {
   final Map<String, dynamic>? productoExistente;
@@ -342,15 +348,15 @@ Future<void> _identificarProductoConIA() async {
         }
       }
 
-      // Pick image
+      // Pick image — dimensiones y calidad reducidas para evitar OOM en móviles
       XFile? picked;
       try {
-        picked = await ImagePicker().pickImage(source: source, maxWidth: 800, maxHeight: 800, imageQuality: 75);
+        picked = await ImagePicker().pickImage(source: source, maxWidth: 600, maxHeight: 600, imageQuality: 55);
       } on PlatformException catch (e) {
         debugPrint('[AI] ImagePicker PlatformException: $e');
         if (source == ImageSource.camera) {
           try {
-            picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800, imageQuality: 75);
+            picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 600, maxHeight: 600, imageQuality: 55);
           } catch (_) {}
         }
       }
@@ -360,7 +366,24 @@ Future<void> _identificarProductoConIA() async {
       }
 
       final bytes = await picked.readAsBytes();
-      imagenParaAnalizar = base64Encode(bytes);
+      // Limitar tamaño del base64 para evitar presión de memoria en móviles
+      if (bytes.length > 300 * 1024) {
+        debugPrint('[AI] Imagen demasiado grande (${bytes.length} bytes). Comprimiendo...');
+        // Re-intentar con calidad más baja
+        try {
+          final smaller = await ImagePicker().pickImage(source: source, maxWidth: 400, maxHeight: 400, imageQuality: 35);
+          if (smaller != null) {
+            final smallerBytes = await smaller.readAsBytes();
+            imagenParaAnalizar = base64Encode(smallerBytes);
+          } else {
+            imagenParaAnalizar = base64Encode(bytes);
+          }
+        } catch (_) {
+          imagenParaAnalizar = base64Encode(bytes);
+        }
+      } else {
+        imagenParaAnalizar = base64Encode(bytes);
+      }
 
       // Mostrar la foto en el cuadro del formulario mientras se analiza
       if (mounted) {
@@ -448,6 +471,7 @@ Future<void> _identificarProductoConIA() async {
       }
     } finally {
       _aiAnalysisInProgress = false;
+      imagenParaAnalizar = null;
       if (mounted) {
         setState(() => _isAiAnalyzing = false);
       }
@@ -1036,6 +1060,21 @@ Future<void> _identificarProductoConIA() async {
     }
   }
 
+/// Decodifica base64 en un isolate para no bloquear el hilo de UI
+  /// (previene el congelamiento al mostrar fotos grandes en móviles).
+  Future<Uint8List?> _decodificarImagenAsync(String base64Str) async {
+    try {
+      return await compute(_decodeBase64Isolate, base64Str);
+    } catch (e) {
+      debugPrint('⚠️ base64Decode en isolate falló: $e');
+      try {
+        return base64Decode(base64Str);
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
   Widget _buildImagenPicker() {
     final esUrlRemota = (_imagenUrl ?? '').startsWith('http');
     final base64 = _normalizarBase64(
@@ -1064,17 +1103,31 @@ Future<void> _identificarProductoConIA() async {
                           child: const Icon(Icons.broken_image_rounded, color: Color(0xFF404040), size: 40),
                         ),
                       )
-                    : Image.memory(
-                        base64Decode(base64!),
-                        width: 160,
-                        height: 160,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          width: 160,
-                          height: 160,
-                          color: const Color(0xFF0F0F0F),
-                          child: const Icon(Icons.broken_image_rounded, color: Color(0xFF404040), size: 40),
-                        ),
+                    : FutureBuilder<Uint8List?>(
+                        future: _decodificarImagenAsync(base64!),
+                        initialData: null,
+                        builder: (context, snap) {
+                          if (snap.hasError || snap.data == null) {
+                            return Container(
+                              width: 160,
+                              height: 160,
+                              color: const Color(0xFF0F0F0F),
+                              child: const Icon(Icons.broken_image_rounded, color: Color(0xFF404040), size: 40),
+                            );
+                          }
+                          return Image.memory(
+                            snap.data!,
+                            width: 160,
+                            height: 160,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(
+                              width: 160,
+                              height: 160,
+                              color: const Color(0xFF0F0F0F),
+                              child: const Icon(Icons.broken_image_rounded, color: Color(0xFF404040), size: 40),
+                            ),
+                          );
+                        },
                       ),
               ),
             ),
