@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 
 /// Bloquea acciones de registro/escritura cuando la empresa está en modo
 /// solo lectura (trial vencido).
@@ -14,18 +15,12 @@ class ReadOnlyGuard {
 
   static bool bloqueado(BuildContext context) {
     if (!AuthController.instance.soloLectura) return false;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Modo solo lectura: tu prueba de 15 días venció. '
-            'Puedes consultar y exportar tus datos, pero no registrar '
-            'movimientos nuevos. Renueva tu plan para continuar.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    PPNotifications.warning(
+      context,
+      'Tu prueba de 15 días venció. Puedes consultar y exportar tus datos, '
+      'pero no registrar movimientos nuevos. Renueva tu plan para continuar.',
+      title: 'Modo solo lectura',
+    );
     return true;
   }
 }

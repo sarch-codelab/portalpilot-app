@@ -35,6 +35,7 @@ import 'package:portal_pilot_app/Shared/services/haptic_service.dart';
 import 'package:portal_pilot_app/Shared/services/offline_sync_service.dart';
 import 'package:portal_pilot_app/Shared/widgets/refresh_wrapper.dart';
 import 'package:portal_pilot_app/Shared/widgets/page_transitions.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 import 'package:portal_pilot_app/Home/multi_area_config_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -76,6 +77,8 @@ class _HomeScreenState extends State<HomeScreen>
     _fadeController.forward();
     AuthController.instance.addListener(_onAuthChanged);
     MultiAreaConfig.instance.addListener(_onMultiAreaChanged);
+    // Redibuja el panel cuando cambia el tema (claro/oscuro/sistema).
+    appThemeNotifier.addListener(_onThemeChanged);
     _loadUserData();
     _initializeServices();
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -91,6 +94,10 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() => _isOnline = online);
       }
     });
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _initializeServices() async {
@@ -131,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     AuthController.instance.removeListener(_onAuthChanged);
     MultiAreaConfig.instance.removeListener(_onMultiAreaChanged);
+    appThemeNotifier.removeListener(_onThemeChanged);
     _fadeController.dispose();
     _moduleSearchController.dispose();
     _clockTimer?.cancel();
@@ -316,44 +324,46 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildModuleSearch(bool isMobile) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return TextField(
       controller: _moduleSearchController,
       onChanged: (_) => setState(() {}),
-      style: GoogleFonts.dmSans(fontSize: 13, color: Colors.white),
+      style: GoogleFonts.dmSans(fontSize: 13, color: palette.textPrimary),
       decoration: InputDecoration(
         hintText: 'Buscar módulos...',
-        hintStyle: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF737373)),
-        prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFB94DDC), size: 20),
+        hintStyle: GoogleFonts.dmSans(fontSize: 13, color: palette.textDim),
+        prefixIcon: Icon(Icons.search_rounded, color: palette.brandOnSurface, size: 20),
         suffixIcon: _moduleSearchController.text.isEmpty
             ? null
             : IconButton(
                 tooltip: 'Limpiar búsqueda',
-                icon: const Icon(Icons.close_rounded, color: Color(0xFFA3A3A3), size: 18),
+                icon: Icon(Icons.close_rounded, color: palette.textMuted, size: 18),
                 onPressed: () {
                   _moduleSearchController.clear();
                   setState(() {});
                 },
               ),
         filled: true,
-        fillColor: const Color(0xCC111111),
+        fillColor: palette.cardColor.withValues(alpha: 0.85),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: const Color(0xFFB94DDC).withValues(alpha: 0.25)),
+          borderSide: BorderSide(color: palette.borderLight),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: const Color(0xFFB94DDC).withValues(alpha: 0.25)),
+          borderSide: BorderSide(color: palette.borderLight),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFB94DDC), width: 1.5),
+          borderSide: BorderSide(color: palette.brand, width: 1.5),
         ),
       ),
     );
   }
 
   Widget _buildHeader(bool isMobile) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     final hour = _currentTime.hour;
     String greeting = 'Buenos días';
     if (hour >= 12 && hour < 19) greeting = 'Buenas tardes';
@@ -367,100 +377,37 @@ class _HomeScreenState extends State<HomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _isOnline 
-                      ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                      : const Color(0xFFEF4444).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _isOnline 
-                        ? const Color(0xFF10B981)
-                        : const Color(0xFFEF4444),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-                      color: _isOnline ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                      size: 12,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _isOnline ? 'Online' : 'Offline',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: _isOnline ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                      ),
-                    ),
-                  ],
-                ),
+              _headerPill(
+                palette: palette,
+                color: _isOnline ? palette.successGreen : palette.errorRed,
+                icon: _isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
+                label: _isOnline ? 'Online' : 'Offline',
               ),
               const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111111),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0x29FFFFFF)),
-                ),
-                child: Tooltip(
-                  message: 'Menú',
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.menu_rounded,
-                      color: Color(0xFFB94DDC),
-                      size: 18,
-                    ),
-                    onPressed: () => Scaffold.of(context).openDrawer(),
-                  ),
-                ),
+              _headerIconButton(
+                palette: palette,
+                tooltip: 'Menú',
+                icon: Icons.menu_rounded,
+                onPressed: () => Scaffold.of(context).openDrawer(),
               ),
               const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111111),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0x29FFFFFF)),
-                ),
-                child: Tooltip(
-                  message: 'Cambiar tema',
-                  child: IconButton(
-                    icon: Icon(
-                      appThemeNotifier.isDark
-                          ? Icons.light_mode_rounded
-                          : Icons.dark_mode_rounded,
-                      color: const Color(0xFFB94DDC),
-                      size: 16,
-                    ),
-                    onPressed: () async {
-                      await appThemeNotifier.toggle();
-                    },
-                  ),
-                ),
+              _headerIconButton(
+                palette: palette,
+                tooltip: appThemeNotifier.isDark ? 'Modo claro' : 'Modo oscuro',
+                icon: appThemeNotifier.isDark
+                    ? Icons.light_mode_rounded
+                    : Icons.dark_mode_rounded,
+                onPressed: () async {
+                  HapticService.instance.lightImpact();
+                  await appThemeNotifier.toggle();
+                },
               ),
               const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111111),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0x29FFFFFF)),
-                ),
-                child: Tooltip(
-                  message: 'Cerrar sesión',
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.logout_rounded,
-                      color: Color(0xFFB94DDC),
-                      size: 18,
-                    ),
-                    onPressed: () => _handleLogout(context),
-                  ),
-                ),
+              _headerIconButton(
+                palette: palette,
+                tooltip: 'Cerrar sesión',
+                icon: Icons.logout_rounded,
+                onPressed: () => _handleLogout(context),
               ),
             ],
           ),
@@ -481,7 +428,7 @@ class _HomeScreenState extends State<HomeScreen>
                   style: GoogleFonts.syne(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
-                    color: Colors.white,
+                    color: palette.textPrimary,
                     letterSpacing: -0.5,
                   ),
                   maxLines: 1,
@@ -490,7 +437,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ] else ...[
-          // Desktop: row original
+          // Desktop: fila de identidad + acciones
           Row(
             children: [
               Image.asset(
@@ -509,7 +456,7 @@ class _HomeScreenState extends State<HomeScreen>
                       style: GoogleFonts.syne(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        color: Colors.white,
+                        color: palette.textPrimary,
                         letterSpacing: -0.5,
                       ),
                       maxLines: 1,
@@ -519,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen>
                       _empresaNombre.isNotEmpty ? _empresaNombre : _empresaCodigo,
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
-                        color: const Color(0xFFA3A3A3),
+                        color: palette.textMuted,
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
@@ -529,66 +476,32 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
               const Spacer(),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111111),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0x29FFFFFF)),
-                ),
-                child: Tooltip(
-                  message: 'Cambiar tema',
-                  child: IconButton(
-                    icon: Icon(
-                      appThemeNotifier.isDark
-                          ? Icons.light_mode_rounded
-                          : Icons.dark_mode_rounded,
-                      color: const Color(0xFFB94DDC),
-                      size: 16,
-                    ),
-                    onPressed: () async {
-                      await appThemeNotifier.toggle();
-                    },
-                  ),
-                ),
+              _headerIconButton(
+                palette: palette,
+                tooltip: appThemeNotifier.isDark ? 'Modo claro' : 'Modo oscuro',
+                icon: appThemeNotifier.isDark
+                    ? Icons.light_mode_rounded
+                    : Icons.dark_mode_rounded,
+                onPressed: () async {
+                  HapticService.instance.lightImpact();
+                  await appThemeNotifier.toggle();
+                },
               ),
               const SizedBox(width: 12),
-              if (AuthController.instance.esRoot)
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF111111),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0x29FFFFFF)),
-                  ),
-                  child: Tooltip(
-                    message: 'Configuración Multi-Área',
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.settings_rounded,
-                        color: Color(0xFFB94DDC),
-                        size: 18,
-                      ),
-                      onPressed: () => _openMultiAreaConfig(),
-                    ),
-                  ),
+              if (AuthController.instance.esRoot) ...[
+                _headerIconButton(
+                  palette: palette,
+                  tooltip: 'Configuración Multi-Área',
+                  icon: Icons.settings_rounded,
+                  onPressed: () => _openMultiAreaConfig(),
                 ),
-              const SizedBox(width: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111111),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0x29FFFFFF)),
-                ),
-                child: Tooltip(
-                  message: 'Cerrar sesión',
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.logout_rounded,
-                      color: Color(0xFFB94DDC),
-                      size: 18,
-                    ),
-                    onPressed: () => _handleLogout(context),
-                  ),
-                ),
+                const SizedBox(width: 12),
+              ],
+              _headerIconButton(
+                palette: palette,
+                tooltip: 'Cerrar sesión',
+                icon: Icons.logout_rounded,
+                onPressed: () => _handleLogout(context),
               ),
             ],
           ),
@@ -599,7 +512,7 @@ class _HomeScreenState extends State<HomeScreen>
           style: GoogleFonts.syne(
             fontSize: isMobile ? 32 : 42,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: palette.textPrimary,
             letterSpacing: -1,
           ),
         ),
@@ -608,10 +521,65 @@ class _HomeScreenState extends State<HomeScreen>
           '¿Qué módulo deseas usar hoy?',
           style: GoogleFonts.dmSans(
             fontSize: 16,
-            color: const Color(0xFFA3A3A3),
+            color: palette.textMuted,
           ),
         ),
       ],
+    );
+  }
+
+  /// Píldora de estado (Online/Offline) del encabezado.
+  Widget _headerPill({
+    required ThemePalette palette,
+    required Color color,
+    required IconData icon,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 12),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Botón de icono estándar del encabezado — funciona en claro y oscuro.
+  Widget _headerIconButton({
+    required ThemePalette palette,
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.cardColor.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: palette.borderLight),
+      ),
+      child: Tooltip(
+        message: tooltip,
+        child: IconButton(
+          icon: Icon(icon, color: palette.brandOnSurface, size: 18),
+          onPressed: onPressed,
+        ),
+      ),
     );
   }
 
@@ -758,17 +726,18 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildModulosHeader(bool isMobile) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFB94DDC).withValues(alpha: 0.12),
+                color: palette.brand.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.apps_rounded,
-                color: Color(0xFFB94DDC),
+                color: palette.brandOnSurface,
                 size: 18,
               ),
             ),
@@ -779,7 +748,7 @@ class _HomeScreenState extends State<HomeScreen>
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFFA3A3A3),
+                  color: palette.textMuted,
                   letterSpacing: 1.5,
                 ),
                 maxLines: 1,
@@ -790,7 +759,7 @@ class _HomeScreenState extends State<HomeScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                color: palette.successGreen.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -798,7 +767,9 @@ class _HomeScreenState extends State<HomeScreen>
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF10B981),
+                  color: palette.isDark
+                      ? palette.successGreen
+                      : palette.successGreenDeep,
                 ),
               ),
             ),
@@ -932,15 +903,10 @@ class _HomeScreenState extends State<HomeScreen>
         break;
       default:
         HapticService.instance.error();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${modulo.nombre} - Próximamente disponible'),
-            backgroundColor: modulo.color,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+        PPNotifications.info(
+          context,
+          '${modulo.nombre} llegará en una próxima actualización.',
+          title: modulo.nombre,
         );
         return;
     }
@@ -951,6 +917,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildQuickActions(bool isMobile) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -959,7 +926,7 @@ class _HomeScreenState extends State<HomeScreen>
           style: GoogleFonts.spaceGrotesk(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFFA3A3A3),
+            color: palette.textMuted,
             letterSpacing: 1.5,
           ),
         ),
@@ -968,19 +935,21 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             Expanded(
               child: _buildQuickActionCard(
+                palette,
                 'Estado del Sistema',
                 'Todos los módulos operativos',
                 Icons.check_circle_rounded,
-                const Color(0xFF10B981),
+                palette.successGreen,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _buildQuickActionCard(
+                palette,
                 'Soporte',
                 'Centro de ayuda con IA',
                 Icons.help_outline_rounded,
-                const Color(0xFF3B82F6),
+                palette.infoBlue,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const SoporteHome()),
@@ -994,6 +963,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildQuickActionCard(
+    ThemePalette palette,
     String title,
     String subtitle,
     IconData icon,
@@ -1005,9 +975,9 @@ class _HomeScreenState extends State<HomeScreen>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF111111),
+          color: palette.cardColor.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0x29FFFFFF)),
+          border: Border.all(color: palette.borderLight),
         ),
         child: Row(
           children: [
@@ -1029,14 +999,14 @@ class _HomeScreenState extends State<HomeScreen>
                     style: GoogleFonts.dmSans(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: palette.textPrimary,
                     ),
                   ),
                   Text(
                     subtitle,
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: const Color(0xFFA3A3A3),
+                      color: palette.textMuted,
                     ),
                   ),
                 ],
@@ -1049,6 +1019,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildFooter() {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Center(
       child: Column(
         children: [
@@ -1058,8 +1029,8 @@ class _HomeScreenState extends State<HomeScreen>
               Container(
                 width: 6,
                 height: 6,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF10B981),
+                decoration: BoxDecoration(
+                  color: palette.successGreen,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -1068,7 +1039,7 @@ class _HomeScreenState extends State<HomeScreen>
                 'Todos los sistemas operativos',
                 style: GoogleFonts.dmSans(
                   fontSize: 11,
-                  color: const Color(0xFFA3A3A3),
+                  color: palette.textMuted,
                 ),
               ),
             ],
@@ -1078,7 +1049,7 @@ class _HomeScreenState extends State<HomeScreen>
             '© 2026 Portal Pilot · v2.0.0',
             style: GoogleFonts.spaceGrotesk(
               fontSize: 10,
-              color: const Color(0xFF525252),
+              color: palette.textDim,
             ),
           ),
         ],
@@ -1087,6 +1058,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMobileBottomNav() {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Material(
       color: Colors.transparent,
       child: SafeArea(
@@ -1095,17 +1067,25 @@ class _HomeScreenState extends State<HomeScreen>
           height: 78,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF111111),
-            border: Border(top: BorderSide(color: const Color(0xFFB94DDC).withValues(alpha: 0.25))),
-            boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 18, offset: Offset(0, -8))],
+            color: palette.cardColor,
+            border: Border(top: BorderSide(color: palette.borderLight)),
+            boxShadow: [
+              BoxShadow(
+                color: palette.isDark
+                    ? Colors.black.withValues(alpha: 0.4)
+                    : Colors.black.withValues(alpha: 0.08),
+                blurRadius: 18,
+                offset: const Offset(0, -8),
+              ),
+            ],
           ),
           child: Row(
             children: [
-              Expanded(child: _buildMobileNavButton(icon: Icons.home_rounded, label: 'Inicio', isSelected: _mobileNavIndex == 0, onTap: () => setState(() => _mobileNavIndex = 0))),
-              Expanded(child: _buildMobileNavButton(icon: Icons.settings_rounded, label: 'Config', isSelected: _mobileNavIndex == 1, onTap: () { setState(() => _mobileNavIndex = 1); _openSettings(); })),
-              _buildPortalCoreButton(),
-              Expanded(child: _buildMobileNavButton(icon: Icons.support_agent_rounded, label: 'Soporte', isSelected: _mobileNavIndex == 2, onTap: () { setState(() => _mobileNavIndex = 2); Navigator.push(context, MaterialPageRoute(builder: (_) => const SoporteHome())); })),
-              Expanded(child: _buildMobileNavButton(icon: Icons.logout_rounded, label: 'Salir', isSelected: false, onTap: () => _handleLogout(context))),
+              Expanded(child: _buildMobileNavButton(palette, icon: Icons.home_rounded, label: 'Inicio', isSelected: _mobileNavIndex == 0, onTap: () => setState(() => _mobileNavIndex = 0))),
+              Expanded(child: _buildMobileNavButton(palette, icon: Icons.settings_rounded, label: 'Config', isSelected: _mobileNavIndex == 1, onTap: () { setState(() => _mobileNavIndex = 1); _openSettings(); })),
+              _buildPortalCoreButton(palette),
+              Expanded(child: _buildMobileNavButton(palette, icon: Icons.support_agent_rounded, label: 'Soporte', isSelected: _mobileNavIndex == 2, onTap: () { setState(() => _mobileNavIndex = 2); Navigator.push(context, MaterialPageRoute(builder: (_) => const SoporteHome())); })),
+              Expanded(child: _buildMobileNavButton(palette, icon: Icons.logout_rounded, label: 'Salir', isSelected: false, onTap: () => _handleLogout(context))),
             ],
           ),
         ),
@@ -1117,7 +1097,7 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.of(context).push(SlideFromRightTransition(child: const SettingsHome()));
   }
 
-  Widget _buildPortalCoreButton() {
+  Widget _buildPortalCoreButton(ThemePalette palette) {
     return Tooltip(
       message: 'Núcleo Portal Pilot',
       child: GestureDetector(
@@ -1138,7 +1118,8 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildMobileNavButton({
+  Widget _buildMobileNavButton(
+    ThemePalette palette, {
     required IconData icon,
     required String label,
     required bool isSelected,
@@ -1149,8 +1130,8 @@ class _HomeScreenState extends State<HomeScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? const Color(0xFFB94DDC).withValues(alpha: 0.15)
+          color: isSelected
+              ? palette.brand.withValues(alpha: 0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
@@ -1159,7 +1140,7 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             Icon(
               icon,
-              color: isSelected ? const Color(0xFFB94DDC) : const Color(0xFFA3A3A3),
+              color: isSelected ? palette.brandOnSurface : palette.textMuted,
               size: 20,
             ),
             const SizedBox(height: 4),
@@ -1168,7 +1149,7 @@ class _HomeScreenState extends State<HomeScreen>
               style: GoogleFonts.dmSans(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? const Color(0xFFB94DDC) : const Color(0xFFA3A3A3),
+                color: isSelected ? palette.brandOnSurface : palette.textMuted,
               ),
             ),
           ],
@@ -1178,8 +1159,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMobileDrawer() {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Drawer(
-      backgroundColor: const Color(0xFF111111),
+      backgroundColor: palette.sidebarColor,
       child: SafeArea(
         child: Column(
           children: [
@@ -1266,7 +1248,7 @@ class _HomeScreenState extends State<HomeScreen>
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFFA3A3A3),
+                        color: palette.textMuted,
                         letterSpacing: 1.5,
                       ),
                     ),
@@ -1280,9 +1262,9 @@ class _HomeScreenState extends State<HomeScreen>
                       _openModule(modulo);
                     },
                   )),
-                  
-                  const Divider(height: 32, color: Color(0xFF292929)),
-                  
+
+                  Divider(height: 32, color: palette.borderLight),
+
                   // Opciones adicionales
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -1291,7 +1273,7 @@ class _HomeScreenState extends State<HomeScreen>
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFFA3A3A3),
+                        color: palette.textMuted,
                         letterSpacing: 1.5,
                       ),
                     ),
@@ -1299,7 +1281,7 @@ class _HomeScreenState extends State<HomeScreen>
                   _buildDrawerItem(
                     icon: Icons.settings_rounded,
                     title: 'Configuración',
-                    color: const Color(0xFFB94DDC),
+                    color: palette.brand,
                     onTap: () {
                       Navigator.pop(context);
                       _openModule(_modulosDisponibles.firstWhere(
@@ -1311,7 +1293,7 @@ class _HomeScreenState extends State<HomeScreen>
                   _buildDrawerItem(
                     icon: Icons.support_agent_rounded,
                     title: 'Soporte',
-                    color: const Color(0xFF3B82F6),
+                    color: palette.infoBlue,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -1324,7 +1306,7 @@ class _HomeScreenState extends State<HomeScreen>
                     _buildDrawerItem(
                       icon: Icons.admin_panel_settings_rounded,
                       title: 'Multi-Área',
-                      color: const Color(0xFF10B981),
+                      color: palette.successGreen,
                       onTap: () {
                         Navigator.pop(context);
                         _openMultiAreaConfig();
@@ -1337,22 +1319,22 @@ class _HomeScreenState extends State<HomeScreen>
             // Footer con logout
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(color: Color(0xFF292929), width: 1),
+                  top: BorderSide(color: palette.borderLight, width: 1),
                 ),
               ),
               child: ListTile(
-                leading: const Icon(
+                leading: Icon(
                   Icons.logout_rounded,
-                  color: Color(0xFFEF4444),
+                  color: palette.errorRed,
                 ),
                 title: Text(
                   'Cerrar sesión',
                   style: GoogleFonts.dmSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFFEF4444),
+                    color: palette.errorRed,
                   ),
                 ),
                 onTap: () {
@@ -1387,12 +1369,12 @@ class _HomeScreenState extends State<HomeScreen>
         style: GoogleFonts.dmSans(
           fontSize: 14,
           fontWeight: FontWeight.w500,
-          color: Colors.white,
+          color: ThemePalette(isDark: appThemeNotifier.isDark).textPrimary,
         ),
       ),
       trailing: Icon(
         Icons.arrow_forward_ios_rounded,
-        color: const Color(0xFFA3A3A3),
+        color: ThemePalette(isDark: appThemeNotifier.isDark).textMuted,
         size: 16,
       ),
       onTap: onTap,
@@ -1420,21 +1402,22 @@ class _ModuleCardState extends State<ModuleCard> {
   bool _isHovered = false;
 
   static final Map<int, TextStyle> _titleCache = {};
-  static final TextStyle _descStyle = GoogleFonts.dmSans(
-    fontSize: 12,
-    color: Color(0xFFA3A3A3),
-    height: 1.4,
-  );
 
-  TextStyle _getTitleStyle(double fontSize) {
-    final key = fontSize.toInt();
+  TextStyle _getTitleStyle(double fontSize, ThemePalette palette) {
+    final key = (fontSize.toInt() << 1) | (palette.isDark ? 1 : 0);
     return _titleCache.putIfAbsent(key, () => GoogleFonts.syne(
       fontSize: fontSize,
       fontWeight: FontWeight.w800,
-      color: Colors.white,
+      color: palette.textPrimary,
       letterSpacing: -0.3,
     ));
   }
+
+  TextStyle _descStyle(ThemePalette palette) => GoogleFonts.dmSans(
+    fontSize: 12,
+    color: palette.textMuted,
+    height: 1.4,
+  );
 
   TextStyle _getActionStyle(Color color) {
     return GoogleFonts.dmSans(
@@ -1446,13 +1429,20 @@ class _ModuleCardState extends State<ModuleCard> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
+    // Acentos legibles en ambos temas (los vivos se oscurecen en claro).
+    final accent = palette.isDark
+        ? widget.modulo.color
+        : Color.lerp(widget.modulo.color, Colors.black, 0.18)!;
+    final pressed = _isHovered;
+
     return RepaintBoundary(
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
         cursor: SystemMouseCursors.click,
         child: AnimatedScale(
-          scale: _isHovered ? 1.015 : 1.0,
+          scale: pressed ? 1.015 : 1.0,
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
           child: Material(
@@ -1464,100 +1454,112 @@ class _ModuleCardState extends State<ModuleCard> {
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOutCubic,
                 padding: EdgeInsets.all(widget.isMobile ? 18 : 24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _isHovered ? const Color(0xFF1B1B22) : const Color(0xFF111111),
-                  const Color(0xFF0A0A0D),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: widget.modulo.color.withValues(alpha: _isHovered ? 0.8 : 0.3),
-                width: _isHovered ? 2 : 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.modulo.color.withValues(alpha: _isHovered ? 0.2 : 0.06),
-                  blurRadius: _isHovered ? 26 : 12,
-                  offset: const Offset(0, 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: palette.isDark
+                        ? [
+                            pressed ? const Color(0xFF1B1B22) : const Color(0xFF141219),
+                            const Color(0xFF0C0A12),
+                          ]
+                        : [
+                            Colors.white,
+                            pressed ? const Color(0xFFF7F2FC) : const Color(0xFFFBF9FE),
+                          ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: accent.withValues(alpha: pressed ? 0.55 : 0.28),
+                    width: pressed ? 1.6 : 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: palette.isDark
+                          ? accent.withValues(alpha: pressed ? 0.22 : 0.07)
+                          : accent.withValues(alpha: pressed ? 0.14 : 0.06),
+                      blurRadius: pressed ? 24 : 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            widget.modulo.color,
-                            widget.modulo.color.withValues(alpha: 0.7),
-                          ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                accent,
+                                accent.withValues(alpha: 0.75),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: accent.withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Icon(widget.modulo.icono, color: Colors.white, size: 22),
                         ),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: widget.modulo.color.withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: palette.isDark
+                                ? palette.successGreen
+                                : palette.successGreenDeep,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: (palette.isDark
+                                        ? palette.successGreen
+                                        : palette.successGreenDeep)
+                                    .withValues(alpha: 0.4),
+                                blurRadius: 6,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Icon(widget.modulo.icono, color: Colors.white, size: 22),
+                        ),
+                      ],
                     ),
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0x9910B981),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.modulo.nombre,
+                          style: _getTitleStyle(widget.isMobile ? 16 : 18, palette),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.modulo.descripcion,
+                          style: _descStyle(palette),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.modulo.nombre,
-                      style: _getTitleStyle(widget.isMobile ? 16 : 18),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.modulo.descripcion,
-                      style: _descStyle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Text('Abrir', style: _getActionStyle(accent)),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_rounded, color: accent, size: 16),
+                      ],
                     ),
                   ],
                 ),
-                Row(
-                  children: [
-                    Text('Abrir', style: _getActionStyle(widget.modulo.color)),
-                    const SizedBox(width: 4),
-                    Icon(Icons.arrow_forward_rounded, color: widget.modulo.color, size: 16),
-                  ],
-                ),
-              ],
-            ),
               ),
             ),
           ),

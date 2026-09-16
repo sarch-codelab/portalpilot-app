@@ -15,6 +15,7 @@ import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
+import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 /// Función top-level para decode base64 en isolate (evita bloquear el hilo UI).
 Uint8List _decodeBase64Isolate(String input) {
@@ -321,11 +322,11 @@ Future<void> _identificarProductoConIA() async {
         source = await showDialog<ImageSource>(
           context: context,
           builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF141414),
-            title: Text('Identificar con IA', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
-            content: Text('Elige de dónde tomar la foto del producto', style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFA3A3A3))),
+            backgroundColor: appPalette.cardElevated,
+            title: Text('Identificar con IA', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: appPalette.textPrimary)),
+            content: Text('Elige de dónde tomar la foto del producto', style: GoogleFonts.dmSans(fontSize: 13, color: appPalette.textMuted)),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, ImageSource.gallery), child: Text('Galería', style: GoogleFonts.dmSans(color: const Color(0xFF737373)))),
+              TextButton(onPressed: () => Navigator.pop(ctx, ImageSource.gallery), child: Text('Galería', style: GoogleFonts.dmSans(color: appPalette.textMuted))),
               ElevatedButton(onPressed: () => Navigator.pop(ctx, ImageSource.camera), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)), child: Text('Cámara', style: GoogleFonts.dmSans(color: Colors.white))),
             ],
           ),
@@ -796,17 +797,17 @@ Future<void> _identificarProductoConIA() async {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141414),
-        title: Text('Ingresar Código', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+        backgroundColor: appPalette.cardElevated,
+        title: Text('Ingresar Código', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: appPalette.textPrimary)),
         content: TextField(
           controller: codigoController,
           autofocus: true,
-          style: GoogleFonts.dmSans(color: Colors.white),
+          style: GoogleFonts.dmSans(color: appPalette.textPrimary),
           decoration: InputDecoration(
             hintText: 'Ej: 04130305444',
-            hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
+            hintStyle: GoogleFonts.dmSans(color: appPalette.textDim),
             filled: true,
-            fillColor: const Color(0xFF0F0F0F),
+            fillColor: appPalette.cardColor,
           ),
           onSubmitted: (v) {
             if (v.trim().isNotEmpty) {
@@ -818,7 +819,7 @@ Future<void> _identificarProductoConIA() async {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFF737373))),
+            child: Text('Cancelar', style: GoogleFonts.dmSans(color: appPalette.textMuted)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -870,22 +871,22 @@ Future<void> _identificarProductoConIA() async {
       final continuar = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF111111),
-          title: const Text(
+          backgroundColor: appPalette.cardElevated,
+          title: Text(
             'Stock bajo el mínimo',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: appPalette.textPrimary, fontWeight: FontWeight.bold),
           ),
           content: Text(
             'El stock actual ($stockActual) está por debajo del mínimo ($stockMinimo). '
             'Este producto aparecerá en la alerta de stock bajo. ¿Deseas continuar?',
-            style: const TextStyle(color: Color(0xFFA3A3A3)),
+            style: TextStyle(color: appPalette.textMuted),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text(
+              child: Text(
                 'Cancelar',
-                style: TextStyle(color: Color(0xFFA3A3A3)),
+                style: TextStyle(color: appPalette.textMuted),
               ),
             ),
             TextButton(
@@ -1089,7 +1090,7 @@ Future<void> _identificarProductoConIA() async {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14),
               child: Container(
-                color: const Color(0xFF0F0F0F),
+                color: appPalette.bgSecondary,
                 child: esUrlRemota
                     ? Image.network(
                         _imagenUrl!,
@@ -1099,8 +1100,8 @@ Future<void> _identificarProductoConIA() async {
                         errorBuilder: (_, _, _) => Container(
                           width: 160,
                           height: 160,
-                          color: const Color(0xFF0F0F0F),
-                          child: const Icon(Icons.broken_image_rounded, color: Color(0xFF404040), size: 40),
+                          color: appPalette.bgSecondary,
+                          child: Icon(Icons.broken_image_rounded, color: appPalette.textDim, size: 40),
                         ),
                       )
                     : FutureBuilder<Uint8List?>(
@@ -1111,8 +1112,8 @@ Future<void> _identificarProductoConIA() async {
                             return Container(
                               width: 160,
                               height: 160,
-                              color: const Color(0xFF0F0F0F),
-                              child: const Icon(Icons.broken_image_rounded, color: Color(0xFF404040), size: 40),
+                              color: appPalette.bgSecondary,
+                              child: Icon(Icons.broken_image_rounded, color: appPalette.textDim, size: 40),
                             );
                           }
                           return Image.memory(
@@ -1123,8 +1124,8 @@ Future<void> _identificarProductoConIA() async {
                             errorBuilder: (_, _, _) => Container(
                               width: 160,
                               height: 160,
-                              color: const Color(0xFF0F0F0F),
-                              child: const Icon(Icons.broken_image_rounded, color: Color(0xFF404040), size: 40),
+                              color: appPalette.bgSecondary,
+                              child: Icon(Icons.broken_image_rounded, color: appPalette.textDim, size: 40),
                             ),
                           );
                         },
@@ -1138,16 +1139,16 @@ Future<void> _identificarProductoConIA() async {
               width: 160,
               height: 160,
               decoration: BoxDecoration(
-                color: const Color(0xFF0F0F0F),
+                color: appPalette.bgSecondary,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF262626)),
+                border: Border.all(color: appPalette.borderLight),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.image_outlined, color: const Color(0xFF404040), size: 36),
+                  Icon(Icons.image_outlined, color: appPalette.textDim, size: 36),
                   const SizedBox(height: 6),
-                  Text('Sin imagen', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF525252))),
+                  Text('Sin imagen', style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textDim)),
                 ],
               ),
             ),
@@ -1232,9 +1233,9 @@ Future<void> _identificarProductoConIA() async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: appPalette.bgPrimary,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF080808),
+        backgroundColor: appPalette.appBarColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFF59E0B), size: 18),
@@ -1242,7 +1243,7 @@ Future<void> _identificarProductoConIA() async {
         ),
         title: Text(
           widget.productoExistente != null ? 'EDITAR PRODUCTO' : 'NUEVO PRODUCTO',
-          style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5),
+          style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: appPalette.textPrimary, letterSpacing: 1.5),
         ),
         centerTitle: true,
       ),
@@ -1320,15 +1321,15 @@ Row(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Exento de ISV', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+                    Text('Exento de ISV', style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted)),
                     const SizedBox(height: 6),
                     Container(
                       height: 48,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F0F0F),
+                        color: appPalette.cardColor,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFF262626)),
+                        border: Border.all(color: appPalette.borderLight),
                       ),
                       child: Row(
                         children: [
@@ -1341,7 +1342,7 @@ Row(
                             }),
                             activeThumbColor: const Color(0xFFF59E0B),
                           ),
-                          Text(_exento ? 'Sí' : 'No', style: GoogleFonts.dmSans(fontSize: 13, color: Colors.white)),
+                          Text(_exento ? 'Sí' : 'No', style: GoogleFonts.dmSans(fontSize: 13, color: appPalette.textPrimary)),
                         ],
                       ),
                     ),
@@ -1466,7 +1467,7 @@ Row(
   Widget _buildSection(String title) {
     return Text(
       title,
-      style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF737373), letterSpacing: 0.8),
+      style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: appPalette.textMuted, letterSpacing: 0.8),
     );
   }
 
@@ -1474,9 +1475,9 @@ Row(
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF111111),
-        title: Text(titulo, style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
-        content: Text(texto, style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFA3A3A3), height: 1.4)),
+        backgroundColor: appPalette.cardElevated,
+        title: Text(titulo, style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: appPalette.textPrimary)),
+        content: Text(texto, style: GoogleFonts.dmSans(fontSize: 13, color: appPalette.textMuted, height: 1.4)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -1495,26 +1496,25 @@ Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(
-              child: Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+              child: Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted)),
             ),
             if (help != null) ...[
               const SizedBox(width: 4),
               GestureDetector(
-                onTap: () => _mostrarAyuda(label, help),
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF404040)),
+                onTap: () => _mostrarAyuda(label, help),                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: appPalette.bgTertiary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: appPalette.borderLight),
+                    ),
+                    child: Icon(
+                      Icons.help_outline_rounded,
+                      size: 11,
+                      color: appPalette.textMuted,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.help_outline_rounded,
-                    size: 11,
-                    color: Color(0xFF737373),
-                  ),
-                ),
               ),
             ],
           ],
@@ -1523,14 +1523,14 @@ Row(
         TextField(
           controller: controller,
           keyboardType: keyboard,
-          style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+          style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
+            hintStyle: GoogleFonts.dmSans(color: appPalette.textDim),
             filled: true,
-            fillColor: const Color(0xFF0F0F0F),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF262626))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF262626))),
+            fillColor: appPalette.cardColor,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: appPalette.borderLight)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: appPalette.borderLight)),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFF59E0B))),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
@@ -1543,21 +1543,21 @@ Row(
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+        Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted)),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F0F0F),
+            color: appPalette.cardColor,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF262626)),
+            border: Border.all(color: appPalette.borderLight),
           ),
           child: DropdownButton<String>(
             value: items.contains(value) ? value : items.first,
             isExpanded: true,
-            dropdownColor: const Color(0xFF1A1A1A),
+            dropdownColor: appPalette.cardElevated,
             underline: const SizedBox(),
-            style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13),
+            style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 13),
             items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(),
             onChanged: onChanged,
           ),

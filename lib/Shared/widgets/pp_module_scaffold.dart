@@ -62,10 +62,17 @@ class PPModuleScaffold extends StatelessWidget {
               isDark: appThemeNotifier.isDark,
               fit: BoxFit.cover,
               alignment: Alignment.center,
-              colorFilter: ColorFilter.mode(
-                Colors.black.withValues(alpha: appThemeNotifier.isDark ? 0.3 : 0.1),
-                BlendMode.darken,
-              ),
+              // Mantiene legible el contenido sobre el fondo en AMBOS temas:
+              // oscurece en oscuro, aclara (tinte lavanda) en claro.
+              colorFilter: appThemeNotifier.isDark
+                  ? ColorFilter.mode(
+                      Colors.black.withValues(alpha: 0.3),
+                      BlendMode.darken,
+                    )
+                  : ColorFilter.mode(
+                      const Color(0xFFF6F4FB).withValues(alpha: 0.62),
+                      BlendMode.srcOver,
+                    ),
             ),
           ),
           Container(
@@ -73,7 +80,7 @@ class PPModuleScaffold extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: palette.aurora.map((c) => c.withValues(alpha: 0.3)).toList(),
+                colors: palette.aurora.map((c) => c.withValues(alpha: appThemeNotifier.isDark ? 0.3 : 0.45)).toList(),
               ),
             ),
             child: SafeArea(
@@ -110,18 +117,20 @@ class PPModuleScaffold extends StatelessWidget {
       );
     }
 
+    final guardedOnNew = onNew == null
+        ? null
+        : () {
+            if (ReadOnlyGuard.bloqueado(context)) return;
+            onNew!();
+          };
+
     return PPAppShell(
       moduleId: moduleId,
       screenTitle: screenTitle,
       moduleIcon: moduleIcon,
       moduleColor: moduleColor,
       actions: actions,
-      onNew: onNew == null
-          ? null
-          : () {
-              if (ReadOnlyGuard.bloqueado(context)) return;
-              onNew!();
-            },
+      onNew: guardedOnNew,
       onGlobalSearch: onGlobalSearch,
       onLogout: onLogout,
       immersive: immersive,

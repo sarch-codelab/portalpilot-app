@@ -142,6 +142,12 @@ class ThemePalette {
   // ─── Utilidades ───────────────────────────────────────────────────────────
   Color colorWithAlpha(Color color, double alpha) => color.withValues(alpha: alpha);
 
+  /// Tinte para iconos/fondos con marca. `brandOn(...)` garantiza contraste
+  /// tanto en claro como en oscuro: texto sobre color de marca, o marca sobre
+  /// superficie, sin ternarios en cada pantalla.
+  Color get brandOnSurface =>
+      isDark ? const Color(0xFFD16BF0) : const Color(0xFF8B2FB0);
+
   /// Sombra de marca para tarjetas/bloques.
   List<BoxShadow> glowShadow(Color color, {double blur = 20, double spread = 0}) => [
         BoxShadow(
@@ -236,10 +242,16 @@ class ThemePalette {
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
       ),
+      // Respaldo para SnackBars directos (el sistema primario es PPNotifications,
+      // estilo Sileo). Se adapta a ambos temas.
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: isDark ? const Color(0xFF1B1830) : const Color(0xFF1E1B2A),
-        contentTextStyle: GoogleFonts.dmSans(color: Colors.white, fontSize: 13),
+        contentTextStyle: GoogleFonts.dmSans(
+          color: isDark ? const Color(0xFFF5F2FF) : Colors.white,
+          fontSize: 13,
+        ),
+        actionTextColor: const Color(0xFFD16BF0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       navigationBarTheme: NavigationBarThemeData(

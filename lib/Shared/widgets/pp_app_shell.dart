@@ -6,6 +6,7 @@ import 'package:portal_pilot_app/Shared/utils/mobile_utils.dart';
 import 'package:portal_pilot_app/Shared/models/modulo.dart';
 import 'package:portal_pilot_app/Shared/services/haptic_service.dart';
 import 'package:portal_pilot_app/Shared/services/pp_module_navigator.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 
 /// Núcleo de navegación de Portal Pilot.
 ///
@@ -156,12 +157,7 @@ class _PPAppShellState extends State<PPAppShell> {
   void _refreshModule() {
     HapticService.instance.lightImpact();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Datos actualizados'),
-        duration: const Duration(milliseconds: 1200),
-      ),
-    );
+    PPNotifications.info(context, 'Datos actualizados', title: 'Sincronizado');
   }
 
   @override
@@ -213,8 +209,30 @@ class _PPAppShellState extends State<PPAppShell> {
             ),
             bottomNavigationBar:
                 isMobile && !widget.immersive ? _buildBottomNav(palette, controller) : null,
+            floatingActionButton: _buildMobileFab(palette),
           ),
         ),
+      ),
+    );
+  }
+
+  /// FAB flotante en móvil: da acceso visible a la acción "Nuevo" del módulo
+  /// (crear producto, factura, cliente...) sin depender solo de la topbar.
+  Widget? _buildMobileFab(ThemePalette palette) {
+    if (!MobileUtils.isMobile(context) || widget.immersive) return null;
+    final color = widget.moduleColor ?? _currentModule.color;
+    return FloatingActionButton.extended(
+      heroTag: 'pp_module_new_fab',
+      backgroundColor: color,
+      foregroundColor: Colors.white,
+      elevation: 4,
+      extendedPadding: const EdgeInsets.symmetric(horizontal: 18),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      onPressed: widget.onNew,
+      icon: const Icon(Icons.add_rounded, size: 20),
+      label: Text(
+        'Nuevo',
+        style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -336,12 +354,14 @@ class _PPAppShellState extends State<PPAppShell> {
               height: 44,
               padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 12),
               decoration: BoxDecoration(
-                color: selected ? accent.withValues(alpha: 0.14) : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: selected ? accent.withValues(alpha: 0.4) : Colors.transparent,
-                  width: 1,
-                ),
+              color: selected ? accent.withValues(alpha: 0.14) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected
+                    ? accent.withValues(alpha: palette.isDark ? 0.4 : 0.3)
+                    : Colors.transparent,
+                width: 1,
+              ),
               ),
               child: Row(
                 children: [
@@ -438,6 +458,40 @@ class _PPAppShellState extends State<PPAppShell> {
                 onPressed: () => _scaffoldKey.currentState?.openDrawer(),
               ),
               const SizedBox(width: 4),
+              // Breadcrumb compacto en móvil: icono del módulo + título.
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Builder(builder: (ctx) {
+                      final module = _currentModule;
+                      final color = widget.moduleColor ?? module.color;
+                      final icon = widget.moduleIcon ?? module.icono;
+                      return Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(icon, color: color, size: 15),
+                      );
+                    }),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        widget.screenTitle ?? _currentModule.nombre,
+                        style: GoogleFonts.syne(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: palette.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ] else
               _buildBreadcrumb(palette),
             const Spacer(),
@@ -547,13 +601,18 @@ class _PPAppShellState extends State<PPAppShell> {
             boxShadow: palette.glowShadow(palette.brand, blur: 14),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_rounded, color: appPalette.cardColor, size: 18),
+              const Icon(Icons.add_rounded, color: Colors.white, size: 18),
               if (!MobileUtils.isMobile(context)) ...[
                 const SizedBox(width: 6),
                 Text(
                   'Nuevo',
-                  style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.bold, color: appPalette.textPrimary),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ],
@@ -563,8 +622,72 @@ class _PPAppShellState extends State<PPAppShell> {
     );
   }
 
+  /// Selector de tema claro/oscuro/sistema (funciona en móvil y escritorio).
   Widget _buildThemeToggle(ThemePalette palette) {
-    return const SizedBox.shrink();
+    return PopupMenuButton<ThemeMode>(
+      tooltip: 'Cambiar tema',
+      position: PopupMenuPosition.under,
+      color: palette.cardElevated,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      onSelected: (mode) async {
+        HapticService.instance.lightImpact();
+        await appThemeNotifier.setMode(mode);
+      },
+      itemBuilder: (_) => [
+        _themeMenuItem(ThemeMode.light, Icons.light_mode_rounded, 'Claro', palette),
+        _themeMenuItem(ThemeMode.dark, Icons.dark_mode_rounded, 'Oscuro', palette),
+        _themeMenuItem(ThemeMode.system, Icons.brightness_auto_rounded, 'Sistema', palette),
+      ],
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: palette.bgSecondary,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          switch (appThemeNotifier.value) {
+            ThemeMode.light => Icons.light_mode_rounded,
+            ThemeMode.dark => Icons.dark_mode_rounded,
+            ThemeMode.system => Icons.brightness_auto_rounded,
+          },
+          color: palette.brandOnSurface,
+          size: 18,
+        ),
+      ),
+    );
+  }
+
+  PopupMenuItem<ThemeMode> _themeMenuItem(
+    ThemeMode mode,
+    IconData icon,
+    String label,
+    ThemePalette palette,
+  ) {
+    final selected = appThemeNotifier.value == mode;
+    return PopupMenuItem(
+      value: mode,
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 17,
+            color: selected ? palette.brandOnSurface : palette.textMuted,
+          ),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+              color: selected ? palette.textPrimary : palette.textMuted,
+            ),
+          ),
+          const Spacer(),
+          if (selected)
+            Icon(Icons.check_rounded, size: 16, color: palette.brandOnSurface),
+        ],
+      ),
+    );
   }
 
   // ─────────────────────────── Bottom nav (Móvil) ───────────────────────────
@@ -578,9 +701,15 @@ class _PPAppShellState extends State<PPAppShell> {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: palette.cardColor,
-            border: Border(top: BorderSide(color: palette.brand.withValues(alpha: 0.35))),
+            border: Border(top: BorderSide(color: palette.borderLight)),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 18, offset: const Offset(0, -8)),
+              BoxShadow(
+                color: palette.isDark
+                    ? Colors.black.withValues(alpha: 0.4)
+                    : Colors.black.withValues(alpha: 0.08),
+                blurRadius: 18,
+                offset: const Offset(0, -8),
+              ),
             ],
           ),
           child: Row(
@@ -680,12 +809,12 @@ class _PPAppShellState extends State<PPAppShell> {
               end: Alignment.bottomRight,
               colors: [palette.brandBright, palette.brandDeep],
             ),
-            border: Border.all(color: appPalette.borderLight.withValues(alpha: 0.8), width: 2),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.75), width: 2),
             boxShadow: [
               BoxShadow(color: palette.brand.withValues(alpha: 0.5), blurRadius: 18, spreadRadius: 2),
             ],
           ),
-          child: Icon(Icons.co_present_rounded, color: appPalette.cardColor, size: 26),
+          child: const Icon(Icons.co_present_rounded, color: Colors.white, size: 26),
         ),
       ),
     );
@@ -717,13 +846,13 @@ class _PPAppShellState extends State<PPAppShell> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            const Text(
                               'Portal Pilot',
-                              style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w900, color: appPalette.textPrimary),
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
                             ),
                             Text(
                               'WORKSPACE',
-                              style: GoogleFonts.spaceGrotesk(fontSize: 8, fontWeight: FontWeight.w800, color: appPalette.textMuted, letterSpacing: 1.2),
+                              style: GoogleFonts.spaceGrotesk(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.white.withValues(alpha: 0.75), letterSpacing: 1.2),
                             ),
                           ],
                         ),
@@ -731,13 +860,13 @@ class _PPAppShellState extends State<PPAppShell> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Row(
+                  const Row(
                     children: [
-                      Icon(Icons.wifi_rounded, color: appPalette.cardColor, size: 14),
-                      const SizedBox(width: 6),
+                      Icon(Icons.wifi_rounded, color: Colors.white, size: 14),
+                      SizedBox(width: 6),
                       Text(
                         'Conectado',
-                        style: GoogleFonts.dmSans(fontSize: 11, color: appPalette.textPrimary, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
