@@ -10,7 +10,7 @@ class PreciosCentralizados extends StatefulWidget {
 }
 
 class _PreciosCentralizadosState extends State<PreciosCentralizados> {
-  List<Map<String, dynamic>> _productos = [
+  final List<Map<String, dynamic>> _productos = [
     {
       'id': '1',
       'nombre': 'Arroz Premium 5kg',
@@ -148,7 +148,7 @@ class _PreciosCentralizadosState extends State<PreciosCentralizados> {
                 producto['aplicado'] = value;
               });
             },
-            activeColor: const Color(0xFF6366F1),
+            activeThumbColor: const Color(0xFF6366F1),
           ),
         ],
       ),

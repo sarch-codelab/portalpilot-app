@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class NivelesMembresia extends StatefulWidget {
   const NivelesMembresia({super.key});
@@ -30,8 +31,7 @@ class _NivelesMembresiaState extends State<NivelesMembresia> {
         final data = result['planes'] ?? result['data'] ?? [];
         if (data is List && data.isNotEmpty && mounted) {
           setState(() {
-            _niveles = data.map<Map<String, dynamic>>((p) {
-              final plan = Map<String, dynamic>.from(p);
+            _niveles = JsonGuard.toListOfMaps(data).map<Map<String, dynamic>>((plan) {
               return {
                 'id': plan['id']?.toString() ?? '',
                 'nombre':

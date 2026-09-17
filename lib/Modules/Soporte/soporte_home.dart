@@ -19,13 +19,24 @@ class SoporteHome extends StatefulWidget {
   State<SoporteHome> createState() => _SoporteHomeState();
 }
 
-class _SoporteHomeState extends State<SoporteHome> {
+class _SoporteHomeState extends State<SoporteHome> {  // Redibuja al instante cuando cambia el tema global (claro/oscuro).
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
+  }
+
   final _queryController = TextEditingController();
   final List<_SupportMessage> _messages = [];
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    appThemeNotifier.addListener(_onThemeChanged);
+  }
+
+  @override
   void dispose() {
+    appThemeNotifier.removeListener(_onThemeChanged);
     _queryController.dispose();
     super.dispose();
   }

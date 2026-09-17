@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 enum SyncOperation { insert, update, delete }
 
@@ -48,24 +49,46 @@ class SyncItem {
         'procesando': procesando,
       };
 
-  factory SyncItem.fromJson(Map<String, dynamic> json) => SyncItem(
-        id: json['id'] as String,
-        tabla: json['tabla'] as String,
+  factory SyncItem.fromJson(Map<String, dynamic> json) {
+    // fromJson NUNCA lanza: un payload corrupto produce un SyncItem con
+    // fallbacks seguros en lugar de un TypeError/FormatException síncrono.
+    Map<String, dynamic> datos = const {};
+    final rawDatos = json['datos'];
+    if (rawDatos is Map<String, dynamic>) {
+      datos = rawDatos;
+    } else if (rawDatos is Map) {
+      try {
+        datos = Map<String, dynamic>.from(rawDatos);
+      } on TypeError {
+        datos = const {};
+      }
+    } else if (rawDatos != null) {
+      JsonGuard.reportCorrupt('SyncService/SyncItem.datos');
+    }
+
+    final createdAt = rawDateTime(json['createdAt']) ?? DateTime.now();
+    return SyncItem(
+        id: json['id']?.toString() ?? '',
+        tabla: json['tabla']?.toString() ?? 'desconocida',
         operacion: SyncOperation.values.firstWhere(
           (e) => e.name == json['operacion'],
           orElse: () => SyncOperation.insert,
         ),
-        datos: Map<String, dynamic>.from(json['datos'] as Map),
-        empresaId: json['empresaId'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        intentos: json['intentos'] as int? ?? 0,
-        maxIntentos: json['maxIntentos'] as int? ?? 5,
-        ultimoError: json['ultimoError'] as String?,
-        proximoIntento: json['proximoIntento'] != null
-            ? DateTime.parse(json['proximoIntento'] as String)
-            : null,
-        procesando: json['procesando'] as bool? ?? false,
+        datos: datos,
+        empresaId: json['empresaId']?.toString(),
+        createdAt: createdAt,
+        intentos: JsonGuard.numOrNull(json['intentos'])?.toInt() ?? 0,
+        maxIntentos: JsonGuard.numOrNull(json['maxIntentos'])?.toInt() ?? 5,
+        ultimoError: json['ultimoError']?.toString(),
+        proximoIntento: rawDateTime(json['proximoIntento']),
+        procesando: json['procesando'] == true,
       );
+  }
+
+  static DateTime? rawDateTime(dynamic value) {
+    if (value is! String || value.isEmpty) return null;
+    return DateTime.tryParse(value);
+  }
 }
 
 class SyncService {
@@ -149,7 +172,7 @@ class SyncService {
   Future<int> _getPendingCount() async {
     // Los ítems que alcanzaron maxIntentos se conservan como auditoría pero
     // ya no cuentan como pendientes (cola que salta fallos).
-    return (await _db.select(_db.syncQueue)
+    return (_db.select(_db.syncQueue)
           ..where((s) =>
               s.procesando.equals(false) &
               s.intentos.isSmallerThanValue(maxIntentos)))
@@ -200,7 +223,25 @@ class SyncService {
           ..where((s) => s.id.equals(row.id)))
         .write(SyncQueueCompanion(procesando: const Value(true)));
 
-    final datos = jsonDecode(utf8.decode(row.datos)) as Map<String, dynamic>;
+    final Map<String, dynamic> datos;
+    try {
+      final decoded = jsonDecode(utf8.decode(row.datos));
+      if (decoded is Map<String, dynamic>) {
+        datos = decoded;
+      } else if (decoded is Map) {
+        datos = Map<String, dynamic>.from(decoded);
+      } else {
+        // No era un objeto JSON: datos corruptos.
+        JsonGuard.reportCorrupt('SyncService/${row.tabla}');
+        await _handleSyncFailure(row, 'Datos corruptos');
+        return;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Sync: JSON de la cola corrupto (${row.tabla}): $e');
+      JsonGuard.reportCorrupt('SyncService/${row.tabla}');
+      await _handleSyncFailure(row, 'Datos corruptos');
+      return;
+    }
     final tabla = row.tabla;
     final operacion = SyncOperation.values.firstWhere(
       (e) => e.name == row.operacion,
@@ -399,7 +440,7 @@ class SyncService {
       ));
       _emitStatus(SyncStatus(
         pendingCount: await _getPendingCount(),
-        message: '⚠️ Reintento ${nuevosIntentos}/${row.maxIntentos} en 2 min: ${row.tabla}',
+        message: '⚠️ Reintento $nuevosIntentos/${row.maxIntentos} en 2 min: ${row.tabla}',
       ));
     }
   }
@@ -457,7 +498,7 @@ class SyncService {
             (e) => e.name == r.operacion,
             orElse: () => SyncOperation.insert,
           ),
-          datos: jsonDecode(utf8.decode(r.datos)) as Map<String, dynamic>,
+          datos: _decodeDatos(r.datos) ?? const {},
           empresaId: r.empresaId,
           createdAt: r.createdAt,
           intentos: r.intentos,
@@ -473,6 +514,19 @@ class SyncService {
     _retryTimer?.cancel();
     _statusController?.close();
     _statusController = null;
+  }
+
+  /// Decodifica los bytes de una fila de la cola a un mapa. Nunca lanza:
+  /// devuelve `null` si el JSON está corrupto.
+  static Map<String, dynamic>? _decodeDatos(Uint8List bytes) {
+    try {
+      final decoded = jsonDecode(utf8.decode(bytes));
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (e) {
+      debugPrint('⚠️ Sync: JSON de la cola corrupto: $e');
+    }
+    return null;
   }
 }
 

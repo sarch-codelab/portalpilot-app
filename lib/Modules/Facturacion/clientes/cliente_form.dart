@@ -1,8 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class ClienteForm extends StatefulWidget {
   const ClienteForm({super.key});
@@ -28,9 +29,15 @@ class _ClienteFormState extends State<ClienteForm> {
 
   Future<void> _cargarClientes() async {
     final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('clientes_facturacion') ?? '[]';
-    final locales = List<Map<String, dynamic>>.from(jsonDecode(json));
-    setState(() => _clientes = locales);
+    final locales = JsonGuard.safeListOfMaps(
+      prefs.getString('clientes_facturacion'),
+      source: 'Contabilidad/clientes_facturacion',
+    );
+    if (mounted) {
+      setState(() => _clientes = locales);
+    } else {
+      _clientes = locales;
+    }
 
     try {
       final empresa = prefs.getString('company_code') ?? '';
@@ -181,9 +188,11 @@ class _ClienteFormState extends State<ClienteForm> {
         ),
         centerTitle: true,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverList.list(children: [
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -262,8 +271,14 @@ class _ClienteFormState extends State<ClienteForm> {
             ),
           ),
           const SizedBox(height: 10),
-          if (_clientes.isEmpty)
-            Container(
+          ],
+        ),
+      ),
+      if (_clientes.isEmpty)
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverToBoxAdapter(
+            child: Container(
               padding: const EdgeInsets.all(30),
               decoration: BoxDecoration(
                 color: const Color(0xFF141414),
@@ -276,82 +291,104 @@ class _ClienteFormState extends State<ClienteForm> {
                   style: GoogleFonts.dmSans(color: const Color(0xFF525252)),
                 ),
               ),
-            )
-          else
-            ..._clientes.map((c) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF141414),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF262626)),
+            ),
+          ),
+        )
+      else
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverList.builder(
+            itemCount: _clientes.length,
+            itemBuilder: (context, index) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildClienteCard(_clientes[index]),
+            ),
+          ),
+        ),
+      const SliverToBoxAdapter(child: SizedBox(height: 30)),
+    ],
+  ),
+);
+}
+
+  Widget _buildClienteCard(Map<String, dynamic> c) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF262626)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.1),
+            child: Text(
+              _inicialDe(c),
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF10B981),
               ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.1),
-                    child: Text(
-                      (c['nombre'] ?? '?')[0].toUpperCase(),
-                      style: GoogleFonts.dmSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF10B981),
-                      ),
-                    ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  c['nombre'] ?? '',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          c['nombre'] ?? '',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'RTN: ${c['rtn'] ?? 'N/A'}',
-                          style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
-                        ),
-                        if ((c['direccion'] ?? '').isNotEmpty)
-                          Text(
-                            c['direccion']!,
-                            style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF525252)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'RTN: ${c['rtn'] ?? 'N/A'}',
+                  style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
+                ),
+                if ((c['direccion'] ?? '').isNotEmpty)
+                  Text(
+                    c['direccion']!,
+                    style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF525252)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  Column(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit_rounded, color: Color(0xFF3B82F6), size: 18),
-                        onPressed: () => _editarCliente(c),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      const SizedBox(height: 6),
-                      IconButton(
-                        icon: const Icon(Icons.delete_rounded, color: Color(0xFFEF4444), size: 18),
-                        onPressed: () => _eliminarCliente(c['id']),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                ],
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit_rounded, color: Color(0xFF3B82F6), size: 18),
+                onPressed: () => _editarCliente(c),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-            )),
-          const SizedBox(height: 30),
+              const SizedBox(height: 6),
+              IconButton(
+                icon: const Icon(Icons.delete_rounded, color: Color(0xFFEF4444), size: 18),
+                onPressed: () => _eliminarCliente(c['id']),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  /// Inicial segura para el CircleAvatar: nunca lanza. Un nombre vacío o no
+  /// string produce '?' en lugar de un RangeError por acceso `[0]`.
+  String _inicialDe(Map<String, dynamic> c) {
+    final nombre = (c['nombre'] ?? '').toString().trim();
+    if (nombre.isEmpty) return '?';
+    return nombre.characters.first.toUpperCase();
   }
 
   Widget _buildTextField(String label, TextEditingController controller, {String hint = ''}) {

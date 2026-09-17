@@ -7,6 +7,7 @@ import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
 import 'package:portal_pilot_app/Shared/services/ai_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class ClienteForm extends StatefulWidget {
   final Map<String, dynamic>? clienteExistente;
@@ -82,7 +83,7 @@ class _ClienteFormState extends State<ClienteForm> {
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
     final prefs = await SharedPreferences.getInstance();
-    final list = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('clientes') ?? '[]'));
+    final list = JsonGuard.safeListOfMaps(prefs.getString('clientes'), source: 'CRM/cliente_form');
     final id = widget.clienteExistente?['id'] ?? DateTime.now().millisecondsSinceEpoch.toString();
     final dni = _dniCtrl.text.trim();
     final nombre = _nombreCtrl.text.trim();

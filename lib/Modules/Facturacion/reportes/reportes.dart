@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class ReportesScreen extends StatefulWidget {
   const ReportesScreen({super.key});
@@ -25,7 +25,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
   Future<void> _cargarFacturas() async {
     final prefs = await SharedPreferences.getInstance();
     final facturasJson = prefs.getString('facturas') ?? '[]';
-    setState(() => _facturas = List<Map<String, dynamic>>.from(jsonDecode(facturasJson)));
+    setState(() => _facturas = JsonGuard.safeListOfMaps(facturasJson, source: 'Facturacion/reportes'));
   }
 
   List<Map<String, dynamic>> _facturasFiltradas() {

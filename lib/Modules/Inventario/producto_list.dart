@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:http/http.dart' as http;
 import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
@@ -44,7 +45,7 @@ class _ProductoListState extends State<ProductoList> {
       
       // Si hay productos en SharedPreferences, mezclarlos (para migración)
       final json = prefs.getString('productos') ?? '[]';
-      final productosFromPrefs = List<Map<String, dynamic>>.from(jsonDecode(json));
+      final productosFromPrefs = JsonGuard.safeListOfMaps(json, source: 'Inventario/producto_list');
       
       // Usar productos de DB como prioridad, agregar los de prefs que no estén en DB
       final codigosEnDb = productosFromDb
@@ -69,7 +70,7 @@ class _ProductoListState extends State<ProductoList> {
       final prefs = await SharedPreferences.getInstance();
       final json = prefs.getString('productos') ?? '[]';
       setState(() {
-        _productos = _dedupePorCodigo(List<Map<String, dynamic>>.from(jsonDecode(json)));
+        _productos = _dedupePorCodigo(JsonGuard.safeListOfMaps(json, source: 'Inventario/producto_list/fallback'));
         _aplicarFiltros();
       });
     }
@@ -90,7 +91,7 @@ class _ProductoListState extends State<ProductoList> {
         'isv_rate': p.isvRate,
         'exento': p.exento,
         'imagen_url': p.imagenUrl,
-        'created_at': p.createdAt?.toIso8601String(),
+        'created_at': p.createdAt.toIso8601String(),
       };
 
   Map<String, dynamic> _productoAPosMap(Map<String, dynamic> p) => {
@@ -145,7 +146,7 @@ class _ProductoListState extends State<ProductoList> {
       debugPrint('📥 Status code: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
+        final decoded = JsonGuard.tryDecode(response.body);
         final List<dynamic> productosData;
         if (decoded is List) {
           productosData = decoded;
@@ -290,13 +291,13 @@ class _ProductoListState extends State<ProductoList> {
     
     // Eliminar de SharedPreferences por codigo (y por id como respaldo)
     final json = prefs.getString('productos') ?? '[]';
-    final List<dynamic> productos = jsonDecode(json);
+    final List<dynamic> productos = JsonGuard.safeListOfMaps(json, source: 'Inventario/eliminar');
     productos.removeWhere((p) => (p['codigo'] ?? '') == codigo || p['id'] == id);
     await prefs.setString('productos', jsonEncode(productos));
     
     // Eliminar de productos_pos también
     final productosPosJson = prefs.getString('productos_pos') ?? '[]';
-    final List<dynamic> productosPos = jsonDecode(productosPosJson);
+    final List<dynamic> productosPos = JsonGuard.safeListOfMaps(productosPosJson, source: 'Inventario/eliminar_pos');
     productosPos.removeWhere((p) => (p['codigo'] ?? '') == codigo || p['id'] == id);
     await prefs.setString('productos_pos', jsonEncode(productosPos));
     

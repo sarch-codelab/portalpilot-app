@@ -11,7 +11,7 @@ class ConfiguracionSeguridad extends StatefulWidget {
 }
 
 class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
-  bool _2FAHabilitado = false;
+  bool _twoFAHabilitado = false;
   bool _sesionUnica = true;
   bool _bloqueoIntentos = true;
   int _intentosMaximos = 5;
@@ -26,13 +26,15 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
 
   Future<void> _cargarConfig() async {
     final prefs = await SharedPreferences.getInstance();
-    if (mounted) setState(() {
-      _2FAHabilitado = prefs.getBool('seg_2fa') ?? false;
+    if (mounted) {
+      setState(() {
+      _twoFAHabilitado = prefs.getBool('seg_2fa') ?? false;
       _sesionUnica = prefs.getBool('seg_sesion_unica') ?? true;
       _bloqueoIntentos = prefs.getBool('seg_bloqueo') ?? true;
       _intentosMaximos = prefs.getInt('seg_intentos') ?? 5;
       _tiempoBloqueo = prefs.getInt('seg_tiempo') ?? 15;
     });
+    }
   }
 
   Future<void> _guardarConfig(String key, dynamic value) async {
@@ -84,8 +86,8 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
             Icons.verified_user_rounded,
             'Autenticacion de Dos Factores (2FA)',
             'Proteccion adicional para iniciar sesion',
-            _2FAHabilitado,
-            (value) { setState(() => _2FAHabilitado = value); _guardarConfig('seg_2fa', value); },
+            _twoFAHabilitado,
+            (value) { setState(() => _twoFAHabilitado = value); _guardarConfig('seg_2fa', value); },
           ),
           const SizedBox(height: 12),
           _buildSecurityCard(
@@ -181,7 +183,7 @@ class _ConfiguracionSeguridadState extends State<ConfiguracionSeguridad> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFFF59E0B),
+            activeThumbColor: const Color(0xFFF59E0B),
           ),
         ],
       ),

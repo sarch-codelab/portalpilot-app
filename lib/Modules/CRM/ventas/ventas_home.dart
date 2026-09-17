@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Modules/CRM/ventas/venta_form.dart';
 import 'package:portal_pilot_app/Shared/widgets/read_only_guard.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class VentasHome extends StatefulWidget {
   const VentasHome({super.key});
@@ -38,7 +39,7 @@ class _VentasHomeState extends State<VentasHome> {
     if (api.isSuccess(result)) {
       final ventas = result['ventas'] ?? [];
       if (mounted) {
-        setState(() => _ventas = (ventas is List) ? ventas.map((v) => Map<String, dynamic>.from(v)).toList() : <Map<String, dynamic>>[]);
+        setState(() => _ventas = (ventas is List) ? JsonGuard.toListOfMaps(ventas) : <Map<String, dynamic>>[]);
       }
     } else {
       debugPrint('Error cargando ventas del backend: ${result['error']}');

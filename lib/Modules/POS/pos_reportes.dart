@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class PosReportes extends StatefulWidget {
   const PosReportes({super.key});
@@ -29,7 +29,7 @@ class _PosReportesState extends State<PosReportes> {
       final api = ApiService.instance;
       final result = await api.get('/api/pos/ventas', queryParams: {'limit': '200'});
 
-      if (result != null && api.isSuccess(result)) {
+      if (api.isSuccess(result)) {
         final ventas = result['ventas'] ?? [];
         if (mounted) {
           setState(() {
@@ -44,7 +44,7 @@ class _PosReportesState extends State<PosReportes> {
         try {
           final prefs = await SharedPreferences.getInstance();
           final ventasJson = prefs.getString('ventas_pos') ?? '[]';
-          final ventasList = List<Map<String, dynamic>>.from(jsonDecode(ventasJson).map((v) => Map<String, dynamic>.from(v)));
+          final ventasList = JsonGuard.safeListOfMaps(ventasJson, source: 'POS/reportes');
           if (mounted) {
             setState(() {
               _ventas = ventasList;

@@ -10,7 +10,7 @@ class Retenciones extends StatefulWidget {
 }
 
 class _RetencionesState extends State<Retenciones> {
-  List<Map<String, dynamic>> _retenciones = [
+  final List<Map<String, dynamic>> _retenciones = [
     {
       'id': '1',
       'tipo': 'ISR',

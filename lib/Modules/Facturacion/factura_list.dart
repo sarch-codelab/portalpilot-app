@@ -6,6 +6,7 @@ import 'package:portal_pilot_app/Modules/Facturacion/factura_form.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_detalle.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class FacturaList extends StatefulWidget {
   const FacturaList({super.key});
@@ -30,7 +31,7 @@ class _FacturaListState extends State<FacturaList> {
   Future<void> _cargarFacturas() async {
     final prefs = await SharedPreferences.getInstance();
     final facturasJson = prefs.getString('facturas') ?? '[]';
-    final locales = List<Map<String, dynamic>>.from(jsonDecode(facturasJson));
+    final locales = JsonGuard.safeListOfMaps(facturasJson, source: 'Facturacion/factura_list');
 
     for (final f in locales) {
       f.putIfAbsent('contingencia', () => false);
@@ -49,7 +50,7 @@ class _FacturaListState extends State<FacturaList> {
     try {
       final api = ApiService.instance;
       final result = await api.get('/api/facturas', queryParams: {'empresaCodigo': api.empresaCodigo, 'limit': '200'});
-      if (result != null && api.isSuccess(result)) {
+      if (api.isSuccess(result)) {
         final remotas = result['facturas'] ?? result['data'] ?? [];
         if (remotas is List && remotas.isNotEmpty) {
           final remotasMaps = remotas.map((r) => Map<String, dynamic>.from(r)).toList();
@@ -131,7 +132,7 @@ class _FacturaListState extends State<FacturaList> {
   Future<void> _anularFactura(String id) async {
     final prefs = await SharedPreferences.getInstance();
     final facturasJson = prefs.getString('facturas') ?? '[]';
-    final List<dynamic> facturas = jsonDecode(facturasJson);
+    final List<dynamic> facturas = JsonGuard.safeListOfMaps(facturasJson, source: 'Facturacion/anular');
 
     for (final f in facturas) {
       if (f['id'] == id) {

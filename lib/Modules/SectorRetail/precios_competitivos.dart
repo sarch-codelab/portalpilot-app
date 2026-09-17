@@ -10,7 +10,7 @@ class PreciosCompetitivos extends StatefulWidget {
 }
 
 class _PreciosCompetitivosState extends State<PreciosCompetitivos> {
-  List<Map<String, dynamic>> _productos = [
+  final List<Map<String, dynamic>> _productos = [
     {
       'id': '1',
       'nombre': 'Arroz Premium 5kg',

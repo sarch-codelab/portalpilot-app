@@ -10,7 +10,7 @@ class RolesUsuario extends StatefulWidget {
 }
 
 class _RolesUsuarioState extends State<RolesUsuario> {
-  List<Map<String, dynamic>> _roles = [
+  final List<Map<String, dynamic>> _roles = [
     {
       'id': '1',
       'nombre': 'Administrador',

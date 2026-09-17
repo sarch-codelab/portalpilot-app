@@ -12,7 +12,6 @@ class CobrosEfectivo extends StatefulWidget {
 
 class _CobrosEfectivoState extends State<CobrosEfectivo> {
   List<dynamic> _cobros = [];
-  bool _cargando = true;
 
   @override
   void initState() {
@@ -22,20 +21,16 @@ class _CobrosEfectivoState extends State<CobrosEfectivo> {
   }
 
   Future<void> _cargarDatos() async {
-    if (mounted) setState(() => _cargando = true);
     try {
       final api = ApiService.instance;
       final result = await api.get('/api/ventas-fiadas');
-      if (result != null && api.isSuccess(result)) {
-        if (mounted) setState(() {
+      if (api.isSuccess(result) && mounted) {
+        setState(() {
           _cobros = result['ventas'] ?? [];
-          _cargando = false;
         });
-      } else {
-        if (mounted) setState(() => _cargando = false);
       }
     } catch (e) {
-      if (mounted) setState(() => _cargando = false);
+      debugPrint('Error cargando cobros: $e');
     }
   }
 

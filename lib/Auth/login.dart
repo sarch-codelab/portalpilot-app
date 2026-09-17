@@ -170,6 +170,7 @@ class _LoginScreenState extends State<LoginScreen>
     
     final prefs = await SharedPreferences.getInstance();
     final savedEmail = prefs.getString('saved_email');
+    if (!mounted) return;
 
     if (savedEmail == null) {
       ScaffoldMessenger.of(context).showSnackBar(

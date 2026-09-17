@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Configuración de compliance fiscal para Honduras (SAR)
@@ -24,7 +25,7 @@ class FiscalCompliance {
         _config = FiscalConfig.defaultConfig();
       }
     } catch (e) {
-      print('Error al cargar configuración fiscal: $e');
+      debugPrint('Error al cargar configuración fiscal: $e');
       _config = FiscalConfig.defaultConfig();
     }
   }
@@ -37,7 +38,7 @@ class FiscalCompliance {
       _config = config;
       return await prefs.setString(_configKey, configJson);
     } catch (e) {
-      print('Error al guardar configuración fiscal: $e');
+      debugPrint('Error al guardar configuración fiscal: $e');
       return false;
     }
   }

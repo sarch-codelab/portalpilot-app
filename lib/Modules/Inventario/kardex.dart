@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 class KardexScreen extends StatefulWidget {
@@ -32,12 +33,12 @@ class _KardexScreenState extends State<KardexScreen> {
       final movResult = await api.get('/api/kardex', queryParams: {'limit': '200'});
       final prodResult = await api.get('/api/productos', queryParams: {'limit': '500'});
 
-      if (movResult != null && api.isSuccess(movResult)) {
+      if (api.isSuccess(movResult)) {
         final movs = movResult['movimientos'] ?? [];
         _movimientos = (movs is List) ? movs.map((m) => Map<String, dynamic>.from(m)).toList() : [];
       }
 
-      if (prodResult != null && api.isSuccess(prodResult)) {
+      if (api.isSuccess(prodResult)) {
         final prods = prodResult['productos'] ?? [];
         _productos = (prods is List) ? prods.map((p) => Map<String, dynamic>.from(p)).toList() : [];
       }
@@ -46,8 +47,8 @@ class _KardexScreenState extends State<KardexScreen> {
       // Fallback a SharedPreferences
       try {
         final prefs = await SharedPreferences.getInstance();
-        _movimientos = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('kardex') ?? '[]'));
-        _productos = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('productos') ?? '[]'));
+        _movimientos = JsonGuard.safeListOfMaps(prefs.getString('kardex'), source: 'Inventario/kardex/movimientos');
+        _productos = JsonGuard.safeListOfMaps(prefs.getString('productos'), source: 'Inventario/kardex/productos');
       } catch (_) {}
     }
 
@@ -212,7 +213,7 @@ class _KardexScreenState extends State<KardexScreen> {
                             // Fallback a SharedPreferences
                             try {
                               final prefs = await SharedPreferences.getInstance();
-                              final kardex = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('kardex') ?? '[]'));
+                              final kardex = JsonGuard.safeListOfMaps(prefs.getString('kardex'), source: 'Inventario/kardex/agregar');
                               kardex.add({
                                 'id': DateTime.now().millisecondsSinceEpoch.toString(),
                                 'producto_id': productoId,

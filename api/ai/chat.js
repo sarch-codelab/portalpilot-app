@@ -40,11 +40,21 @@
         return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
       }
       const msg = data.error?.message || '';
-      if (msg.includes('does not exist') || msg.includes('model_not_found') || msg.includes('decommissioned') || r.status === 404) {
-        lastError = msg;
+      // 401/403 = problema de la KEY del proveedor (vencida/sin créditos):
+      // probar siguiente modelo y luego el fallback. JAMÁS propagar el código
+      // tal cual — el app interpreta 401 como "sesión expirada" y cierra la
+      // sesión del usuario (bug: logout espurio al usar la IA).
+      if (r.status === 404 || r.status === 401 || r.status === 403 ||
+          msg.includes('does not exist') || msg.includes('model_not_found') ||
+          msg.includes('decommissioned') || msg.toLowerCase().includes('api key') ||
+          msg.toLowerCase().includes('invalid_api_key') || msg.toLowerCase().includes('quota')) {
+        lastError = msg || `Groq HTTP ${r.status}`;
         continue;
       }
-      return res.status(r.status || 502).json({ error: msg || 'Error Groq', reply: null, details: data });
+      return res.status(r.status === 401 || r.status === 403 ? 502 : (r.status || 502)).json({
+        error: msg || 'Error Groq', reply: null,
+        code: 'IA_PROVIDER', details: data,
+      });
     } catch (err) {
       lastError = err.message;
       continue;

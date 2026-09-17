@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Modules/Contabilidad/cierres_mensuales.dart';
@@ -17,6 +18,12 @@ class ContabilidadHome extends StatefulWidget {
 }
 
 class _ContabilidadHomeState extends State<ContabilidadHome> {
+
+  // Redibuja al instante cuando cambia el tema global (claro/oscuro).
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
+  }
+
   List<Map<String, dynamic>> _transacciones = [];
   double _totalIngresos = 0.0;
   double _totalGastos = 0.0;
@@ -27,13 +34,23 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
   @override
   void initState() {
     super.initState();
+    appThemeNotifier.addListener(_onThemeChanged);
     _cargarDatos();
+  }
+
+  @override
+  void dispose() {
+    appThemeNotifier.removeListener(_onThemeChanged);
+    super.dispose();
   }
 
   Future<void> _cargarDatos() async {
     final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('transacciones') ?? '[]';
-    final locales = List<Map<String, dynamic>>.from(jsonDecode(json));
+    final json = prefs.getString('transacciones');
+    final locales = JsonGuard.safeListOfMaps(
+      json ?? '[]',
+      source: 'Contabilidad/transacciones',
+    );
 
     _procesarTransacciones(locales);
 
@@ -388,8 +405,12 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
                           if (monto <= 0) return;
 
                           final prefs = await SharedPreferences.getInstance();
-                          final json = prefs.getString('transacciones') ?? '[]';
-                          final List<dynamic> transacciones = jsonDecode(json);
+                          final json = prefs.getString('transacciones');
+                          final transacciones = JsonGuard.tryDecode(json ?? '[]');
+                          if (transacciones is! List) {
+                            JsonGuard.reportCorrupt('Contabilidad/agregar_transaccion');
+                            return;
+                          }
 
                           transacciones.add({
                             'id': DateTime.now().millisecondsSinceEpoch.toString(),

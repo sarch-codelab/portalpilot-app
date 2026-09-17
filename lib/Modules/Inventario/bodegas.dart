@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class BodegasScreen extends StatefulWidget {
   const BodegasScreen({super.key});
@@ -22,9 +23,11 @@ class _BodegasScreenState extends State<BodegasScreen> {
 
   Future<void> _cargarDatos() async {
     final prefs = await SharedPreferences.getInstance();
+    final rawBodegas = prefs.getString('bodegas');
+    final bodegasLeidas = JsonGuard.safeListOfStrings(rawBodegas, source: 'Inventario/bodegas');
     setState(() {
-      _bodegas = List<String>.from(jsonDecode(prefs.getString('bodegas') ?? '["General"]'));
-      _productos = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('productos') ?? '[]'));
+      _bodegas = bodegasLeidas.isEmpty && rawBodegas == null ? const ['General'] : bodegasLeidas;
+      _productos = JsonGuard.safeListOfMaps(prefs.getString('productos'), source: 'Inventario/bodegas/productos');
     });
   }
 

@@ -262,7 +262,7 @@ class _InventarioTiendaState extends State<InventarioTienda> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: tipoSeleccionado,
+                initialValue: tipoSeleccionado,
                 items: [
                   DropdownMenuItem(
                     value: 'tradicional',

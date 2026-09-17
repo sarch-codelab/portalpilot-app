@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Modules/RRHH/empleados/empleado_form.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class EmpleadoList extends StatefulWidget {
   const EmpleadoList({super.key});
@@ -27,7 +28,7 @@ class _EmpleadoListState extends State<EmpleadoList> {
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString('empleados') ?? '[]';
     setState(() {
-      _empleados = List<Map<String, dynamic>>.from(jsonDecode(json));
+      _empleados = JsonGuard.safeListOfMaps(json, source: 'RRHH/empleados');
       _aplicarFiltros();
     });
   }
@@ -58,7 +59,7 @@ class _EmpleadoListState extends State<EmpleadoList> {
   Future<void> _eliminarEmpleado(String id) async {
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString('empleados') ?? '[]';
-    final List<dynamic> empleados = jsonDecode(json);
+    final List<dynamic> empleados = JsonGuard.safeListOfMaps(json, source: 'RRHH/empleados/eliminar');
     empleados.removeWhere((e) => e['id'] == id);
     await prefs.setString('empleados', jsonEncode(empleados));
     _cargarEmpleados();

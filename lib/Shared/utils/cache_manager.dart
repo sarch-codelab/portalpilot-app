@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Sistema de caché local para optimizar rendimiento
@@ -26,7 +27,7 @@ class CacheManager {
       
       return await prefs.setString('$_prefix$key', jsonEncode(cacheData));
     } catch (e) {
-      print('Error al guardar en caché: $e');
+      debugPrint('Error al guardar en caché: $e');
       return false;
     }
   }
@@ -51,7 +52,7 @@ class CacheManager {
       
       return decoded['data'] as T;
     } catch (e) {
-      print('Error al obtener de caché: $e');
+      debugPrint('Error al obtener de caché: $e');
       return null;
     }
   }
@@ -62,7 +63,7 @@ class CacheManager {
       final prefs = await SharedPreferences.getInstance();
       return await prefs.remove('$_prefix$key');
     } catch (e) {
-      print('Error al eliminar de caché: $e');
+      debugPrint('Error al eliminar de caché: $e');
       return false;
     }
   }
@@ -81,7 +82,7 @@ class CacheManager {
       
       return true;
     } catch (e) {
-      print('Error al limpiar caché: $e');
+      debugPrint('Error al limpiar caché: $e');
       return false;
     }
   }
@@ -107,7 +108,7 @@ class CacheManager {
         }
       }
     } catch (e) {
-      print('Error al limpiar caché expirado: $e');
+      debugPrint('Error al limpiar caché expirado: $e');
     }
   }
 

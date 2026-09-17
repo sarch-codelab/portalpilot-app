@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class Auditoria extends StatefulWidget {
   const Auditoria({super.key});
@@ -295,7 +295,7 @@ class _LogEntry {
 
   static _LogEntry? fromLine(String line) {
     try {
-      final m = line.trim().startsWith('{') ? (jsonDecode(line) as Map<String, dynamic>) : null;
+      final m = line.trim().startsWith('{') ? JsonGuard.tryDecodeMap(line) : null;
       if (m == null) return null;
       return _LogEntry._(
         timestamp: (m['timestamp'] ?? '').toString(),

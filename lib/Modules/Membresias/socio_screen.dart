@@ -1094,7 +1094,7 @@ class _SocioDetalleScreenState extends State<_SocioDetalleScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: membresiaId,
+                  initialValue: membresiaId,
                   dropdownColor: const Color(0xFF1A1A1A),
                   style: GoogleFonts.dmSans(fontSize: 14, color: Colors.white),
                   decoration: _inputDecoration('Plan'),
@@ -1303,7 +1303,7 @@ class _SocioDetalleScreenState extends State<_SocioDetalleScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<String>(
-                  value: null,
+                  initialValue: null,
                   hint: Text('Seleccionar producto',
                       style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF737373))),
                   dropdownColor: const Color(0xFF1A1A1A),

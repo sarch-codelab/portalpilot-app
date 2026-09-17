@@ -604,7 +604,7 @@ class _FiadoScreenState extends State<FiadoScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: metodo,
+                initialValue: metodo,
                 dropdownColor: const Color(0xFF1A1A1A),
                 style: GoogleFonts.dmSans(fontSize: 14, color: Colors.white),
                 decoration: _inputDecoration('Método de pago'),
@@ -752,7 +752,7 @@ class _FiadoScreenState extends State<FiadoScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               DropdownButtonFormField<Cliente>(
-                value: seleccionado,
+                initialValue: seleccionado,
                 dropdownColor: const Color(0xFF1A1A1A),
                 style: GoogleFonts.dmSans(fontSize: 14, color: Colors.white),
                 decoration: _inputDecoration('Cliente'),

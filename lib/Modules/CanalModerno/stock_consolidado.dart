@@ -10,7 +10,7 @@ class StockConsolidado extends StatefulWidget {
 }
 
 class _StockConsolidadoState extends State<StockConsolidado> {
-  List<Map<String, dynamic>> _productos = [
+  final List<Map<String, dynamic>> _productos = [
     {
       'id': '1',
       'nombre': 'Arroz Premium 5kg',

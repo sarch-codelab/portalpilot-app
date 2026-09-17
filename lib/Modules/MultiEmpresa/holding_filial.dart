@@ -10,7 +10,7 @@ class HoldingFilial extends StatefulWidget {
 }
 
 class _HoldingFilialState extends State<HoldingFilial> {
-  List<Map<String, dynamic>> _empresas = [
+  final List<Map<String, dynamic>> _empresas = [
     {
       'id': '1',
       'nombre': 'Holding Principal',

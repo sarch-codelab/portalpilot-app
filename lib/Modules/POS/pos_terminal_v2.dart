@@ -3,6 +3,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -59,7 +60,6 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   MobileScannerController? _scannerController;
   bool _torchOn = false;
   StreamSubscription<SyncStatus>? _syncSubscription;
-  SyncStatus _syncStatus = SyncStatus(pendingCount: 0, message: 'Iniciando...');
 
   @override
   void initState() {
@@ -93,19 +93,17 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     
     _posService.setContext(
       empresaId: empresaCodigo,
-      terminalId: 'TERM-${empresaCodigo}-01',
+      terminalId: 'TERM-$empresaCodigo-01',
       usuarioId: user?.id ?? 'unknown',
     );
 
     await _hardwareService.initialize();
-    await _hardwareService.loadConfig(empresaCodigo, 'TERM-${empresaCodigo}-01');
+    await _hardwareService.loadConfig(empresaCodigo, 'TERM-$empresaCodigo-01');
     await _cargarProductos();
   }
 
   void _listenSyncStatus() {
-    _syncSubscription = _syncService.statusStream.listen((status) {
-      if (mounted) setState(() => _syncStatus = status);
-    });
+    _syncSubscription = _syncService.statusStream.listen((_) {});
   }
 
   Future<void> _cargarProductos() async {
@@ -150,7 +148,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       final api = ApiService.instance;
       final result = await api.get('/api/productos');
       
-      if (result != null && api.isSuccess(result)) {
+      if (api.isSuccess(result)) {
         final productosData = result['productos'] ?? [];
         debugPrint('📦 Productos recibidos: ${(productosData as List).length}');
         
@@ -178,7 +176,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           }
         }
       } else {
-        final error = result != null ? api.getError(result) : 'Sin respuesta';
+        final error = api.getError(result);
         debugPrint('❌ Error en API: $error');
         if (mounted) {
           _mostrarSnackBar('Error de API: $error', isError: true);
@@ -196,7 +194,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     try {
       final prefs = await SharedPreferences.getInstance();
       final productosJson = prefs.getString('productos') ?? prefs.getString('productos_pos') ?? '[]';
-      final List<dynamic> productosData = jsonDecode(productosJson);
+      final List<dynamic> productosData = JsonGuard.safeListOfMaps(productosJson, source: 'POS/terminal/productos');
       
       final productosFallback = <Producto>[];
       for (final p in productosData) {
@@ -271,7 +269,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   void _agregarPorCodigo(String codigo) {
     final prod = _productos.where((p) => 
       (p.codigo ?? '').toLowerCase() == codigo.toLowerCase() ||
-      (p.nombre ?? '').toLowerCase() == codigo.toLowerCase()
+      p.nombre.toLowerCase() == codigo.toLowerCase()
     ).toList();
     
     if (prod.isNotEmpty) {
@@ -328,7 +326,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     try {
       final enCarritoIds = _carrito.map((c) => c.productoId).toSet();
       final candidatos = _productos
-          .where((p) => !enCarritoIds.contains(p.id) && (p.stockActual ?? 0) > 0)
+          .where((p) => !enCarritoIds.contains(p.id) && p.stockActual > 0)
           .toList();
       if (candidatos.isEmpty) {
         if (mounted) {
@@ -353,10 +351,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
 
       final catalogoPayload = candidatos.map((p) => {
         'codigo': p.codigo ?? '',
-        'nombre': p.nombre ?? '',
+        'nombre': p.nombre,
         'categoria': p.categoria,
         'precio': p.precioVenta,
-        'stock': p.stockActual ?? 0,
+        'stock': p.stockActual,
       }).toList();
 
       final sugerencias = await _aiService.obtenerSugerenciasUpsell(
@@ -397,7 +395,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     final nombreNorm = s.nombre.trim().toLowerCase();
     if (nombreNorm.isNotEmpty) {
       for (final p in candidatos) {
-        if ((p.nombre ?? '').trim().toLowerCase() == nombreNorm) return p;
+        if (p.nombre.trim().toLowerCase() == nombreNorm) return p;
       }
     }
     return null;
@@ -1217,7 +1215,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                       color: const Color(0xFF262626),
                       child: Center(
                         child: Text(
-                          (producto.nombre ?? '?')[0].toUpperCase(),
+                          producto.nombre[0].toUpperCase(),
                           style: GoogleFonts.syne(
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
@@ -1235,7 +1233,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    producto.nombre ?? 'Sin nombre',
+                    producto.nombre,
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -1392,8 +1390,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     }
 
     final productosFiltrados = _productos.where((p) =>
-        (p.nombre?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-        (p.codigo?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
+        (p.nombre.toLowerCase().contains(_searchQuery.toLowerCase())) ||
+                (p.codigo?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
       ).toList();
 
     if (productosFiltrados.isEmpty) {
@@ -1509,12 +1507,11 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                         ? _buildImagePlaceholder(producto)
                         : null,
                   ),
-                  if (producto.stockActual != null)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: _buildStockBadge(producto),
-                    ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: _buildStockBadge(producto),
+                  ),
                 ],
               ),
             ),
@@ -1526,7 +1523,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      producto.nombre ?? 'Sin nombre',
+                      producto.nombre,
                       style: GoogleFonts.dmSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -1586,9 +1583,9 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   Widget _buildStockBadge(Producto producto) {
-    final tieneStock = producto.stockActual != null && producto.stockActual! > 0;
+    final tieneStock = producto.stockActual > 0;
     final bajo = !tieneStock ||
-        (producto.stockMinimo != null && producto.stockActual! <= producto.stockMinimo!);
+        (producto.stockActual <= producto.stockMinimo);
     final color = tieneStock
         ? (bajo ? const Color(0xFFF59E0B) : const Color(0xFF10B981))
         : const Color(0xFFEF4444);
@@ -1604,7 +1601,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           Icon(Icons.inventory_2_rounded, color: color, size: 10),
           const SizedBox(width: 3),
           Text(
-            '${producto.stockActual ?? 0}',
+            '${producto.stockActual}',
             style: GoogleFonts.dmSans(
               fontSize: 10,
               fontWeight: FontWeight.w700,
@@ -1628,7 +1625,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           ),
           const SizedBox(height: 8),
           Text(
-            (producto.nombre ?? '')[0].toUpperCase(),
+            producto.nombre[0].toUpperCase(),
             style: GoogleFonts.syne(
               fontSize: 24,
               fontWeight: FontWeight.w900,
@@ -1663,7 +1660,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                   ),
                   child: Center(
                     child: Text(
-                      (producto.nombre ?? '')[0].toUpperCase(),
+                      producto.nombre[0].toUpperCase(),
                       style: GoogleFonts.syne(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
@@ -1678,7 +1675,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        producto.nombre ?? 'Sin nombre',
+                        producto.nombre,
                         style: GoogleFonts.dmSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -2123,6 +2120,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       );
       return;
     }
+    if (!mounted) return;
     setState(() => _leyendoTarjeta = true);
 
     final future = NfcCardService.instance.detectar();

@@ -202,9 +202,10 @@ class _ToastCard extends StatefulWidget {
 }
 
 class _ToastCardState extends State<_ToastCard>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _enter;
   late final AnimationController _progress;
+  late final AnimationController _glow;
   bool _closing = false;
   final bool _dragging = false;
   double _dragOffset = 0;
@@ -220,8 +221,16 @@ class _ToastCardState extends State<_ToastCard>
       vsync: this,
       duration: widget.toast.duration,
     );
+    // Pulso de entrada del glifo (dos latidos suaves), estilo Sileo.
+    _glow = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
     widget.toast._onDismissRequested = _close;
-    _enter.forward().then((_) => _progress.forward());
+    _enter.forward().then((_) {
+      _glow.forward();
+      _progress.forward();
+    });
     _progress.addStatusListener((status) {
       if (status == AnimationStatus.completed) _close();
     });
@@ -243,6 +252,7 @@ class _ToastCardState extends State<_ToastCard>
     WidgetsBinding.instance.removeObserver(this);
     _enter.dispose();
     _progress.dispose();
+    _glow.dispose();
     super.dispose();
   }
 
@@ -321,15 +331,29 @@ class _ToastCardState extends State<_ToastCard>
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Glifo iOS: cuadrado redondeado con tinte del estado.
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(icon, color: color, size: 19),
+                          // Glifo iOS: cuadrado redondeado con tinte del estado
+                          // y un pulso de entrada.
+                          AnimatedBuilder(
+                            animation: _glow,
+                            builder: (context, child) {
+                              final t = Curves.easeOutBack.transform(
+                                _glow.value.clamp(0, 1),
+                              );
+                              return Transform.scale(
+                                scale: 0.6 + 0.4 * t,
+                                child: Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(
+                                      alpha: 0.14 + 0.08 * (1 - _glow.value),
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(icon, color: color, size: 19),
+                                ),
+                              );
+                            },
                           ),
                           const SizedBox(width: 12),
                           Expanded(

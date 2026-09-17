@@ -134,7 +134,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
     setState(() {
       _current.messages.add(userMsg);
       if (_current.messages.length == 1 && _current.title == 'Nueva conversación') {
-        _current.title = raw.length > 36 ? '${raw.substring(0, 36)}…' : raw;
+        _current.title = _truncarParaTitulo(raw);
       }
       _controller.clear();
       _sending = true;
@@ -324,22 +324,39 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Text('Chat IA', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary)),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
-                    const SizedBox(width: 5),
-                    Text('En línea', style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF10B981))),
+            child: LayoutBuilder(builder: (ctx, c) {
+              // En pantallas muy estrechas el título + badge no caben en un
+              // Row: se apilan en columna para no desbordar horizontalmente.
+              final stack = c.maxWidth < 150;
+              final badge = Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
+                  const SizedBox(width: 5),
+                  Text('En línea', style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF10B981))),
+                ]),
+              );
+              final titulo = Text(
+                'Chat IA',
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary),
+              );
+              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                if (stack) ...[
+                  titulo,
+                  const SizedBox(height: 6),
+                  badge,
+                ] else
+                  Row(children: [
+                    Flexible(child: titulo),
+                    const SizedBox(width: 8),
+                    Flexible(child: badge),
                   ]),
-                ),
-              ]),
-              Text('Groq • openai/gpt-oss-20b • Portal Pilot', style: GoogleFonts.dmSans(fontSize: 11, color: p.textMuted)),
-            ]),
+                Text('Groq • openai/gpt-oss-20b • Portal Pilot',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 11, color: p.textMuted)),
+              ]);
+            }),
           ),
         ],
       ),
@@ -362,7 +379,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
         Tooltip(
           message: 'Limpiar chat actual',
           child: IconButton(
-            icon: Icon(Icons.cleaning_services_rounded, color: appPalette.bgTertiary, size: 18),
+            icon: Icon(Icons.cleaning_services_rounded, color: p.textMuted, size: 18),
             onPressed: _current.messages.isEmpty ? null : _clearCurrent,
           ),
         ),
@@ -417,7 +434,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
                 : ListView.separated(
                     padding: const EdgeInsets.all(8),
                     itemCount: _conversations.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    separatorBuilder: (_, _) => const SizedBox(height: 6),
                     itemBuilder: (ctx, i) {
                       final c = _conversations[i];
                       final selected = c.id == _current.id;
@@ -513,48 +530,31 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
               textAlign: TextAlign.center, style: GoogleFonts.dmSans(fontSize: 13, color: p.textMuted, height: 1.5)),
           const SizedBox(height: 22),
           LayoutBuilder(builder: (ctx, c) {
-            final cols = c.maxWidth > 560 ? 2 : 1;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: suggestions.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cols,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                mainAxisExtent: 92,
-              ),
-              itemBuilder: (_, i) {
-                final s = suggestions[i];
-                return InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => _send(prompts[i]),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: appPalette.cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: s.color.withValues(alpha: 0.22)),
-                    ),
-                    child: Row(children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: s.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-                        child: Icon(s.icon, color: s.color, size: 18),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Text(s.title, style: GoogleFonts.dmSans(fontSize: 13.5, fontWeight: FontWeight.w700, color: appPalette.textPrimary)),
-                          const SizedBox(height: 2),
-                          Text(s.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 11, color: p.textMuted, height: 1.3)),
-                        ]),
-                      ),
-                      Icon(Icons.arrow_outward_rounded, size: 16, color: appPalette.textMuted),
-                    ]),
+            if (c.maxWidth > 560) {
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: suggestions.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  mainAxisExtent: 92,
+                ),
+                itemBuilder: (_, i) => _buildSuggestionCard(suggestions[i], prompts[i], p),
+              );
+            }
+            // Pantallas estrechas: tarjetas con altura intrínseca en una
+            // Column (sin GridView/mainAxisExtent fijos) para no desbordar.
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < suggestions.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildSuggestionCard(suggestions[i], prompts[i], p),
                   ),
-                );
-              },
+              ],
             );
           }),
           const SizedBox(height: 18),
@@ -582,6 +582,45 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       onPressed: onTap,
     );
+  }
+
+  Widget _buildSuggestionCard(_Suggestion s, String prompt, ThemePalette p) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => _send(prompt),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: appPalette.cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: s.color.withValues(alpha: 0.22)),
+        ),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: s.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+            child: Icon(s.icon, color: s.color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text(s.title, style: GoogleFonts.dmSans(fontSize: 13.5, fontWeight: FontWeight.w700, color: appPalette.textPrimary)),
+              const SizedBox(height: 2),
+              Text(s.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 11, color: p.textMuted, height: 1.3)),
+            ]),
+          ),
+          Icon(Icons.arrow_outward_rounded, size: 16, color: appPalette.textMuted),
+        ]),
+      ),
+    );
+  }
+
+  /// Trunca un título cortando por grafemas (no por unidades UTF-16): un emoji
+  /// o carácter compuesto nunca queda partido a la mitad (surrogate suelto).
+  String _truncarParaTitulo(String raw) {
+    final chars = raw.characters;
+    if (chars.length <= 36) return raw;
+    return '${chars.take(36)}…';
   }
 
   // ── Lista de mensajes ─────────────────────────────────────────
@@ -685,7 +724,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: onTap,
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), child: Icon(icon, size: 14, color: appPalette.bgTertiary)),
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), child: Icon(icon, size: 14, color: appPalette.textMuted)),
       ),
     );
   }
@@ -717,7 +756,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
   Widget _dot(int index) {
     return AnimatedBuilder(
       animation: _pulseCtrl,
-      builder: (_, __) {
+      builder: (_, _) {
         final t = (_pulseCtrl.value + index * 0.22) % 1.0;
         final scale = 0.7 + 0.6 * (0.5 + 0.5 * (1 - (2 * t - 1).abs() * 2).clamp(0, 1));
         return Transform.scale(
@@ -746,7 +785,7 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
             _buildGradientInput(p, isDark),
             const SizedBox(height: 8),
             Row(children: [
-              Icon(Icons.lock_rounded, size: 11, color: appPalette.bgTertiary),
+              Icon(Icons.lock_rounded, size: 11, color: appPalette.textDim),
               const SizedBox(width: 6),
               Expanded(child: Text('La IA puede cometer errores. Verifica información importante.', style: GoogleFonts.dmSans(fontSize: 10, color: p.textMuted))),
               Text('Portal Pilot • v2', style: GoogleFonts.dmSans(fontSize: 10, color: p.textMuted.withValues(alpha: 0.7))),

@@ -20,6 +20,11 @@ class MembresiaHome extends StatefulWidget {
 }
 
 class _MembresiaHomeState extends State<MembresiaHome> {
+  // Redibuja al instante cuando cambia el tema global (claro/oscuro).
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
+  }
+
   final _service = MembresiaService.instance;
 
   DashboardMembresias? _dashboard;
@@ -27,7 +32,14 @@ class _MembresiaHomeState extends State<MembresiaHome> {
   @override
   void initState() {
     super.initState();
+    appThemeNotifier.addListener(_onThemeChanged);
     _cargar();
+  }
+
+  @override
+  void dispose() {
+    appThemeNotifier.removeListener(_onThemeChanged);
+    super.dispose();
   }
 
   Future<void> _cargar() async {

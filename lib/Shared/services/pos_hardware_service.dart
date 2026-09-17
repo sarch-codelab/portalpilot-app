@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
-import 'package:path_provider/path_provider.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 
 /// Servicio para manejo de hardware POS: impresoras térmicas, cajón de dinero, escáner
@@ -88,8 +86,16 @@ class PosHardwareService {
 
     void add(List<int> data) => bytes.addAll(data);
     void addText(String text, {bool bold = false, bool underline = false, int align = 0, int width = 1, int height = 1}) {
-      if (bold) add([0x1B, 0x45, 0x01]); else add([0x1B, 0x45, 0x00]);
-      if (underline) add([0x1B, 0x2D, 0x01]); else add([0x1B, 0x2D, 0x00]);
+      if (bold) {
+        add([0x1B, 0x45, 0x01]);
+      } else {
+        add([0x1B, 0x45, 0x00]);
+      }
+      if (underline) {
+        add([0x1B, 0x2D, 0x01]);
+      } else {
+        add([0x1B, 0x2D, 0x00]);
+      }
       add([0x1B, 0x61, align]); // 0=left, 1=center, 2=right
       add([0x1D, 0x21, (width - 1) << 4 | (height - 1)]);
       add(encoder.convert(text));
@@ -134,7 +140,7 @@ class PosHardwareService {
 
     // Items
     for (final item in items) {
-      final desc = item.nombre.length > 22 ? '${item.nombre.substring(0, 22)}' : item.nombre.padRight(22);
+      final desc = item.nombre.length > 22 ? item.nombre.substring(0, 22) : item.nombre.padRight(22);
       final cant = item.cantidad.toString().padLeft(4);
       final precio = _formatCurrency(item.precioUnitario).padLeft(8);
       final totalItem = _formatCurrency(item.precioUnitario * item.cantidad).padLeft(10);
@@ -253,7 +259,7 @@ class PosHardwareService {
   // ═══════════════════════════════════════════════════════════════
 
 Future<void> loadConfig(String empresaId, String terminalId) async {
-    final config = await LocalDatabaseService.instance.database.select(
+    final config = LocalDatabaseService.instance.database.select(
       LocalDatabaseService.instance.database.posConfig
     )
       ..where((c) => c.empresaId.equals(empresaId))
@@ -261,7 +267,7 @@ Future<void> loadConfig(String empresaId, String terminalId) async {
     
     final result = await config.getSingleOrNull();
     if (result != null) {
-      _paperWidth = int.tryParse(result.impresoraAncho ?? '80') ?? 80;
+      _paperWidth = int.tryParse(result.impresoraAncho) ?? 80;
       // La conexión Bluetooth se debe hacer manualmente con el paquete bluetooth_print
     }
   }

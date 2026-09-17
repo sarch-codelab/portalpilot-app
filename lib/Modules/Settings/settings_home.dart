@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Shared/utils/fiscal_compliance.dart';
-import 'package:portal_pilot_app/Shared/utils/backup_manager.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
 import 'package:portal_pilot_app/Shared/utils/cache_manager.dart';
 import 'package:portal_pilot_app/Modules/Settings/fiscal_settings.dart';
@@ -211,9 +210,11 @@ class _SettingsHomeState extends State<SettingsHome> {
                 ),
               ),
               onTap: () async {
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
                 await CacheManager().clearExpired();
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                navigator.pop();
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Caché expirado limpiado'),
                     backgroundColor: Color(0xFF10B981),
@@ -233,9 +234,11 @@ class _SettingsHomeState extends State<SettingsHome> {
                 ),
               ),
               onTap: () async {
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
                 await CacheManager().clearAll();
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                navigator.pop();
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Caché limpiado completamente'),
                     backgroundColor: Color(0xFF10B981),
@@ -285,9 +288,11 @@ class _SettingsHomeState extends State<SettingsHome> {
                 ),
               ),
               onTap: () async {
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
                 await Logger().cleanOldLogs(daysToKeep: 7);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                navigator.pop();
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Logs antiguos limpiados'),
                     backgroundColor: Color(0xFF10B981),
@@ -307,10 +312,12 @@ class _SettingsHomeState extends State<SettingsHome> {
                 ),
               ),
               onTap: () async {
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
                 final logger = Logger();
                 await logger.cleanOldLogs(daysToKeep: 0);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                navigator.pop();
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Todos los logs limpiados'),
                     backgroundColor: Color(0xFF10B981),

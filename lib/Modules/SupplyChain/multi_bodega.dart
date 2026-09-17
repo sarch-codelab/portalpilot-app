@@ -10,7 +10,7 @@ class MultiBodega extends StatefulWidget {
 }
 
 class _MultiBodegaState extends State<MultiBodega> {
-  List<Map<String, dynamic>> _bodegas = [
+  final List<Map<String, dynamic>> _bodegas = [
     {
       'id': '1',
       'nombre': 'Bodega Central',

@@ -10,7 +10,7 @@ class Fidelizacion extends StatefulWidget {
 }
 
 class _FidelizacionState extends State<Fidelizacion> {
-  List<Map<String, dynamic>> _programas = [
+  final List<Map<String, dynamic>> _programas = [
     {
       'id': '1',
       'nombre': 'Programa Oro',

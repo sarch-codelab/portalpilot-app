@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Modules/CRM/clientes/cliente_form.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class ClienteList extends StatefulWidget {
   const ClienteList({super.key});
@@ -41,8 +42,13 @@ class _ClienteListState extends State<ClienteList> {
     }
     // Fallback a SharedPreferences
     final prefs = await SharedPreferences.getInstance();
+    final clientesLocal = JsonGuard.safeListOfMaps(
+      prefs.getString('clientes'),
+      source: 'Clientes/local',
+    );
+    if (!mounted) return;
     setState(() {
-      _clientes = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('clientes') ?? '[]'));
+      _clientes = clientesLocal;
       _filtrados = List.from(_clientes);
     });
   }
@@ -67,7 +73,7 @@ class _ClienteListState extends State<ClienteList> {
     }
     // Eliminar de caché local
     final prefs = await SharedPreferences.getInstance();
-    final list = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString('clientes') ?? '[]'));
+    final list = JsonGuard.safeListOfMaps(prefs.getString('clientes'));
     list.removeWhere((c) => c['id'] == id);
     await prefs.setString('clientes', jsonEncode(list));
     _cargar();

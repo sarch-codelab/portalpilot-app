@@ -316,7 +316,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFF10B981),
+            activeThumbColor: const Color(0xFF10B981),
           ),
         ],
       ),
@@ -333,6 +333,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
     );
 
     final saved = await FiscalCompliance().saveConfig(updatedConfig);
+    if (!mounted) return;
 
     if (saved) {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -10,7 +10,7 @@ class PreciosPorCanal extends StatefulWidget {
 }
 
 class _PreciosPorCanalState extends State<PreciosPorCanal> {
-  List<Map<String, dynamic>> _productos = [
+  final List<Map<String, dynamic>> _productos = [
     {
       'id': '1',
       'nombre': 'Arroz Premium 5kg',

@@ -10,7 +10,7 @@ class CadenasFranquicias extends StatefulWidget {
 }
 
 class _CadenasFranquiciasState extends State<CadenasFranquicias> {
-  List<Map<String, dynamic>> _cadenas = [
+  final List<Map<String, dynamic>> _cadenas = [
     {
       'id': '1',
       'nombre': 'Supermercados del Norte',
@@ -154,7 +154,7 @@ class _CadenasFranquiciasState extends State<CadenasFranquicias> {
                 cadena['activo'] = value;
               });
             },
-            activeColor: const Color(0xFF10B981),
+            activeThumbColor: const Color(0xFF10B981),
           ),
         ],
       ),

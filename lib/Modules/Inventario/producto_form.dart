@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +16,7 @@ import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 /// Función top-level para decode base64 en isolate (evita bloquear el hilo UI).
@@ -50,7 +52,6 @@ class _ProductoFormState extends State<ProductoForm> {
   bool _exento = false;
   String? _imagenBase64;
   String? _imagenUrl; // URL real de Supabase Storage
-  bool _isUploadingImage = false;
   bool _isAiAnalyzing = false;
   bool _showScanner = false;
   MobileScannerController? _scannerController;
@@ -72,11 +73,107 @@ class _ProductoFormState extends State<ProductoForm> {
   void initState() {
     super.initState();
     _cargarBodegas();
-    if (widget.productoExistente != null) _cargarProducto();
+    if (widget.productoExistente != null) {
+      _cargarProducto();
+    } else {
+      // Nuevo producto: restaurar borrador (sobrevive reinicios del proceso,
+      // p.ej. cuando Android mata la app mientras la cámara está abierta).
+      _cargarBorrador();
+      // Autosave con debounce en cada cambio de texto.
+      for (final c in [
+        _codigoController, _barcodeController, _nombreController,
+        _descripcionController, _precioCompraController, _precioVentaController,
+        _stockActualController, _stockMinimoController, _marcaController,
+        _presentacionController,
+      ]) {
+        c.addListener(_programarBorrador);
+      }
+    }
+  }
+
+  Timer? _draftDebounce;
+
+  void _programarBorrador() {
+    _draftDebounce?.cancel();
+    _draftDebounce = Timer(const Duration(milliseconds: 600), _guardarBorrador);
+  }
+
+  static const String _draftKey = 'producto_form_draft_v1';
+
+  Future<void> _guardarBorrador() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_draftKey, jsonEncode({
+        'codigo': _codigoController.text,
+        'barcode': _barcodeController.text,
+        'nombre': _nombreController.text,
+        'descripcion': _descripcionController.text,
+        'precio_compra': _precioCompraController.text,
+        'precio_venta': _precioVentaController.text,
+        'stock_actual': _stockActualController.text,
+        'stock_minimo': _stockMinimoController.text,
+        'marca': _marcaController.text,
+        'presentacion': _presentacionController.text,
+        'categoria': _categoria,
+        'unidad_medida': _unidadMedida,
+        'bodega': _bodega,
+        'isv_rate': _isvRate,
+        'exento': _exento,
+        if (_imagenBase64 != null && _imagenBase64!.isNotEmpty)
+          'imagen_base64': _imagenBase64,
+      }));
+    } catch (e) {
+      debugPrint('[ProductoForm] Error guardando borrador: $e');
+    }
+  }
+
+  Future<void> _cargarBorrador() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_draftKey);
+      if (raw == null || !mounted) return;
+      final d = JsonGuard.tryDecodeMap(raw);
+      if (d == null) return;
+      final tieneContenido = (d['nombre'] as String? ?? '').isNotEmpty ||
+          (d['barcode'] as String? ?? '').isNotEmpty ||
+          ((d['imagen_base64'] as String?)?.isNotEmpty ?? false);
+      if (!tieneContenido) return;
+      _codigoController.text = d['codigo'] as String? ?? '';
+      _barcodeController.text = d['barcode'] as String? ?? '';
+      _nombreController.text = d['nombre'] as String? ?? '';
+      _descripcionController.text = d['descripcion'] as String? ?? '';
+      _precioCompraController.text = d['precio_compra'] as String? ?? '';
+      _precioVentaController.text = d['precio_venta'] as String? ?? '';
+      _stockActualController.text = d['stock_actual'] as String? ?? '';
+      _stockMinimoController.text = d['stock_minimo'] as String? ?? '';
+      _marcaController.text = d['marca'] as String? ?? '';
+      _presentacionController.text = d['presentacion'] as String? ?? '';
+      _categoria = d['categoria'] as String? ?? 'General';
+      _unidadMedida = d['unidad_medida'] as String? ?? 'Unidad';
+      _bodega = d['bodega'] as String? ?? 'General';
+      _isvRate = (d['isv_rate'] as num?)?.toDouble() ?? 15.0;
+      _exento = d['exento'] == true;
+      final img = d['imagen_base64'] as String?;
+      if (img != null && img.isNotEmpty) _imagenBase64 = _normalizarBase64(img);
+      if (mounted) {
+        setState(() {});
+        debugPrint('[ProductoForm] Borrador restaurado tras reinicio');
+      }
+    } catch (e) {
+      debugPrint('[ProductoForm] Error cargando borrador: $e');
+    }
+  }
+
+  Future<void> _limpiarBorrador() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_draftKey);
+    } catch (_) {}
   }
 
   @override
   void dispose() {
+    _draftDebounce?.cancel();
     _scannerController?.dispose();
     _barcodeController.dispose();
     _ocultarToastIA();
@@ -85,12 +182,12 @@ class _ProductoFormState extends State<ProductoForm> {
 
   Future<void> _cargarBodegas() async {
     final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('bodegas') ?? '["General"]';
-    try {
-      setState(() => _bodegas = List<String>.from(jsonDecode(json)));
-    } catch (_) {
-      setState(() => _bodegas = ['General']);
+    final raw = prefs.getString('bodegas');
+    if (raw == null) {
+      setState(() => _bodegas = const ['General']);
+      return;
     }
+    setState(() => _bodegas = JsonGuard.safeListOfStrings(raw, source: 'Inventario/bodegas/producto_form'));
   }
 
   void _cargarProducto() {
@@ -159,9 +256,7 @@ class _ProductoFormState extends State<ProductoForm> {
         imageQuality: 75,
       );
       if (picked == null) return;
-      
-      setState(() => _isUploadingImage = true);
-      
+
       final Uint8List bytes = await picked.readAsBytes();
       if (bytes.length > 400 * 1024) {
         if (mounted) {
@@ -172,12 +267,12 @@ class _ProductoFormState extends State<ProductoForm> {
             ),
           );
         }
-        setState(() => _isUploadingImage = false);
         return;
       }
       
       // Guardar base64 localmente para visualización
       setState(() => _imagenBase64 = base64Encode(bytes));
+      if (widget.productoExistente == null) unawaited(_guardarBorrador());
       
       // Subir a Supabase Storage para obtener URL real
       final imageUrl = await ImageService.instance.uploadImage(
@@ -209,11 +304,8 @@ class _ProductoFormState extends State<ProductoForm> {
         }
       }
       
-      setState(() => _isUploadingImage = false);
-      
     } on PlatformException catch (e) {
       debugPrint('❌ ImagePicker error: ${e.message}');
-      setState(() => _isUploadingImage = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('No se pudo abrir la galería en este dispositivo', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFEF4444)),
@@ -221,7 +313,6 @@ class _ProductoFormState extends State<ProductoForm> {
       }
     } catch (e) {
       debugPrint('❌ ImagePicker error: $e');
-      setState(() => _isUploadingImage = false);
     }
   }
   
@@ -229,6 +320,7 @@ class _ProductoFormState extends State<ProductoForm> {
     final isMobile = Platform.isAndroid || Platform.isIOS;
     if (isMobile) {
       final status = await Permission.camera.request();
+      if (!mounted) return;
       if (status.isGranted) {
         _scannerController?.dispose();
         _scannerController = MobileScannerController(
@@ -392,6 +484,7 @@ Future<void> _identificarProductoConIA() async {
           _imagenBase64 = imagenParaAnalizar;
           _imagenUrl = null;
         });
+        if (widget.productoExistente == null) unawaited(_guardarBorrador());
       }
     }
 
@@ -945,12 +1038,8 @@ Future<void> _identificarProductoConIA() async {
 
     // También mantener en SharedPreferences para compatibilidad con POS
     List<dynamic> productos = [];
-    try {
-      final json = prefs.getString('productos') ?? '[]';
-      productos = List<dynamic>.from(jsonDecode(json));
-    } catch (_) {
-      productos = [];
-    }
+    final json = prefs.getString('productos') ?? '[]';
+      productos = JsonGuard.safeListOfMaps(json, source: 'Inventario/producto_form/pos');
 
     final idx = productos.indexWhere((p) =>
         (codigo.isNotEmpty && p['codigo'] == codigo) || p['id'] == producto['id']);
@@ -964,12 +1053,8 @@ Future<void> _identificarProductoConIA() async {
     
     // También guardar en 'productos_pos' para que el Terminal POS los encuentre
     List<dynamic> productosPos = [];
-    try {
-      final productosPosJson = prefs.getString('productos_pos') ?? '[]';
-      productosPos = List<dynamic>.from(jsonDecode(productosPosJson));
-    } catch (_) {
-      productosPos = [];
-    }
+    final productosPosJson = prefs.getString('productos_pos') ?? '[]';
+      productosPos = JsonGuard.safeListOfMaps(productosPosJson, source: 'Inventario/producto_form/pos_tabla');
     
     final productoPos = {
       'id': producto['id'],
@@ -1051,6 +1136,8 @@ Future<void> _identificarProductoConIA() async {
     }
 
     if (mounted) {
+      await _limpiarBorrador();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(widget.productoExistente != null ? 'Producto actualizado' : 'Producto guardado', style: GoogleFonts.dmSans()),
@@ -1202,10 +1289,13 @@ Future<void> _identificarProductoConIA() async {
             if (tieneImagen) ...[
               const SizedBox(width: 10),
               GestureDetector(
-                onTap: () => setState(() {
-                  _imagenBase64 = null;
-                  _imagenUrl = null;
-                }),
+                onTap: () {
+                  setState(() {
+                    _imagenBase64 = null;
+                    _imagenUrl = null;
+                  });
+                  if (widget.productoExistente == null) unawaited(_guardarBorrador());
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
@@ -1337,8 +1427,11 @@ Row(
                             value: _exento,
                             onChanged: (v) => setState(() {
                               _exento = v;
-                              if (v) _isvRate = 0;
-                              else if (_isvRate == 0) _isvRate = 15;
+                              if (v) {
+                                _isvRate = 0;
+                              } else if (_isvRate == 0) {
+                                _isvRate = 15;
+                              }
                             }),
                             activeThumbColor: const Color(0xFFF59E0B),
                           ),
@@ -1501,20 +1594,21 @@ Row(
             if (help != null) ...[
               const SizedBox(width: 4),
               GestureDetector(
-                onTap: () => _mostrarAyuda(label, help),                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: appPalette.bgTertiary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: appPalette.borderLight),
-                    ),
-                    child: Icon(
-                      Icons.help_outline_rounded,
-                      size: 11,
-                      color: appPalette.textMuted,
-                    ),
+                onTap: () => _mostrarAyuda(label, help),
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: appPalette.bgTertiary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: appPalette.borderLight),
                   ),
+                  child: Icon(
+                    Icons.help_outline_rounded,
+                    size: 11,
+                    color: appPalette.textMuted,
+                  ),
+                ),
               ),
             ],
           ],

@@ -45,8 +45,8 @@ class _OrdenCompraListState extends State<OrdenCompraList> {
           final o = _list[i];
           return ListTile(
             title: Text(o.correlativo ?? '---'),
-            subtitle: Text('${o.proveedorId ?? ''} • ${o.total.toStringAsFixed(2)}'),
-            trailing: Text(o.estado ?? ''),
+            subtitle: Text('${o.proveedorId} • ${o.total.toStringAsFixed(2)}'),
+            trailing: Text(o.estado),
           );
         },
       ),
@@ -67,6 +67,7 @@ class _OrdenCompraFormState extends State<OrdenCompraForm> {
 
   Future<void> _save() async {
     final proveedores = await _service.getProveedores();
+    if (!mounted) return;
     if (proveedores.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Crear primero un proveedor')));
       return;
@@ -74,6 +75,7 @@ class _OrdenCompraFormState extends State<OrdenCompraForm> {
     final proveedor = proveedores.first;
     final items = <(Producto, int, double, double)>[]; // placeholder
     await _service.crearOrdenCompra(proveedorId: proveedor.id, items: items, notas: _notas.text);
+    if (!mounted) return;
     Navigator.of(context).pop();
   }
 

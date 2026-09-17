@@ -15,10 +15,25 @@ class OfflineSyncService {
   bool _hasPendingSync = false;
   
   final List<Map<String, dynamic>> _pendingOperations = [];
-  StreamController<SyncStatus> _syncStatusController = StreamController<SyncStatus>.broadcast();
+  StreamController<SyncStatus>? _syncStatusController;
   StreamSubscription? _connectivitySubscription;
   
-  Stream<SyncStatus> get syncStatusStream => _syncStatusController.stream;
+  Stream<SyncStatus> get syncStatusStream {
+    // Lazy: si se hizo dispose y la referencia quedó anulada, se recrea en
+    // lugar de devolver un stream zombie cerrado (onDone inmediato, 0 eventos).
+    _syncStatusController ??= StreamController<SyncStatus>.broadcast();
+    return _syncStatusController!.stream;
+  }
+
+  void _emitStatus(SyncStatus status) {
+    final controller = _syncStatusController;
+    if (controller != null && !controller.isClosed) {
+      controller.add(status);
+    } else {
+      debugPrint('⚠️ Sync status emitido sin oyentes: ${status.message}');
+    }
+  }
+
   bool get isSyncing => _isSyncing;
   bool get hasPendingSync => _hasPendingSync;
   int get pendingOperationsCount => _pendingOperations.length;
@@ -47,7 +62,7 @@ class OfflineSyncService {
     });
     
     _hasPendingSync = true;
-    _syncStatusController.add(SyncStatus(
+    _emitStatus(SyncStatus(
       isSyncing: false,
       pendingCount: _pendingOperations.length,
       message: 'Operación pendiente de sincronización',
@@ -65,17 +80,22 @@ class OfflineSyncService {
     if (_isSyncing || _pendingOperations.isEmpty) return;
     
     _isSyncing = true;
-    _syncStatusController.add(SyncStatus(
+    _emitStatus(SyncStatus(
       isSyncing: true,
       pendingCount: _pendingOperations.length,
       message: 'Sincronizando operaciones pendientes...',
     ));
-    
+
     debugPrint('🔄 Iniciando sincronización de ${_pendingOperations.length} operaciones...');
-    
+
+    // Snapshot: si llegan operaciones NUEVAS mientras duramos, quedan en
+    // _pendingOperations y no se pierden (antes se borraban junto con la cola).
+    final snapshot = List<Map<String, dynamic>>.from(_pendingOperations);
+    _pendingOperations.clear();
+
     final failedOperations = <Map<String, dynamic>>[];
-    
-    for (final operation in _pendingOperations) {
+
+    for (final operation in snapshot) {
       try {
         await _syncOperation(operation);
         debugPrint('✅ Operación sincronizada: ${operation['type']}');
@@ -91,7 +111,7 @@ class OfflineSyncService {
     _hasPendingSync = _pendingOperations.isNotEmpty;
     _isSyncing = false;
     
-    _syncStatusController.add(SyncStatus(
+    _emitStatus(SyncStatus(
       isSyncing: false,
       pendingCount: _pendingOperations.length,
       message: failedOperations.isEmpty 
@@ -134,7 +154,7 @@ class OfflineSyncService {
     _pendingOperations.clear();
     _hasPendingSync = false;
     
-    _syncStatusController.add(SyncStatus(
+    _emitStatus(SyncStatus(
       isSyncing: false,
       pendingCount: 0,
       message: 'Operaciones pendientes limpiadas',
@@ -146,9 +166,14 @@ class OfflineSyncService {
   void dispose() {
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
-    if (!_syncStatusController.isClosed) {
-      _syncStatusController.close();
+    if (_syncStatusController != null && !_syncStatusController!.isClosed) {
+      _syncStatusController!.close();
     }
+    // Anular la referencia (anti-zombie): evita StateError ("Cannot add event
+    // after closing") si alguien añade operaciones después del dispose.
+    _syncStatusController = null;
+    _pendingOperations.clear();
+    _hasPendingSync = false;
     _isInitialized = false;
   }
 }

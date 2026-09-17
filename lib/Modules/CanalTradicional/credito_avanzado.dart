@@ -12,7 +12,6 @@ class CreditoAvanzado extends StatefulWidget {
 
 class _CreditoAvanzadoState extends State<CreditoAvanzado> {
   List<dynamic> _clientes = [];
-  bool _cargando = true;
 
   @override
   void initState() {
@@ -22,20 +21,16 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
   }
 
   Future<void> _cargarDatos() async {
-    if (mounted) setState(() => _cargando = true);
     try {
       final api = ApiService.instance;
       final result = await api.get('/api/clientes');
-      if (result != null && api.isSuccess(result)) {
-        if (mounted) setState(() {
+      if (api.isSuccess(result) && mounted) {
+        setState(() {
           _clientes = result['clientes'] ?? [];
-          _cargando = false;
         });
-      } else {
-        if (mounted) setState(() => _cargando = false);
       }
     } catch (e) {
-      if (mounted) setState(() => _cargando = false);
+      debugPrint('Error cargando clientes: $e');
     }
   }
 
@@ -138,7 +133,7 @@ class _CreditoAvanzadoState extends State<CreditoAvanzado> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  '${usado > 0 ? "CON SALDO" : "SIN SALDO"}',
+                  usado > 0 ? "CON SALDO" : "SIN SALDO",
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,

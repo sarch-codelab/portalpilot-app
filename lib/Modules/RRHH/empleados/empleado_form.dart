@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class EmpleadoForm extends StatefulWidget {
   final Map<String, dynamic>? empleadoExistente;
@@ -64,7 +65,7 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
 
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString('empleados') ?? '[]';
-    final List<dynamic> empleados = jsonDecode(json);
+    final List<dynamic> empleados = JsonGuard.safeListOfMaps(json, source: 'RRHH/empleado_form');
 
     final empleado = {
       'id': widget.empleadoExistente?['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),

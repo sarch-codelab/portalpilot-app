@@ -10,7 +10,7 @@ class Recepcion extends StatefulWidget {
 }
 
 class _RecepcionState extends State<Recepcion> {
-  List<Map<String, dynamic>> _recepciones = [
+  final List<Map<String, dynamic>> _recepciones = [
     {
       'id': '1',
       'proveedor': 'Distribuidora Nacional',

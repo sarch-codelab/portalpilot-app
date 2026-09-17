@@ -10,10 +10,27 @@ import 'package:portal_pilot_app/Shared/services/window_manager.dart';
 import 'package:portal_pilot_app/Shared/services/orientation_service.dart';
 import 'package:portal_pilot_app/Shared/services/offline_sync_service.dart';
 import 'package:portal_pilot_app/Shared/services/session_guard.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 import 'package:portal_pilot_app/launch_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Aviso global al usuario cuando se detectan datos JSON corruptos (P1):
+  // los servicios avisan vía JsonGuard.reportCorrupt sin contexto, y aquí la
+  // raíz de la app muestra el toast oficial.
+  JsonGuard.onCorrupt = (_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final ctx = SessionGuard.navigatorKey.currentContext;
+        if (ctx == null) return;
+        PPNotifications.error(ctx, JsonGuard.kCorruptDataMessage, title: 'Datos corruptos');
+      } catch (e) {
+        debugPrint('⚠️ No se pudo notificar datos corruptos: $e');
+      }
+    });
+  };
 
   // Atrapar errores async no recuperados para evitar crashes en móvil.
   runZonedGuarded(() async {

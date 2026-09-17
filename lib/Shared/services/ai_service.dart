@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/services/navi_rules.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
-import 'package:portal_pilot_app/Shared/services/session_guard.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 const String _defaultAiApiRoot = 'https://portal-pilot.vercel.app';
 
@@ -54,7 +54,7 @@ class ProductIdentification {
       descripcion: json['descripcion']?.toString(),
       presentacion: json['presentacion']?.toString(),
       unidadMedida: json['unidad_medida']?.toString(),
-      confianza: (json['confianza'] as num?)?.toDouble(),
+      confianza: JsonGuard.numOrNull(json['confianza'])?.toDouble(),
       barcode: json['barcode']?.toString() ?? json['codigo_barras']?.toString(),
     );
   }
@@ -98,12 +98,16 @@ class BarcodeLookupResult {
   factory BarcodeLookupResult.fromJson(Map<String, dynamic> json) {
     return BarcodeLookupResult(
       found: json['found'] == true,
-      products: (json['products'] as List<dynamic>?)
-          ?.map((e) => Map<String, dynamic>.from(e as Map))
-          .toList() ?? [],
+      products: _asProductList(json['products']),
       source: json['source']?.toString() ?? 'unknown',
       message: json['message']?.toString(),
     );
+  }
+
+  /// Convierte `products` de la respuesta a lista de mapas filtrando
+  /// elementos no-map / con claves no-string (nunca lanza).
+  static List<Map<String, dynamic>> _asProductList(dynamic value) {
+    return JsonGuard.toListOfMaps(value);
   }
 }
 
@@ -196,9 +200,10 @@ class AIManager {
       }
 
       if (response.statusCode != 200 || data['reply'] == null) {
-        if (SessionGuard.isTokenExpired(response.statusCode, data)) {
-          unawaited(SessionGuard.forceLogoutToLogin());
-        }
+        // NOTA: los endpoints /api/ai/* NUNCA validan el token del usuario —
+        // un 401/403 aquí viene del proveedor de IA (Groq/OpenRouter), no de
+        // nuestra sesión. Antes se llamaba SessionGuard.forceLogoutToLogin()
+        // y un fallo de la key del proveedor cerraba la sesión del usuario.
         return AIResponse(text: '', modelId: modelId, provider: 'unknown',
           tokensUsed: 0, duration: duration, success: false,
           error: _mapBackendError(response.statusCode, data));
@@ -269,9 +274,7 @@ class AIManager {
       }
 
       if (response.statusCode != 200 || data['reply'] == null) {
-        if (SessionGuard.isTokenExpired(response.statusCode, data)) {
-          unawaited(SessionGuard.forceLogoutToLogin());
-        }
+        // Igual que arriba: 401/403 de un proveedor de visión no es logout.
         return AIResponse(text: '', modelId: 'vision', provider: 'unknown',
           tokensUsed: 0, duration: duration, success: false,
           error: _mapBackendError(response.statusCode, data));
@@ -306,7 +309,9 @@ class AIManager {
 
     switch (statusCode) {
       case 401:
-        return 'Tu sesión expiró. Vuelve a iniciar sesión para usar la IA.';
+        // 401 en /api/ai/* proviene del proveedor de IA (key vencida/sin
+        // créditos), NO de la sesión del usuario — no pedir re-login.
+        return 'El servicio de IA no está disponible en este momento (error de autenticación del proveedor). Intenta más tarde.';
       case 403:
         if (code == 'TRIAL_EXPIRED' || lowerError.contains('trial_expired') || lowerError.contains('prueba vencida')) {
           return 'Tu prueba de 15 días venció. Renueva tu plan para usar la IA.';
@@ -316,7 +321,7 @@ class AIManager {
         }
         // Token inválido / no provisto
         if (lowerError.contains('token inválido') || lowerError.contains('token invalido') || lowerError.contains('token no provisto') || lowerError.contains('invalid token')) {
-          return 'Tu sesión expiró o el token es inválido. Vuelve a iniciar sesión.';
+          return 'El servicio de IA no está disponible en este momento. Intenta más tarde.';
         }
         return backendError.isNotEmpty ? backendError : 'No tienes permiso para usar esta función.';
       case 429:
@@ -330,7 +335,7 @@ class AIManager {
 
   String _mapHttpError(int statusCode, String fallback) {
     switch (statusCode) {
-      case 401: return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+      case 401: return 'El servicio de IA no está disponible temporalmente.';
       case 403: return 'No tienes permiso para esta acción.';
       case 429: return 'Demasiadas solicitudes. Intenta en unos minutos.';
       case 500: return 'Error del servidor. Intenta más tarde.';

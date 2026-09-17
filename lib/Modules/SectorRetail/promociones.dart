@@ -231,7 +231,7 @@ class _PromocionesState extends State<Promociones> {
                 promo['activo'] = value;
               });
             },
-            activeColor: const Color(0xFF10B981),
+            activeThumbColor: const Color(0xFF10B981),
           ),
         ],
       ),
@@ -276,7 +276,7 @@ class _PromocionesState extends State<Promociones> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: tipoSeleccionado,
+                initialValue: tipoSeleccionado,
                 items: [
                   DropdownMenuItem(
                     value: 'bundle',

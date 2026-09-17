@@ -10,7 +10,7 @@ class TipoCambio extends StatefulWidget {
 }
 
 class _TipoCambioState extends State<TipoCambio> {
-  List<Map<String, dynamic>> _tasas = [
+  final List<Map<String, dynamic>> _tasas = [
     {'moneda': 'USD', 'compra': 24.50, 'venta': 24.75, 'fecha': '2026-08-10'},
     {'moneda': 'EUR', 'compra': 26.80, 'venta': 27.10, 'fecha': '2026-08-10'},
   ];

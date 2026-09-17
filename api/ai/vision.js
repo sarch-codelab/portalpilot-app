@@ -44,13 +44,22 @@ module.exports = async function handler(req, res) {
         reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
         return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
       }
-      // Si es error de modelo no encontrado, probar siguiente modelo
+      // Modelo no encontrado O key del proveedor vencida/sin créditos →
+      // probar siguiente modelo y luego el fallback OpenRouter. JAMÁS
+      // propagar 401/403 tal cual: el app lo interpreta como sesión
+      // expirada y cierra la sesión del usuario (logout espurio).
       const errMsg = (data.error?.message || '').toLowerCase();
-      if (errMsg.includes('does not exist') || errMsg.includes('model_not_found') || errMsg.includes('decommissioned') || r.status === 404) {
+      if (r.status === 404 || r.status === 401 || r.status === 403 ||
+          errMsg.includes('does not exist') || errMsg.includes('model_not_found') ||
+          errMsg.includes('decommissioned') || errMsg.includes('api key') ||
+          errMsg.includes('invalid_api_key') || errMsg.includes('quota')) {
         lastError = data;
         continue;
       }
-      return res.status(r.status || 502).json({ error: data.error?.message || 'Error Groq Vision', reply: null, details: data });
+      return res.status(r.status === 401 || r.status === 403 ? 502 : (r.status || 502)).json({
+        error: data.error?.message || 'Error Groq Vision', reply: null,
+        code: 'IA_PROVIDER', details: data,
+      });
     } catch (err) {
       lastError = { error: { message: err.message } };
       continue;

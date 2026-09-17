@@ -39,7 +39,7 @@ class PPDataGrid extends StatefulWidget {
 class _PPDataGridState extends State<PPDataGrid> {
   int? _sortColumnIndex;
   bool _sortAscending = true;
-  Set<int> _selectedRows = {};
+  final Set<int> _selectedRows = {};
 
   @override
   Widget build(BuildContext context) {

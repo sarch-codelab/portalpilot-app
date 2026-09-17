@@ -8,6 +8,7 @@ import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/canal_tradicional_service.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/factura_pdf_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 
@@ -103,9 +104,7 @@ class _FacturaFormState extends State<FacturaForm> {
         _tipoDocumento = 'Comprobante Fiscal (RST)';
         _cai = '';
       }
-      _clientesGuardados = List<Map<String, dynamic>>.from(
-        jsonDecode(clientesJson),
-      );
+      _clientesGuardados = JsonGuard.safeListOfMaps(clientesJson, source: 'Facturacion/factura_form/clientes');
     });
 
     if (widget.facturaExistente == null) {
@@ -521,7 +520,7 @@ class _FacturaFormState extends State<FacturaForm> {
 
     final prefs = await SharedPreferences.getInstance();
     final facturasJson = prefs.getString('facturas') ?? '[]';
-    final List<dynamic> facturas = jsonDecode(facturasJson);
+    final List<dynamic> facturas = JsonGuard.safeListOfMaps(facturasJson, source: 'Facturacion/factura_form/guardar');
 
     String correlativo;
     if (esEdicion) {

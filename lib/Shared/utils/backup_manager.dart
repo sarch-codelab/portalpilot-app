@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -185,7 +186,7 @@ class BackupManager {
       
       return backups;
     } catch (e) {
-      print('Error al obtener backups: $e');
+      debugPrint('Error al obtener backups: $e');
       return [];
     }
   }
@@ -200,7 +201,7 @@ class BackupManager {
       }
       return false;
     } catch (e) {
-      print('Error al eliminar backup: $e');
+      debugPrint('Error al eliminar backup: $e');
       return false;
     }
   }
@@ -222,7 +223,7 @@ class BackupManager {
         await files[i].delete();
       }
     } catch (e) {
-      print('Error al limpiar backups antiguos: $e');
+      debugPrint('Error al limpiar backups antiguos: $e');
     }
   }
 
@@ -230,8 +231,7 @@ class BackupManager {
   Future<String> exportBackup(String backupPath, String exportPath) async {
     try {
       final backupFile = File(backupPath);
-      final exportFile = File(exportPath);
-      
+
       await backupFile.copy(exportPath);
       
       return exportPath;

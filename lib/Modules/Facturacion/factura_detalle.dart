@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/factura_pdf_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 
 class FacturaDetalle extends StatelessWidget {
@@ -16,7 +17,7 @@ class FacturaDetalle extends StatelessWidget {
     final isv15 = (factura['isv_15'] as num?)?.toDouble() ?? 0.0;
     final isv18 = (factura['isv_18'] as num?)?.toDouble() ?? 0.0;
     final descuento = (factura['descuento'] as num?)?.toDouble() ?? 0.0;
-    final items = List<Map<String, dynamic>>.from(factura['items'] ?? []);
+    final items = JsonGuard.toListOfMaps(factura['items']);
     final fecha = factura['fecha'] ?? '';
     final dt = DateTime.tryParse(fecha);
 

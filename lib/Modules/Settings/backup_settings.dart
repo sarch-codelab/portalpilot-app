@@ -275,6 +275,7 @@ class _BackupSettingsState extends State<BackupSettings> {
     try {
       await BackupManager().createBackup();
       await _loadBackups();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Backup creado exitosamente'),
@@ -282,6 +283,7 @@ class _BackupSettingsState extends State<BackupSettings> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al crear backup: $e'),
@@ -289,7 +291,7 @@ class _BackupSettingsState extends State<BackupSettings> {
         ),
       );
     } finally {
-      setState(() => _isCreatingBackup = false);
+      if (mounted) setState(() => _isCreatingBackup = false);
     }
   }
 
@@ -338,6 +340,7 @@ class _BackupSettingsState extends State<BackupSettings> {
     if (confirmed == true) {
       try {
         await BackupManager().restoreBackup(backupPath);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Backup restaurado exitosamente'),
@@ -345,6 +348,7 @@ class _BackupSettingsState extends State<BackupSettings> {
           ),
         );
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al restaurar backup: $e'),
@@ -401,6 +405,7 @@ class _BackupSettingsState extends State<BackupSettings> {
       final deleted = await BackupManager().deleteBackup(backupPath);
       if (deleted) {
         await _loadBackups();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Backup eliminado'),

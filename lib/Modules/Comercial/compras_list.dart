@@ -45,8 +45,8 @@ class _ComprasListState extends State<ComprasList> {
           final c = _list[i];
           return ListTile(
             title: Text(c.correlativo ?? '---'),
-            subtitle: Text('${c.proveedorId ?? ''} • ${c.total.toStringAsFixed(2)}'),
-            trailing: Text(c.estado ?? ''),
+            subtitle: Text('${c.proveedorId} • ${c.total.toStringAsFixed(2)}'),
+            trailing: Text(c.estado),
           );
         },
       ),
@@ -67,6 +67,7 @@ class _CompraFormState extends State<CompraForm> {
 
   Future<void> _save() async {
     final proveedores = await _service.getProveedores();
+    if (!mounted) return;
     if (proveedores.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Crear primero un proveedor')));
       return;
@@ -74,6 +75,7 @@ class _CompraFormState extends State<CompraForm> {
     final proveedor = proveedores.first;
     final items = <(Producto, int, double, double)>[]; // placeholder
     await _service.crearCompra(proveedorId: proveedor.id, items: items, notas: _notas.text);
+    if (!mounted) return;
     Navigator.of(context).pop();
   }
 

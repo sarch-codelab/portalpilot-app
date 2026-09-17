@@ -125,6 +125,7 @@ class _ProveedorFormState extends State<ProveedorForm> {
         activo: true,
       );
     }
+    if (!mounted) return;
     Navigator.of(context).pop();
   }
 

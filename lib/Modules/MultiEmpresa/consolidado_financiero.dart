@@ -10,7 +10,7 @@ class ConsolidadoFinanciero extends StatefulWidget {
 }
 
 class _ConsolidadoFinancieroState extends State<ConsolidadoFinanciero> {
-  List<Map<String, dynamic>> _reportes = [
+  final List<Map<String, dynamic>> _reportes = [
     {
       'id': '1',
       'empresa': 'Holding Principal',

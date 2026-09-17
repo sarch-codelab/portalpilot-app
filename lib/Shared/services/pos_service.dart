@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
@@ -24,8 +23,8 @@ class PosService {
   String? _currentUsuarioId;
 
   // Configuración terminal
-  int _decimales = 2;
-  String _moneda = 'L';
+  final int _decimales = 2;
+  final String _moneda = 'L';
 
   void setContext({
     required String empresaId,
@@ -331,9 +330,13 @@ class PosService {
   }
 
   List<PosCarritoItem> _aplicarPromocion(List<PosCarritoItem> carrito, PosPromocione promo) {
-    final config = promo.configuracion != null 
-      ? jsonDecode(utf8.decode(promo.configuracion!)) as Map<String, dynamic>
-      : {};
+    Map<String, dynamic> config = const {};
+    try {
+      final decoded = jsonDecode(utf8.decode(promo.configuracion));
+      if (decoded is Map) config = Map<String, dynamic>.from(decoded);
+    } catch (_) {
+      debugPrint('⚠️ Promoción con configuración corrupta');
+    }
 
     switch (promo.tipo) {
       case '2x1':
@@ -600,8 +603,11 @@ class PosService {
     double totalSalidas = 0;
 
     for (final t in transacciones) {
-      if (t.tipo == 'gasto') totalGastos += t.monto;
-      else if (t.tipo == 'ingreso' && t.categoria != 'Venta POS') totalEntradas += t.monto;
+      if (t.tipo == 'gasto') {
+        totalGastos += t.monto;
+      } else if (t.tipo == 'ingreso' && t.categoria != 'Venta POS') {
+        totalEntradas += t.monto;
+      }
     }
 
     final sistemaTotal = arqueo.fondoInicial + totalEfectivo + totalEntradas - totalGastos - totalSalidas;
@@ -681,14 +687,12 @@ class PosService {
     double totalEfectivo = 0;
     double totalTarjeta = 0;
     double totalTransferencia = 0;
-    int totalItems = 0;
     int totalTransacciones = ventas.length;
 
     Map<String, int> itemsPorProducto = {};
 
     for (final v in ventas) {
       totalVentas += v.total;
-      totalItems += v.total > 0 ? 1 : 0;
       
       switch (v.metodoPago) {
         case 'efectivo':

@@ -85,6 +85,14 @@ class ConnectivityService {
 
   void dispose() {
     _subscription?.cancel();
-    _connectivityController?.close();
+    _subscription = null;
+    if (_connectivityController != null && !_connectivityController!.isClosed) {
+      _connectivityController!.close();
+    }
+    // Anular la referencia es OBLIGATORIO: si solo la cerramos (sin anular),
+    // cualquier listener nuevo recibe un stream zombie ya cerrado (onDone
+    // inmediato, 0 eventos) y `_updateConnectivity` revienta con StateError
+    // ("Cannot add event after closing").
+    _connectivityController = null;
   }
 }

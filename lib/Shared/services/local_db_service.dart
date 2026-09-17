@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
@@ -205,7 +206,7 @@ class LocalDatabaseService {
           'empresa_codigo': existing.empresaId,
           'factura': {
             'id': id,
-            'estado': factura.estado.value ?? existing.estado,
+            'estado': factura.estado.value,
             'fecha_anulacion': factura.fechaAnulacion.value?.toIso8601String(),
             'motivo_anulacion': factura.motivoAnulacion.value,
           },
@@ -570,7 +571,10 @@ class LocalDatabaseService {
         .getSingleOrNull();
 
     if (draft != null) {
-      return jsonDecode(utf8.decode(draft.datos)) as Map<String, dynamic>;
+      final decoded = JsonGuard.tryDecode(utf8.decode(draft.datos));
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return null;
     }
     return null;
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/utils/mobile_utils.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_ai_assistant.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_app_shell.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_skeleton.dart';
 import 'package:portal_pilot_app/Shared/widgets/read_only_guard.dart';
@@ -124,12 +125,30 @@ class PPModuleScaffold extends StatelessWidget {
             onNew!();
           };
 
+    // Botón de IA del módulo: asistente con datos reales del negocio.
+    // Va ANTES de las acciones del módulo en todas las plataformas.
+    final aiButton = IconButton(
+      tooltip: 'Asistente IA de $screenTitle',
+      icon: ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          colors: [Color(0xFFB94DDC), Color(0xFF8B5CF6)],
+        ).createShader(bounds),
+        child: const Icon(Icons.auto_awesome_rounded, size: 22),
+      ),
+      onPressed: () => showPPAiAssistant(
+        context: context,
+        moduleId: moduleId,
+        screenTitle: screenTitle,
+        moduleColor: moduleColor,
+      ),
+    );
+
     return PPAppShell(
       moduleId: moduleId,
       screenTitle: screenTitle,
       moduleIcon: moduleIcon,
       moduleColor: moduleColor,
-      actions: actions,
+      actions: [aiButton, ...?actions],
       onNew: guardedOnNew,
       onGlobalSearch: onGlobalSearch,
       onLogout: onLogout,

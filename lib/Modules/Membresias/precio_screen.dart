@@ -398,7 +398,7 @@ class _PrecioScreenState extends State<PrecioScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<String>(
-                  value: null,
+                  initialValue: null,
                   hint: Text('Seleccionar producto',
                       style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF737373))),
                   dropdownColor: const Color(0xFF1A1A1A),

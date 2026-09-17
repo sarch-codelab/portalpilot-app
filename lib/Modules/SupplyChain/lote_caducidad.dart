@@ -10,7 +10,7 @@ class LoteCaducidad extends StatefulWidget {
 }
 
 class _LoteCaducidadState extends State<LoteCaducidad> {
-  List<Map<String, dynamic>> _lotes = [
+  final List<Map<String, dynamic>> _lotes = [
     {
       'id': '1',
       'producto': 'Leche Entera 1L',

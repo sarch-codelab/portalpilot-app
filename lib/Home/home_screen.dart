@@ -62,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen>
   DateTime _currentTime = DateTime.now();
   bool _isOnline = true;
   StreamSubscription<bool>? _connectivitySubscription;
+  StreamSubscription<SyncStatus>? _syncStatusSubscription;
 
   @override
   void initState() {
@@ -106,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen>
       await OfflineSyncService.instance.initialize();
       
       // Escuchar estado de sincronización
-      OfflineSyncService.instance.syncStatusStream.listen((status) {
+      _syncStatusSubscription = OfflineSyncService.instance.syncStatusStream.listen((status) {
         if (mounted) {
           // Mostrar indicador de sincronización si es necesario
           debugPrint('🔄 Sync status: ${status.message}');
@@ -143,6 +144,7 @@ class _HomeScreenState extends State<HomeScreen>
     _moduleSearchController.dispose();
     _clockTimer?.cancel();
     _connectivitySubscription?.cancel();
+    _syncStatusSubscription?.cancel();
     super.dispose();
   }
 
@@ -373,17 +375,39 @@ class _HomeScreenState extends State<HomeScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (isMobile) ...[
-          // Barra de acciones arriba (derecha)
+          // Barra superior móvil: identidad a la izquierda, acciones a la derecha.
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              _headerPill(
-                palette: palette,
-                color: _isOnline ? palette.successGreen : palette.errorRed,
-                icon: _isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-                label: _isOnline ? 'Online' : 'Offline',
+              Image.asset(
+                'assets/img/robot_logo.png',
+                width: 40,
+                height: 40,
+                fit: BoxFit.contain,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Portal Pilot',
+                      style: GoogleFonts.syne(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: palette.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                      maxLines: 1,
+                    ),
+                    _headerPill(
+                      palette: palette,
+                      color: _isOnline ? palette.successGreen : palette.errorRed,
+                      icon: _isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
+                      label: _isOnline ? 'Online' : 'Offline',
+                    ),
+                  ],
+                ),
+              ),
               _headerIconButton(
                 palette: palette,
                 tooltip: 'Menú',
@@ -410,31 +434,6 @@ class _HomeScreenState extends State<HomeScreen>
                 onPressed: () => _handleLogout(context),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          // Robot centrado + Portal Pilot debajo
-          Center(
-            child: Column(
-              children: [
-                Image.asset(
-                  'assets/img/robot_logo.png',
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Portal Pilot',
-                  style: GoogleFonts.syne(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: palette.textPrimary,
-                    letterSpacing: -0.5,
-                  ),
-                  maxLines: 1,
-                ),
-              ],
-            ),
           ),
         ] else ...[
           // Desktop: fila de identidad + acciones
@@ -536,21 +535,21 @@ class _HomeScreenState extends State<HomeScreen>
     required String label,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const EdgeInsets.only(top: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color, width: 1),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 12),
+          Icon(icon, color: color, size: 10),
           const SizedBox(width: 4),
           Text(
             label,
             style: GoogleFonts.dmSans(
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: FontWeight.bold,
               color: color,
             ),
@@ -561,6 +560,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   /// Botón de icono estándar del encabezado — funciona en claro y oscuro.
+  /// Usa constraints compactas para que quede alineado con la fila (44px).
   Widget _headerIconButton({
     required ThemePalette palette,
     required String tooltip,
@@ -575,9 +575,15 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       child: Tooltip(
         message: tooltip,
-        child: IconButton(
-          icon: Icon(icon, color: palette.brandOnSurface, size: 18),
-          onPressed: onPressed,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onPressed,
+          child: Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            child: Icon(icon, color: palette.brandOnSurface, size: 19),
+          ),
         ),
       ),
     );
@@ -1085,7 +1091,7 @@ class _HomeScreenState extends State<HomeScreen>
               Expanded(child: _buildMobileNavButton(palette, icon: Icons.settings_rounded, label: 'Config', isSelected: _mobileNavIndex == 1, onTap: () { setState(() => _mobileNavIndex = 1); _openSettings(); })),
               _buildPortalCoreButton(palette),
               Expanded(child: _buildMobileNavButton(palette, icon: Icons.support_agent_rounded, label: 'Soporte', isSelected: _mobileNavIndex == 2, onTap: () { setState(() => _mobileNavIndex = 2); Navigator.push(context, MaterialPageRoute(builder: (_) => const SoporteHome())); })),
-              Expanded(child: _buildMobileNavButton(palette, icon: Icons.logout_rounded, label: 'Salir', isSelected: false, onTap: () => _handleLogout(context))),
+              Expanded(child: _buildMobileNavButton(palette, icon: Icons.auto_awesome_rounded, label: 'Navi', isSelected: _mobileNavIndex == 3, onTap: () { setState(() => _mobileNavIndex = 3); _openModule(Modulo.modulosDisponibles.firstWhere((m) => m.id == 'chat_ia')); })),
             ],
           ),
         ),
@@ -1097,22 +1103,24 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.of(context).push(SlideFromRightTransition(child: const SettingsHome()));
   }
 
+  /// Botón central del nav móvil: abre el Núcleo (drawer con todos los módulos).
+  /// Centrado verticalmente, sin márgenes que lo desalineen.
   Widget _buildPortalCoreButton(ThemePalette palette) {
     return Tooltip(
-      message: 'Núcleo Portal Pilot',
+      message: 'Núcleo Portal Pilot — todos los módulos',
       child: GestureDetector(
         onTap: () => _scaffoldKey.currentState?.openDrawer(),
         child: Container(
-          width: 58,
-          height: 58,
-          margin: const EdgeInsets.only(bottom: 20),
+          width: 52,
+          height: 52,
+          margin: const EdgeInsets.symmetric(horizontal: 6),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFD16BF0), Color(0xFF5C1A7E)]),
             border: Border.all(color: Colors.white.withValues(alpha: 0.75), width: 2),
-            boxShadow: const [BoxShadow(color: Color(0x99B94DDC), blurRadius: 18, spreadRadius: 2)],
+            boxShadow: const [BoxShadow(color: Color(0x99B94DDC), blurRadius: 16, spreadRadius: 1)],
           ),
-          child: const Icon(Icons.hub_rounded, color: Colors.white, size: 27),
+          child: const Icon(Icons.hub_rounded, color: Colors.white, size: 25),
         ),
       ),
     );
@@ -1126,9 +1134,10 @@ class _HomeScreenState extends State<HomeScreen>
     required VoidCallback onTap,
   }) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? palette.brand.withValues(alpha: 0.15)
@@ -1136,12 +1145,13 @@ class _HomeScreenState extends State<HomeScreen>
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               color: isSelected ? palette.brandOnSurface : palette.textMuted,
-              size: 20,
+              size: 21,
             ),
             const SizedBox(height: 4),
             Text(

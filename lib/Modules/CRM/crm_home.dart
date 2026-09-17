@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:portal_pilot_app/Modules/CRM/clientes/cliente_form.dart';
 import 'package:portal_pilot_app/Modules/CRM/clientes/cliente_list.dart';
 import 'package:portal_pilot_app/Modules/CRM/ventas/ventas_home.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 
@@ -43,7 +43,7 @@ class _CrmHomeState extends State<CrmHome> {
   Future<void> _cargarDatos() async {
     final prefs = await SharedPreferences.getInstance();
     final venJson = prefs.getString('ventas_crm') ?? '[]';
-    final List<dynamic> ventas = jsonDecode(venJson);
+    final List<dynamic> ventas = JsonGuard.safeListOfMaps(venJson, source: 'CRM/ventas');
 
     int activos = 0;
     double ventasMes = 0, pendiente = 0;
@@ -54,7 +54,7 @@ class _CrmHomeState extends State<CrmHome> {
     try {
       final api = ApiService.instance;
       final result = await api.get('/api/clientes');
-      if (result != null && api.isSuccess(result)) {
+      if (api.isSuccess(result)) {
         final clientes = result['clientes'] ?? [];
         if (clientes is List) {
           totalClientes = clientes.length;
@@ -67,7 +67,7 @@ class _CrmHomeState extends State<CrmHome> {
       debugPrint('⚠️ Error cargando clientes del backend: $e');
       // Fallback a SharedPreferences
       final cliJson = prefs.getString('clientes') ?? '[]';
-      final List<dynamic> clientes = jsonDecode(cliJson);
+      final List<dynamic> clientes = JsonGuard.safeListOfMaps(cliJson, source: 'CRM/home/clientes');
       totalClientes = clientes.length;
       for (final c in clientes) {
         if (c['activo'] != false) activos++;

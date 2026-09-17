@@ -65,6 +65,9 @@ app.*.map.json
 .env
 
 
+# Herramienta freebuff (ID local del proyecto)
+.freebuff/
+
 # Local distribution builds
 /compilaciones/
 

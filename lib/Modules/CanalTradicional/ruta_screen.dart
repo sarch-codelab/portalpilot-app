@@ -327,7 +327,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 children: [
                   Icon(
                     Icons.person_rounded,
-                    color: appPalette.bgTertiary,
+                    color: appPalette.textMuted,
                     size: 14,
                   ),
                   const SizedBox(width: 6),
@@ -435,7 +435,7 @@ class _RutaScreenState extends State<RutaScreen> {
                     children: [
                       Icon(
                         Icons.person_rounded,
-                        color: appPalette.bgTertiary,
+                        color: appPalette.textMuted,
                         size: 15,
                       ),
                       const SizedBox(width: 8),
@@ -625,7 +625,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: frecuencia,
+                  initialValue: frecuencia,
                   dropdownColor: appPalette.cardColor,
                   style: GoogleFonts.dmSans(fontSize: 14, color: appPalette.textPrimary),
                   decoration: _inputDecoration('Frecuencia'),
@@ -643,7 +643,7 @@ class _RutaScreenState extends State<RutaScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int?>(
-                  value: diaSemana,
+                  initialValue: diaSemana,
                   dropdownColor: appPalette.cardColor,
                   style: GoogleFonts.dmSans(fontSize: 14, color: appPalette.textPrimary),
                   decoration: _inputDecoration('Día de visita'),

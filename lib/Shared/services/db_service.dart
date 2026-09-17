@@ -1,7 +1,6 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 
@@ -31,91 +30,91 @@ class PortalPilotDB {
   static Future<List<Map<String, dynamic>>> getFacturas(String empresaCodigo) async {
     final facturas = await _localDb.getFacturas(empresaCodigo);
     return facturas.map((f) => {
-      'id': f.id ?? '',
-      'empresa_id': f.empresaId ?? '',
+      'id': f.id,
+      'empresa_id': f.empresaId,
       'usuario_id': f.usuarioId,
-      'correlativo': f.correlativo ?? '',
-      'tipo_documento': f.tipoDocumento ?? 'Factura',
-      'cai': f.cai ?? '',
+      'correlativo': f.correlativo,
+      'tipo_documento': f.tipoDocumento,
+      'cai': f.cai,
       'rango_inicio': f.rangoInicio,
       'rango_fin': f.rangoFin,
       'fecha_limite_emision': f.fechaLimiteEmision?.toIso8601String(),
       'cliente_nombre': f.clienteNombre,
       'cliente_rtn': f.clienteRtn,
       'cliente_direccion': f.clienteDireccion,
-      'condicion_pago': f.condicionPago ?? 'Contado',
-      'tipo_venta': f.tipoVenta ?? 'Gravada',
+      'condicion_pago': f.condicionPago,
+      'tipo_venta': f.tipoVenta,
       'items': f.items,
-      'subtotal': f.subtotal ?? 0.0,
-      'isv_15': f.isv15 ?? 0.0,
-      'isv_18': f.isv18 ?? 0.0,
-      'descuento': f.descuento ?? 0.0,
-      'total': f.total ?? 0.0,
-      'estado': f.estado ?? 'emitida',
+      'subtotal': f.subtotal,
+      'isv_15': f.isv15,
+      'isv_18': f.isv18,
+      'descuento': f.descuento,
+      'total': f.total,
+      'estado': f.estado,
       'fecha_anulacion': f.fechaAnulacion?.toIso8601String(),
       'motivo_anulacion': f.motivoAnulacion,
       'notas': f.notas,
-      'created_at': f.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
-      'updated_at': f.updatedAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+      'created_at': f.createdAt.toIso8601String(),
+      'updated_at': f.updatedAt.toIso8601String(),
     }).toList();
   }
 
   static Future<List<Map<String, dynamic>>> getClientes(String empresaCodigo) async {
     final clientes = await _localDb.getClientes(empresaCodigo);
     return clientes.map((c) => {
-      'id': c.id ?? '',
-      'empresa_id': c.empresaId ?? '',
-      'nombre': c.nombre ?? '',
+      'id': c.id,
+      'empresa_id': c.empresaId,
+      'nombre': c.nombre,
       'rtn': c.rtn,
       'direccion': c.direccion,
       'telefono': c.telefono,
       'email': c.email,
       'notas': c.notas,
-      'activo': c.activo ?? true,
-      'created_at': c.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
-      'updated_at': c.updatedAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+      'activo': c.activo,
+      'created_at': c.createdAt.toIso8601String(),
+      'updated_at': c.updatedAt.toIso8601String(),
     }).toList();
   }
 
   static Future<List<Map<String, dynamic>>> getProductos(String empresaCodigo) async {
     final productos = await _localDb.getProductos(empresaCodigo);
     return productos.map((p) => {
-      'id': p.id ?? '',
-      'empresa_id': p.empresaId ?? '',
+      'id': p.id,
+      'empresa_id': p.empresaId,
       'codigo': p.codigo,
-      'nombre': p.nombre ?? '',
+      'nombre': p.nombre,
       'descripcion': p.descripcion,
       'categoria': p.categoria,
-      'unidad_medida': p.unidadMedida ?? 'Unidad',
-      'precio_compra': p.precioCompra ?? 0.0,
-      'precio_venta': p.precioVenta ?? 0.0,
-      'stock_minimo': p.stockMinimo ?? 0,
-      'stock_actual': p.stockActual ?? 0,
-      'bodega': p.bodega ?? 'General',
-      'isv_rate': p.isvRate ?? 15.0,
-      'exento': p.exento ?? false,
+      'unidad_medida': p.unidadMedida,
+      'precio_compra': p.precioCompra,
+      'precio_venta': p.precioVenta,
+      'stock_minimo': p.stockMinimo,
+      'stock_actual': p.stockActual,
+      'bodega': p.bodega,
+      'isv_rate': p.isvRate,
+      'exento': p.exento,
       'imagen_url': p.imagenUrl,
-      'activo': p.activo ?? true,
-      'created_at': p.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
-      'updated_at': p.updatedAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+      'activo': p.activo,
+      'created_at': p.createdAt.toIso8601String(),
+      'updated_at': p.updatedAt.toIso8601String(),
     }).toList();
   }
 
   static Future<List<Map<String, dynamic>>> getTransacciones(String empresaCodigo) async {
     final transacciones = await _localDb.getTransacciones(empresaCodigo);
     return transacciones.map((t) => {
-      'id': t.id ?? '',
-      'empresa_id': t.empresaId ?? '',
+      'id': t.id,
+      'empresa_id': t.empresaId,
       'usuario_id': t.usuarioId,
-      'tipo': t.tipo ?? '',
+      'tipo': t.tipo,
       'categoria': t.categoria,
       'descripcion': t.descripcion,
-      'monto': t.monto ?? 0.0,
+      'monto': t.monto,
       'metodo_pago': t.metodoPago,
       'referencia': t.referencia,
-      'fecha': t.fecha?.toIso8601String() ?? DateTime.now().toIso8601String(),
-      'created_at': t.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
-      'updated_at': t.updatedAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+      'fecha': t.fecha.toIso8601String(),
+      'created_at': t.createdAt.toIso8601String(),
+      'updated_at': t.updatedAt.toIso8601String(),
     }).toList();
   }
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -143,15 +142,6 @@ class PortalPilotDB {
         .timeout(_timeout);
     if (response.statusCode >= 400) {
       debugPrint('âš ï¸ POST $path -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
-      return null;
-    }
-    return jsonDecode(utf8.decode(response.bodyBytes));
-  }
-
-  static Future<dynamic> _getJson(String path, [Map<String, String>? query]) async {
-    final response = await http.get(_uri(path, query), headers: _headers).timeout(_timeout);
-    if (response.statusCode != 200) {
-      debugPrint('âš ï¸ GET $path -> ${response.statusCode}');
       return null;
     }
     return jsonDecode(utf8.decode(response.bodyBytes));

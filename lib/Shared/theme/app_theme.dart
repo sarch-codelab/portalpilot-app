@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class AppThemeNotifier extends ValueNotifier<ThemeMode> {
+class AppThemeNotifier extends ValueNotifier<ThemeMode>
+    with WidgetsBindingObserver {
   AppThemeNotifier() : super(ThemeMode.dark) {
+    WidgetsBinding.instance.addObserver(this);
     _loadTheme();
   }
+
+  /// True cuando el usuario ya eligió tema en esta sesión; evita que la
+  /// carga asíncrona de preferencias pise su elección durante el arranque.
+  bool _userChanged = false;
 
   Future<void> _loadTheme() async {
     // Soporta el esquema nuevo (theme_mode) y el legado (theme_is_dark).
@@ -18,43 +24,57 @@ class AppThemeNotifier extends ValueNotifier<ThemeMode> {
         orElse: () => ThemeMode.dark,
       );
     } else {
-      final isDark = prefs.getBool('theme_is_dark') ?? true;
-      mode = isDark ? ThemeMode.dark : ThemeMode.light;
+      final isDarkStored = prefs.getBool('theme_is_dark') ?? true;
+      mode = isDarkStored ? ThemeMode.dark : ThemeMode.light;
     }
-    value = mode;
+    if (!_userChanged && value != mode) value = mode;
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    // En modo sistema, reacciona al tema del operativo al instante.
+    if (value == ThemeMode.system) notifyListeners();
   }
 
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('theme_mode', value.name);
     // Clave legada para componentes viejos que aún la leen.
-    await prefs.setBool('theme_is_dark', value == ThemeMode.dark);
+    await prefs.setBool('theme_is_dark', isDark);
   }
 
+  /// Cambio directo claro ↔ oscuro: CADA toque produce un cambio visible.
+  /// (Antes ciclabá por "sistema", que en Windows puede verse igual al
+  /// modo actual y parecía que el botón no hacía nada.)
   Future<void> toggle() async {
-    // Ciclo completo: oscuro → claro → sistema → oscuro.
-    switch (value) {
-      case ThemeMode.dark:
-        value = ThemeMode.light;
-        break;
-      case ThemeMode.light:
-        value = ThemeMode.system;
-        break;
-      case ThemeMode.system:
-        value = ThemeMode.dark;
-        break;
-    }
+    _userChanged = true;
+    value = isDark ? ThemeMode.light : ThemeMode.dark;
     await _persist();
   }
 
-  /// Fuerza un modo concreto (usado por Configuración → Apariencia).
+  /// Fuerza un modo concreto (menú del shell / Configuración → Apariencia).
   Future<void> setMode(ThemeMode mode) async {
     if (value == mode) return;
+    _userChanged = true;
     value = mode;
     await _persist();
   }
 
-  bool get isDark => value == ThemeMode.dark;
+  /// Verdadero si la UI debe pintarse oscura AHORA. En modo sistema consulta
+  /// el brillo real de la plataforma (antes devolvía false fijo y el modo
+  /// sistema se veía roto/igual en ambos temas).
+  bool get isDark {
+    switch (value) {
+      case ThemeMode.dark:
+        return true;
+      case ThemeMode.light:
+        return false;
+      case ThemeMode.system:
+        return WidgetsBinding
+                .instance.platformDispatcher.platformBrightness ==
+            Brightness.dark;
+    }
+  }
 }
 
 final appThemeNotifier = AppThemeNotifier();

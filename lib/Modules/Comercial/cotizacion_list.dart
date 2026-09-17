@@ -47,7 +47,7 @@ class _CotizacionListState extends State<CotizacionList> {
           return ListTile(
             title: Text(c.correlativo ?? '---'),
             subtitle: Text('${c.proveedorNombre} • ${c.total.toStringAsFixed(2)}'),
-            trailing: Text(c.estado ?? ''),
+            trailing: Text(c.estado),
           );
         },
       ),
@@ -64,12 +64,12 @@ class CotizacionForm extends StatefulWidget {
 
 class _CotizacionFormState extends State<CotizacionForm> {
   final _service = ComercialService.instance;
-  String _proveedorId = '';
   final _notas = TextEditingController();
 
   Future<void> _save() async {
     // Minimal create: no items, just create a placeholder cotización
     final proveedores = await _service.getProveedores();
+    if (!mounted) return;
     if (proveedores.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Crear primero un proveedor')));
       return;
@@ -77,6 +77,7 @@ class _CotizacionFormState extends State<CotizacionForm> {
     final proveedor = proveedores.first;
     final productos = <(Producto, int, double, double)>[]; // empty items — not ideal but placeholder
     await _service.crearCotizacion(proveedorId: proveedor.id, items: productos, notas: _notas.text);
+    if (!mounted) return;
     Navigator.of(context).pop();
   }
 

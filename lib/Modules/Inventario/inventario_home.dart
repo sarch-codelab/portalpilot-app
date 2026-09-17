@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
 import 'package:portal_pilot_app/Modules/Inventario/producto_list.dart';
 import 'package:portal_pilot_app/Modules/Inventario/kardex.dart';
@@ -73,7 +74,7 @@ class _InventarioHomeState extends State<InventarioHome> {
     if (productos.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       final productosJson = prefs.getString('productos') ?? '[]';
-      final List<dynamic> localProductos = jsonDecode(productosJson);
+      final List<dynamic> localProductos = JsonGuard.safeListOfMaps(productosJson, source: 'Inventario/productos');
       productos = localProductos.cast<Map<String, dynamic>>();
     }
 
@@ -223,6 +224,8 @@ class _InventarioHomeState extends State<InventarioHome> {
   }
 
   Widget _buildHeader(ThemePalette palette) {
+    // La acción "Nuevo" vive en el FAB móvil y en la topbar (botón Nuevo),
+    // aquí solo el título: nada de chips decorativos sin función.
     return Row(
       children: [
         Expanded(
@@ -242,24 +245,6 @@ class _InventarioHomeState extends State<InventarioHome> {
               Text(
                 'Productos, kardex y bodegas',
                 style: GoogleFonts.dmSans(fontSize: 13, color: palette.textMuted),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [_inventarioColor, const Color(0xFFD97706)]),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: palette.glowShadow(_inventarioColor),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.inventory_2_rounded, color: appPalette.cardColor, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                'Nuevo',
-                style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.bold, color: appPalette.textPrimary),
               ),
             ],
           ),
@@ -552,7 +537,7 @@ class _InventarioHomeState extends State<InventarioHome> {
 
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString('productos') ?? '[]';
-    final lista = List<Map<String, dynamic>>.from(jsonDecode(json));
+    final lista = JsonGuard.safeListOfMaps(json, source: 'Inventario/eliminar');
     final codigo = (p['codigo'] ?? '').toString();
     lista.removeWhere((x) => (x['codigo'] ?? '').toString() == codigo);
     await prefs.setString('productos', jsonEncode(lista));

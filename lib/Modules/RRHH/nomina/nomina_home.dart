@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Modules/RRHH/nomina/recibo_nomina.dart';
 
 class NominaHome extends StatefulWidget {
@@ -44,8 +45,8 @@ class _NominaHomeState extends State<NominaHome> {
     final recJson = prefs.getString('recibos_nomina') ?? '[]';
 
     setState(() {
-      _empleados = List<Map<String, dynamic>>.from(jsonDecode(empJson));
-      _recibos = List<Map<String, dynamic>>.from(jsonDecode(recJson));
+      _empleados = JsonGuard.safeListOfMaps(empJson, source: 'RRHH/nomina/empleados');
+      _recibos = JsonGuard.safeListOfMaps(recJson, source: 'RRHH/nomina/recibos');
     });
 
     _calcularNomina();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 class RenovacionesAutomaticas extends StatefulWidget {
   const RenovacionesAutomaticas({super.key});
@@ -31,8 +32,7 @@ class _RenovacionesAutomaticasState extends State<RenovacionesAutomaticas> {
         final data = result['socios'] ?? [];
         if (data is List && mounted) {
           setState(() {
-            _membresias = data.map<Map<String, dynamic>>((s) {
-              final socio = Map<String, dynamic>.from(s);
+            _membresias = JsonGuard.toListOfMaps(data).map<Map<String, dynamic>>((socio) {
               return {
                 'id': socio['id']?.toString() ?? '',
                 'socio': socio['nombre'] ?? 'Sin nombre',

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_form.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_list.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/clientes/cliente_form.dart';
@@ -80,7 +79,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
     try {
       final api = ApiService.instance;
       final result = await api.get('/api/facturas/resumen', queryParams: {'empresaCodigo': api.empresaCodigo});
-      if (result != null && api.isSuccess(result)) {
+      if (api.isSuccess(result)) {
         final resumen = result['resumen'] ?? result;
         final hoy = DateTime.now();
 
@@ -88,7 +87,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
         final listResult = await api.get('/api/facturas', queryParams: {'empresaCodigo': api.empresaCodigo, 'limit': '200'});
         int fHoy = 0;
         double tHoy = 0.0;
-        if (listResult != null && api.isSuccess(listResult)) {
+        if (api.isSuccess(listResult)) {
           final facturas = listResult['facturas'] ?? listResult['data'] ?? [];
           for (final f in (facturas is List ? facturas : [])) {
             final fecha = DateTime.tryParse(f['created_at'] ?? '') ?? DateTime.now();
@@ -107,7 +106,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
             _montoTotal = (resumen['total_facturado'] as num?)?.toDouble() ?? 0.0;
           });
         }
-      } else if (mounted && result != null) {
+      } else if (mounted) {
         // Mostrar error de red si aplica
         NetworkHelper.showNetworkError(context, result);
       }
@@ -130,9 +129,10 @@ class _FacturacionHomeState extends State<FacturacionHome> {
       onRefresh: _cargarDatos,
       actions: [
           IconButton(
+            tooltip: 'Configuración de facturación',
             icon: Icon(
               Icons.settings_outlined,
-              color: appPalette.bgTertiary,
+              color: appPalette.textMuted,
               size: 20,
             ),
             onPressed: _mostrarConfiguracion,

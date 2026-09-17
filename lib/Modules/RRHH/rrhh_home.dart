@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:portal_pilot_app/Modules/RRHH/empleados/empleado_form.dart';
 import 'package:portal_pilot_app/Modules/RRHH/empleados/empleado_list.dart';
 import 'package:portal_pilot_app/Modules/RRHH/nomina/nomina_home.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 
@@ -42,7 +42,7 @@ class _RrhhHomeState extends State<RrhhHome> {
   Future<void> _cargarDatos() async {
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString('empleados') ?? '[]';
-    final List<dynamic> empleados = jsonDecode(json);
+    final List<dynamic> empleados = JsonGuard.safeListOfMaps(json, source: 'RRHH/home');
 
     int activos = 0, inactivos = 0;
     double nomina = 0.0;

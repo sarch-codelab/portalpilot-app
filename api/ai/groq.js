@@ -38,11 +38,18 @@
           return res.status(200).json({ success: true, text: content, modelId: model, provider: 'groq', tokensUsed: data.usage?.total_tokens || 0 });
         }
         const msg = data.error?.message || '';
-        if (msg.includes('does not exist') || msg.includes('model_not_found') || msg.includes('decommissioned') || r.status === 404) {
-          lastError = msg;
+        // 401/403 del proveedor = key vencida/sin créditos → siguiente modelo
+        // y fallback. JAMÁS propagar el código (el app lo toma como logout).
+        if (r.status === 404 || r.status === 401 || r.status === 403 ||
+            msg.includes('does not exist') || msg.includes('model_not_found') ||
+            msg.includes('decommissioned') || msg.toLowerCase().includes('api key') ||
+            msg.toLowerCase().includes('invalid_api_key') || msg.toLowerCase().includes('quota')) {
+          lastError = msg || `Groq HTTP ${r.status}`;
           continue;
         }
-        return res.status(r.status || 502).json({ success: false, error: msg || 'Error Groq', details: data });
+        return res.status(r.status === 401 || r.status === 403 ? 502 : (r.status || 502)).json({
+          success: false, error: msg || 'Error Groq', code: 'IA_PROVIDER', details: data,
+        });
       } catch (err) {
         lastError = err.message;
         continue;

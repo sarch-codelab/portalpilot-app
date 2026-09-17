@@ -570,8 +570,11 @@ class ComercialService {
       subtotal += base;
       descuento += precio * cant * (dcto / 100);
       final isv = p.isvRate >= 18 ? 18.0 : 15.0;
-      if (isv >= 18) isv18 += base * (isv / 100);
-      else isv15 += base * (isv / 100);
+      if (isv >= 18) {
+        isv18 += base * (isv / 100);
+      } else {
+        isv15 += base * (isv / 100);
+      }
     }
     final total = subtotal + isv15 + isv18;
 

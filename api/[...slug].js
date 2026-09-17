@@ -393,11 +393,19 @@ async function aiChatHandler(req, res) {
       }
       const msg = data.error?.message || '';
       // Model not found/decommissioned -> siguiente modelo
-      if (msg.includes('does not exist') || msg.includes('model_not_found') || msg.includes('decommissioned') || r.status === 404) {
-        lastError = msg;
+      // 401/403 = key del proveedor vencida/sin créditos → siguiente modelo
+      // y fallback OpenRouter. JAMÁS propagar el código tal cual: el app
+      // interpreta 401 como sesión expirada y cierra la sesión (bug).
+      if (r.status === 404 || r.status === 401 || r.status === 403 ||
+          msg.includes('does not exist') || msg.includes('model_not_found') ||
+          msg.includes('decommissioned') || msg.toLowerCase().includes('api key') ||
+          msg.toLowerCase().includes('invalid_api_key') || msg.toLowerCase().includes('quota')) {
+        lastError = msg || `Groq HTTP ${r.status}`;
         continue;
       }
-      return res.status(r.status || 502).json({ error: msg || 'Error Groq', reply: null, details: data });
+      return res.status(r.status === 401 || r.status === 403 ? 502 : (r.status || 502)).json({
+        error: msg || 'Error Groq', reply: null, code: 'IA_PROVIDER', details: data,
+      });
     } catch (e) {
       lastError = e.message;
       continue;
@@ -465,12 +473,18 @@ async function aiVisionHandler(req, res) {
           return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
         }
         const msg = data.error?.message || '';
-        // Si es deprecaciÃ³n, prueba siguiente modelo
-        if (msg.includes('decommissioned') || msg.includes('model_') || data.error?.code === 'model_decommissioned') {
-          lastError = msg;
+        // Si es deprecación, prueba siguiente modelo. 401/403 = key del
+        // proveedor vencida/sin créditos → también continuar al fallback;
+        // JAMÁS propagar el código (el app lo toma como sesión expirada).
+        if (msg.includes('decommissioned') || msg.includes('model_') || data.error?.code === 'model_decommissioned' ||
+            r.status === 401 || r.status === 403 || msg.toLowerCase().includes('api key') ||
+            msg.toLowerCase().includes('invalid_api_key') || msg.toLowerCase().includes('quota')) {
+          lastError = msg || `Groq HTTP ${r.status}`;
           continue;
         }
-        return res.status(r.status || 502).json({ error: msg || 'Error Groq Vision', reply: null, details: data });
+        return res.status(r.status === 401 || r.status === 403 ? 502 : (r.status || 502)).json({
+          error: msg || 'Error Groq Vision', reply: null, code: 'IA_PROVIDER', details: data,
+        });
 } catch (e) {
       lastError = e.message;
       continue;
@@ -683,11 +697,17 @@ async function aiPosUpsellHandler(req, res) {
         return res.status(200).json({ reply, sugerencias, model: data.model || model, provider: 'groq', usage: data.usage });
       }
       const msg = data.error?.message || '';
-      if (msg.includes('does not exist') || msg.includes('model_not_found') || msg.includes('decommissioned') || r.status === 404) {
-        lastError = msg;
+      // Igual que en chat: no propagar 401/403 del proveedor (logout espurio).
+      if (r.status === 404 || r.status === 401 || r.status === 403 ||
+          msg.includes('does not exist') || msg.includes('model_not_found') ||
+          msg.includes('decommissioned') || msg.toLowerCase().includes('api key') ||
+          msg.toLowerCase().includes('invalid_api_key') || msg.toLowerCase().includes('quota')) {
+        lastError = msg || `Groq HTTP ${r.status}`;
         continue;
       }
-      return res.status(r.status || 502).json({ error: msg || 'Error Groq', reply: null, details: data, sugerencias: [] });
+      return res.status(r.status === 401 || r.status === 403 ? 502 : (r.status || 502)).json({
+        error: msg || 'Error Groq', reply: null, code: 'IA_PROVIDER', details: data, sugerencias: [],
+      });
     } catch (e) {
       lastError = e.message;
       continue;

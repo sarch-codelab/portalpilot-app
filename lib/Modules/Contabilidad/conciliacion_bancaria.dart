@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -43,7 +44,7 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
       try {
         final prefs = await SharedPreferences.getInstance();
         final json = prefs.getString('transacciones') ?? '[]';
-        final locales = jsonDecode(json) as List<dynamic>;
+        final locales = JsonGuard.safeListOfMaps(json, source: 'Contabilidad/conciliacion');
         cargadas = locales
             .whereType<Map>()
             .map((t) => _normalizarTransaccion(Map<String, dynamic>.from(t)))
@@ -101,7 +102,7 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final json = prefs.getString('transacciones') ?? '[]';
-      final locales = jsonDecode(json) as List<dynamic>;
+      final locales = JsonGuard.safeListOfMaps(json, source: 'Contabilidad/conciliacion/guardar');
       locales.add({
         'id': nueva['id'],
         'tipo': tipo == 'Ingreso' ? 'ingreso' : 'gasto',

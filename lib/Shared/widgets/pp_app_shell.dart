@@ -79,15 +79,15 @@ class PPAppShell extends StatefulWidget {
 
 /// Controlador accesible desde cualquier hijo del shell.
 class PPController {
-  final _PPAppShellState state;
+  final _PPAppShellState _state;
 
-  PPController._(this.state);
+  PPController._(this._state);
 
-  void openModule(Modulo modulo) => state._openModule(context: state.context, modulo: modulo);
-  void openModuleById(String id) => state._openModuleById(state.context, id);
-  void openDrawer() => state._scaffoldKey.currentState?.openDrawer();
-  void toggleSidebar() => state.toggleSidebar();
-  void logout() => state._handleLogout(state.context);
+  void openModule(Modulo modulo) => _state._openModule(context: _state.context, modulo: modulo);
+  void openModuleById(String id) => _state._openModuleById(_state.context, id);
+  void openDrawer() => _state._scaffoldKey.currentState?.openDrawer();
+  void toggleSidebar() => _state.toggleSidebar();
+  void logout() => _state._handleLogout(_state.context);
 }
 
 class _PPInherited extends InheritedWidget {

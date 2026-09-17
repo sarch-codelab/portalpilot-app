@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -55,7 +56,7 @@ class _ConfiguracionImpuestosState extends State<ConfiguracionImpuestos> {
       final prefs = await SharedPreferences.getInstance();
       final json = prefs.getString(_prefsKey);
       if (json != null) {
-        final data = jsonDecode(json) as List<dynamic>;
+        final data = JsonGuard.safeListOfMaps(json, source: 'Contabilidad/impuestos');
         cargados = data
             .whereType<Map>()
             .map((e) => Map<String, dynamic>.from(e))

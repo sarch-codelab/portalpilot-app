@@ -109,9 +109,6 @@ class _SystemLogsState extends State<SystemLogs> {
 
   Widget _buildLogCard(String log, ThemePalette palette) {
     try {
-      final logData = log.contains('{') ? log : '{}';
-      final logMap = logData.startsWith('{') ? null : null;
-
       final level = log.contains('ERROR')
           ? 'ERROR'
           : log.contains('WARNING')

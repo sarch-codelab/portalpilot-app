@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
@@ -52,7 +51,7 @@ class _CierresMensualesState extends State<CierresMensuales> {
       }
       final prefs = await SharedPreferences.getInstance();
       final json = prefs.getString('transacciones') ?? '[]';
-      _transacciones = jsonDecode(json) as List<dynamic>;
+      _transacciones = JsonGuard.safeListOfMaps(json, source: 'Contabilidad/cierres');
       _cargarTasasImpuestos(prefs);
     } catch (_) {}
     if (mounted) setState(() => _cargando = false);
@@ -62,9 +61,8 @@ class _CierresMensualesState extends State<CierresMensuales> {
     try {
       final json = prefs.getString('impuestos_config');
       if (json == null) return;
-      final impuestos = jsonDecode(json) as List<dynamic>;
+      final impuestos = JsonGuard.safeListOfMaps(json, source: 'Contabilidad/cierres/impuestos');
       for (final impuesto in impuestos) {
-        if (impuesto is! Map) continue;
         final nombre = (impuesto['nombre'] ?? '').toString().toUpperCase();
         final tasa = (impuesto['tasa'] as num?)?.toDouble();
         if (tasa == null) continue;

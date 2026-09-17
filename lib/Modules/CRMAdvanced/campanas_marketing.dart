@@ -10,7 +10,7 @@ class CampanasMarketing extends StatefulWidget {
 }
 
 class _CampanasMarketingState extends State<CampanasMarketing> {
-  List<Map<String, dynamic>> _campanas = [
+  final List<Map<String, dynamic>> _campanas = [
     {
       'id': '1',
       'nombre': 'Promo Verano 2026',

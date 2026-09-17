@@ -10,7 +10,7 @@ class Trazabilidad extends StatefulWidget {
 }
 
 class _TrazabilidadState extends State<Trazabilidad> {
-  List<Map<String, dynamic>> _movimientos = [
+  final List<Map<String, dynamic>> _movimientos = [
     {
       'id': '1',
       'producto': 'Arroz Premium 5kg',
