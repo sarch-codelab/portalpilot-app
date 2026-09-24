@@ -275,6 +275,9 @@ class ReportToolDispatcher {
 
   String _rol() {
     if (authSource != null) return authSource!.rol;
+    // La cuenta staff/root de Portal Pilot siempre puede generar reportes,
+    // sin importar cómo esté etiquetado su rol en la base de datos.
+    if (AuthController.instance.esRoot) return 'admin';
     final rol = AuthController.instance.rol.trim();
     if (rol.isNotEmpty && AuthController.instance.isLoggedIn) return rol;
     return AIManager.instance.rolUsuario;

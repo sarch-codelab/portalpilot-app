@@ -285,7 +285,37 @@ Después del JSON, añade un texto breve para el usuario explicando que estás p
   // VALIDACIONES DE SEGURIDAD
   // ═══════════════════════════════════════════════════════════
 
+  /// Normaliza un rol para comparación: minúsculas y sin acentos.
+  static String _normalizarRol(String rol) {
+    const acentos = {
+      'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+      'ä': 'a', 'ë': 'e', 'ï': 'i', 'ö': 'o', 'ü': 'u', 'ñ': 'n',
+    };
+    return rol
+        .trim()
+        .toLowerCase()
+        .split('')
+        .map((c) => acentos[c] ?? c)
+        .join();
+  }
+
+  /// Roles administrativos/de staff reciben acceso total. Cubre variantes como
+  /// "Administrador del Sistema", "Super Admin", "Owner", "root", "Gerente",
+  /// "Jefe" y la cuenta staff de Portal Pilot (portalpilot.hn@gmail.com).
+  static bool _esRolAdministrativo(String rol) {
+    if (_normalizarRol(rol).isEmpty) return false;
+    const adminKeywords = [
+      'admin', 'root', 'owner', 'dueno', 'administrador',
+      'super', 'gerente', 'jefe', 'sistema', 'staff',
+    ];
+    final palabras = _normalizarRol(rol).split(RegExp('[^a-z0-9]+'));
+    return palabras.any(adminKeywords.contains);
+  }
+
   static bool puedeAccederA(String rol, String recurso) {
+    final r = _normalizarRol(rol);
+    if (_esRolAdministrativo(rol)) return true;
+
     final permisos = {
       'admin': [
         'usuarios', 'finanzas', 'reportes', 'configuracion',
@@ -306,7 +336,7 @@ Después del JSON, añade un texto breve para el usuario explicando que estás p
       ],
     };
 
-    return permisos[rol.toLowerCase()]?.contains(recurso.toLowerCase()) ?? false;
+    return permisos[r]?.contains(_normalizarRol(recurso)) ?? false;
   }
 
   // ═══════════════════════════════════════════════════════════
