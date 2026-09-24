@@ -8,7 +8,6 @@ import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
-import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 
 class ProductoList extends StatefulWidget {
@@ -79,6 +78,9 @@ class _ProductoListState extends State<ProductoList> {
   Map<String, dynamic> _productoDbAMap(Producto p) => {
         'id': p.id,
         'codigo': p.codigo,
+        'barcode': p.barcode,
+        'marca': p.marca,
+        'presentacion': p.presentacion,
         'nombre': p.nombre,
         'descripcion': p.descripcion,
         'categoria': p.categoria,
@@ -97,6 +99,9 @@ class _ProductoListState extends State<ProductoList> {
   Map<String, dynamic> _productoAPosMap(Map<String, dynamic> p) => {
         'id': p['id'],
         'codigo': p['codigo'],
+        'barcode': p['barcode'],
+        'marca': p['marca'],
+        'presentacion': p['presentacion'],
         'nombre': p['nombre'],
         'descripcion': p['descripcion'],
         'categoria': p['categoria'],
@@ -113,17 +118,29 @@ class _ProductoListState extends State<ProductoList> {
       };
 
   List<Map<String, dynamic>> _dedupePorCodigo(List<Map<String, dynamic>> items) {
-    final visto = <String>{};
+    // Llave primaria por codigo; si no hay codigo, por barcode (identidad única
+    // del producto). Dos registros con el mismo codigo (o el mismo barcode
+    // cuando no hay codigo) colapsan a una sola fila para no duplicar.
+    final vistoCodigo = <String>{};
+    final vistoBarcode = <String>{};
     final resultado = <Map<String, dynamic>>[];
     for (final p in items) {
-      final codigo = (p['codigo'] ?? '').toString();
-      if (codigo.isEmpty) {
-        resultado.add(p);
+      final codigo = (p['codigo'] ?? '').toString().trim();
+      final barcode = (p['barcode'] ?? '').toString().trim();
+      if (codigo.isNotEmpty) {
+        if (vistoCodigo.add(codigo)) {
+          if (barcode.isNotEmpty) vistoBarcode.add(barcode);
+          resultado.add(p);
+        }
         continue;
       }
-      if (visto.add(codigo)) {
-        resultado.add(p);
+      if (barcode.isNotEmpty) {
+        if (vistoBarcode.add(barcode)) {
+          resultado.add(p);
+        }
+        continue;
       }
+      resultado.add(p);
     }
     return resultado;
   }
@@ -230,9 +247,11 @@ class _ProductoListState extends State<ProductoList> {
       r = r.where((p) {
         final nombre = (p['nombre'] ?? '').toString().toLowerCase();
         final codigo = (p['codigo'] ?? '').toString().toLowerCase();
+        final barcode = (p['barcode'] ?? '').toString().toLowerCase();
         final cat = (p['categoria'] ?? '').toString().toLowerCase();
         return nombre.contains(_busqueda.toLowerCase()) ||
             codigo.contains(_busqueda.toLowerCase()) ||
+            barcode.contains(_busqueda.toLowerCase()) ||
             cat.contains(_busqueda.toLowerCase());
       }).toList();
     }
@@ -278,41 +297,16 @@ class _ProductoListState extends State<ProductoList> {
     );
     if (confirmado != true || !mounted) return;
 
-    final id = producto['id'];
-    final codigo = (producto['codigo'] ?? '').toString();
     final prefs = await SharedPreferences.getInstance();
     final empresaCodigo = prefs.getString('empresa_codigo') ?? 'ROOT';
-    
-    // Eliminar de la BD local Drift (causa real de que el producto reapareciera)
-    await LocalDatabaseService.instance.deleteProductoLocal(
+
+    // Borra de Drift, de 'productos'/'productos_pos' en SharedPreferences y
+    // encola el borrado en el backend (por id UUID o codigo): así el producto
+    // no reaparece al volver a cargar desde el servidor.
+    await LocalDatabaseService.instance.eliminarProductoGlobal(
       empresaId: empresaCodigo,
-      codigo: codigo,
+      producto: producto,
     );
-    
-    // Eliminar de SharedPreferences por codigo (y por id como respaldo)
-    final json = prefs.getString('productos') ?? '[]';
-    final List<dynamic> productos = JsonGuard.safeListOfMaps(json, source: 'Inventario/eliminar');
-    productos.removeWhere((p) => (p['codigo'] ?? '') == codigo || p['id'] == id);
-    await prefs.setString('productos', jsonEncode(productos));
-    
-    // Eliminar de productos_pos también
-    final productosPosJson = prefs.getString('productos_pos') ?? '[]';
-    final List<dynamic> productosPos = JsonGuard.safeListOfMaps(productosPosJson, source: 'Inventario/eliminar_pos');
-    productosPos.removeWhere((p) => (p['codigo'] ?? '') == codigo || p['id'] == id);
-    await prefs.setString('productos_pos', jsonEncode(productosPos));
-    
-    // Sincronizar eliminación con Supabase (solo si tiene código)
-    if (codigo.isNotEmpty) {
-      await SyncService.instance.enqueueSync(
-        tabla: 'productos',
-        operacion: SyncOperation.delete,
-        datos: {
-          'empresa_codigo': empresaCodigo,
-          'codigo': codigo,
-        },
-        empresaId: empresaCodigo,
-      );
-    }
 
     _cargarProductos();
   }

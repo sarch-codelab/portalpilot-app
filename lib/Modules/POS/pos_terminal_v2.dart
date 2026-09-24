@@ -203,6 +203,9 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             id: p['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
             empresaId: _auth.empresaCodigo,
             codigo: p['codigo']?.toString(),
+            barcode: p['barcode']?.toString(),
+            marca: p['marca']?.toString(),
+            presentacion: p['presentacion']?.toString(),
             nombre: p['nombre']?.toString() ?? '',
             descripcion: p['descripcion']?.toString(),
             categoria: p['categoria']?.toString(),
@@ -267,9 +270,11 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   void _agregarPorCodigo(String codigo) {
-    final prod = _productos.where((p) => 
-      (p.codigo ?? '').toLowerCase() == codigo.toLowerCase() ||
-      p.nombre.toLowerCase() == codigo.toLowerCase()
+    final q = codigo.trim().toLowerCase();
+    final prod = _productos.where((p) =>
+      (p.codigo ?? '').toLowerCase() == q ||
+      (p.barcode ?? '').toLowerCase() == q ||
+      p.nombre.toLowerCase() == q
     ).toList();
     
     if (prod.isNotEmpty) {
@@ -1391,7 +1396,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
 
     final productosFiltrados = _productos.where((p) =>
         (p.nombre.toLowerCase().contains(_searchQuery.toLowerCase())) ||
-                (p.codigo?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
+                (p.codigo?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+                (p.barcode?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
       ).toList();
 
     if (productosFiltrados.isEmpty) {

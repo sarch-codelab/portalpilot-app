@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
@@ -322,22 +323,26 @@ class LocalDatabaseService {
     bool enqueueSync = true,
   }) async {
     for (final p in productos) {
-      final codigo = p['codigo'] as String?;
+      final codigo = (p['codigo'] as String?)?.trim();
+      final barcode = (p['barcode'] as String?)?.trim();
       String id;
 
-      // Dedupe por (empresa, codigo): si ya existe, reutiliza su id
-      // para no crear filas duplicadas en la BD local.
+      // Dedupe por (empresa) usando codigo y luego barcode: si ya existe,
+      // reutiliza su id para no crear filas duplicadas en la BD local.
+      Producto? existing;
       if (codigo != null && codigo.isNotEmpty) {
-        final existing = await (_db.select(_db.productos)
+        existing = await (_db.select(_db.productos)
               ..where((x) => x.empresaId.equals(empresaId) & x.codigo.equals(codigo)))
-            .get();
-        if (existing.isNotEmpty) {
-          id = existing.first.id;
-        } else {
-          id = (p['id'] as String?)?.isNotEmpty == true
-              ? p['id'] as String
-              : DateTime.now().microsecondsSinceEpoch.toString();
-        }
+            .getSingleOrNull();
+      }
+      if (existing == null && barcode != null && barcode.isNotEmpty) {
+        existing = await (_db.select(_db.productos)
+              ..where((x) => x.empresaId.equals(empresaId) & x.barcode.equals(barcode)))
+            .getSingleOrNull();
+      }
+
+      if (existing != null) {
+        id = existing.id;
       } else {
         id = (p['id'] as String?)?.isNotEmpty == true
             ? p['id'] as String
@@ -348,7 +353,10 @@ class LocalDatabaseService {
         id: id,
         empresaId: empresaId,
         codigo: Value(codigo),
-        nombre: p['nombre'] as String,
+        barcode: Value(barcode),
+        marca: Value(p['marca'] as String?),
+        presentacion: Value(p['presentacion'] as String?),
+        nombre: (p['nombre'] as String?) ?? '',
         descripcion: Value(p['descripcion'] as String?),
         categoria: Value(p['categoria'] as String?),
         unidadMedida: Value(p['unidad_medida'] as String? ?? 'Unidad'),
@@ -394,11 +402,56 @@ class LocalDatabaseService {
   Future<void> deleteProductoLocal({
     required String empresaId,
     required String codigo,
+    String? id,
   }) async {
-    if (codigo.isEmpty) return;
-    await (_db.delete(_db.productos)
+    if (codigo.isEmpty && (id == null || id.isEmpty)) return;
+
+    final exp = _db.productos;
+    if (id != null && id.isNotEmpty) {
+      await (_db.delete(exp)..where((p) => p.empresaId.equals(empresaId) & p.id.equals(id))).go();
+      return;
+    }
+    await (_db.delete(exp)
           ..where((p) => p.empresaId.equals(empresaId) & p.codigo.equals(codigo)))
         .go();
+  }
+
+  /// Elimina un producto de todos los almacenes locales (Drift + SharedPreferences
+  /// 'productos' y 'productos_pos') y encola su borrado en el backend. Es la ruta
+  /// única que usan Inventario y Catálogo para que el producto no reaparezca.
+  Future<void> eliminarProductoGlobal({
+    required String empresaId,
+    required Map<String, dynamic> producto,
+  }) async {
+    final id = (producto['id'] as String?)?.isNotEmpty == true ? producto['id'] as String : '';
+    final codigo = (producto['codigo'] ?? '').toString();
+
+    await deleteProductoLocal(empresaId: empresaId, codigo: codigo, id: id);
+
+    final prefs = await SharedPreferences.getInstance();
+
+    final json = prefs.getString('productos') ?? '[]';
+    final List<dynamic> productos = JsonGuard.safeListOfMaps(json, source: 'Inventario/eliminar');
+    productos.removeWhere((p) => (p['codigo'] ?? '') == codigo || (id.isNotEmpty && p['id'] == id));
+    await prefs.setString('productos', jsonEncode(productos));
+
+    final productosPosJson = prefs.getString('productos_pos') ?? '[]';
+    final List<dynamic> productosPos = JsonGuard.safeListOfMaps(productosPosJson, source: 'Inventario/eliminar_pos');
+    productosPos.removeWhere((p) => (p['codigo'] ?? '') == codigo || (id.isNotEmpty && p['id'] == id));
+    await prefs.setString('productos_pos', jsonEncode(productosPos));
+
+    if (id.isNotEmpty || codigo.isNotEmpty) {
+      await _syncService.enqueueSync(
+        tabla: 'productos',
+        operacion: SyncOperation.delete,
+        datos: {
+          'empresa_codigo': empresaId,
+          'id': id,
+          'codigo': codigo,
+        },
+        empresaId: empresaId,
+      );
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════

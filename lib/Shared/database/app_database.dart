@@ -135,6 +135,9 @@ class Productos extends Table {
   TextColumn get id => text().withLength(min: 1, max: 36)();
   TextColumn get empresaId => text()();
   TextColumn get codigo => text().nullable()();
+  TextColumn get barcode => text().nullable()();
+  TextColumn get marca => text().nullable()();
+  TextColumn get presentacion => text().nullable()();
   TextColumn get nombre => text()();
   TextColumn get descripcion => text().nullable()();
   TextColumn get categoria => text().nullable()();
@@ -926,7 +929,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase() => instance;
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -972,6 +975,11 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(ordenCompraItems);
             await m.createTable(compras);
             await m.createTable(compraItems);
+          }
+          if (from < 7) {
+            await m.addColumn(productos, productos.barcode);
+            await m.addColumn(productos, productos.marca);
+            await m.addColumn(productos, productos.presentacion);
           }
         },
       );

@@ -217,13 +217,19 @@ class PortalPilotDB {
     }
   }
 
-  /// Productos - borrar en backend (por id en la WEB)
+  /// Productos - borrar en backend (por id en la WEB; si el id local no es un
+  /// UUID, el backend interpreta el segmento como codigo de producto).
   static Future<bool> deleteProducto({required String id, required String codigo, required String empresaCodigo}) async {
     try {
-      if (id.isEmpty) return false;
+      // El backend borra por `id` cuando el segmento es un UUID (36 chars);
+      // cualquier otro valor lo trata como codigo de producto. Así un id local
+      // tipo epoch, o un borrado con solo codigo, llega correcto al servidor.
+      final esUuid = id.length == 36;
+      final clave = esUuid ? id : (codigo.isNotEmpty ? codigo : id);
+      if (clave.isEmpty) return false;
       final response = await http
           .delete(
-            _uri('/api/productos/$id'),
+            _uri('/api/productos/$clave'),
             headers: _headers,
           )
           .timeout(_timeout);

@@ -4650,6 +4650,37 @@ class $ProductosTable extends Productos
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _barcodeMeta = const VerificationMeta(
+    'barcode',
+  );
+  @override
+  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
+    'barcode',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _marcaMeta = const VerificationMeta('marca');
+  @override
+  late final GeneratedColumn<String> marca = GeneratedColumn<String>(
+    'marca',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _presentacionMeta = const VerificationMeta(
+    'presentacion',
+  );
+  @override
+  late final GeneratedColumn<String> presentacion = GeneratedColumn<String>(
+    'presentacion',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _nombreMeta = const VerificationMeta('nombre');
   @override
   late final GeneratedColumn<String> nombre = GeneratedColumn<String>(
@@ -4854,6 +4885,9 @@ class $ProductosTable extends Productos
     id,
     empresaId,
     codigo,
+    barcode,
+    marca,
+    presentacion,
     nombre,
     descripcion,
     categoria,
@@ -4901,6 +4935,27 @@ class $ProductosTable extends Productos
       context.handle(
         _codigoMeta,
         codigo.isAcceptableOrUnknown(data['codigo']!, _codigoMeta),
+      );
+    }
+    if (data.containsKey('barcode')) {
+      context.handle(
+        _barcodeMeta,
+        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    }
+    if (data.containsKey('marca')) {
+      context.handle(
+        _marcaMeta,
+        marca.isAcceptableOrUnknown(data['marca']!, _marcaMeta),
+      );
+    }
+    if (data.containsKey('presentacion')) {
+      context.handle(
+        _presentacionMeta,
+        presentacion.isAcceptableOrUnknown(
+          data['presentacion']!,
+          _presentacionMeta,
+        ),
       );
     }
     if (data.containsKey('nombre')) {
@@ -5049,6 +5104,18 @@ class $ProductosTable extends Productos
         DriftSqlType.string,
         data['${effectivePrefix}codigo'],
       ),
+      barcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode'],
+      ),
+      marca: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}marca'],
+      ),
+      presentacion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}presentacion'],
+      ),
       nombre: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}nombre'],
@@ -5130,6 +5197,9 @@ class Producto extends DataClass implements Insertable<Producto> {
   final String id;
   final String empresaId;
   final String? codigo;
+  final String? barcode;
+  final String? marca;
+  final String? presentacion;
   final String nombre;
   final String? descripcion;
   final String? categoria;
@@ -5151,6 +5221,9 @@ class Producto extends DataClass implements Insertable<Producto> {
     required this.id,
     required this.empresaId,
     this.codigo,
+    this.barcode,
+    this.marca,
+    this.presentacion,
     required this.nombre,
     this.descripcion,
     this.categoria,
@@ -5176,6 +5249,15 @@ class Producto extends DataClass implements Insertable<Producto> {
     map['empresa_id'] = Variable<String>(empresaId);
     if (!nullToAbsent || codigo != null) {
       map['codigo'] = Variable<String>(codigo);
+    }
+    if (!nullToAbsent || barcode != null) {
+      map['barcode'] = Variable<String>(barcode);
+    }
+    if (!nullToAbsent || marca != null) {
+      map['marca'] = Variable<String>(marca);
+    }
+    if (!nullToAbsent || presentacion != null) {
+      map['presentacion'] = Variable<String>(presentacion);
     }
     map['nombre'] = Variable<String>(nombre);
     if (!nullToAbsent || descripcion != null) {
@@ -5212,6 +5294,15 @@ class Producto extends DataClass implements Insertable<Producto> {
       codigo: codigo == null && nullToAbsent
           ? const Value.absent()
           : Value(codigo),
+      barcode: barcode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(barcode),
+      marca: marca == null && nullToAbsent
+          ? const Value.absent()
+          : Value(marca),
+      presentacion: presentacion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(presentacion),
       nombre: Value(nombre),
       descripcion: descripcion == null && nullToAbsent
           ? const Value.absent()
@@ -5249,6 +5340,9 @@ class Producto extends DataClass implements Insertable<Producto> {
       id: serializer.fromJson<String>(json['id']),
       empresaId: serializer.fromJson<String>(json['empresaId']),
       codigo: serializer.fromJson<String?>(json['codigo']),
+      barcode: serializer.fromJson<String?>(json['barcode']),
+      marca: serializer.fromJson<String?>(json['marca']),
+      presentacion: serializer.fromJson<String?>(json['presentacion']),
       nombre: serializer.fromJson<String>(json['nombre']),
       descripcion: serializer.fromJson<String?>(json['descripcion']),
       categoria: serializer.fromJson<String?>(json['categoria']),
@@ -5275,6 +5369,9 @@ class Producto extends DataClass implements Insertable<Producto> {
       'id': serializer.toJson<String>(id),
       'empresaId': serializer.toJson<String>(empresaId),
       'codigo': serializer.toJson<String?>(codigo),
+      'barcode': serializer.toJson<String?>(barcode),
+      'marca': serializer.toJson<String?>(marca),
+      'presentacion': serializer.toJson<String?>(presentacion),
       'nombre': serializer.toJson<String>(nombre),
       'descripcion': serializer.toJson<String?>(descripcion),
       'categoria': serializer.toJson<String?>(categoria),
@@ -5299,6 +5396,9 @@ class Producto extends DataClass implements Insertable<Producto> {
     String? id,
     String? empresaId,
     Value<String?> codigo = const Value.absent(),
+    Value<String?> barcode = const Value.absent(),
+    Value<String?> marca = const Value.absent(),
+    Value<String?> presentacion = const Value.absent(),
     String? nombre,
     Value<String?> descripcion = const Value.absent(),
     Value<String?> categoria = const Value.absent(),
@@ -5320,6 +5420,9 @@ class Producto extends DataClass implements Insertable<Producto> {
     id: id ?? this.id,
     empresaId: empresaId ?? this.empresaId,
     codigo: codigo.present ? codigo.value : this.codigo,
+    barcode: barcode.present ? barcode.value : this.barcode,
+    marca: marca.present ? marca.value : this.marca,
+    presentacion: presentacion.present ? presentacion.value : this.presentacion,
     nombre: nombre ?? this.nombre,
     descripcion: descripcion.present ? descripcion.value : this.descripcion,
     categoria: categoria.present ? categoria.value : this.categoria,
@@ -5345,6 +5448,11 @@ class Producto extends DataClass implements Insertable<Producto> {
       id: data.id.present ? data.id.value : this.id,
       empresaId: data.empresaId.present ? data.empresaId.value : this.empresaId,
       codigo: data.codigo.present ? data.codigo.value : this.codigo,
+      barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      marca: data.marca.present ? data.marca.value : this.marca,
+      presentacion: data.presentacion.present
+          ? data.presentacion.value
+          : this.presentacion,
       nombre: data.nombre.present ? data.nombre.value : this.nombre,
       descripcion: data.descripcion.present
           ? data.descripcion.value
@@ -5385,6 +5493,9 @@ class Producto extends DataClass implements Insertable<Producto> {
           ..write('id: $id, ')
           ..write('empresaId: $empresaId, ')
           ..write('codigo: $codigo, ')
+          ..write('barcode: $barcode, ')
+          ..write('marca: $marca, ')
+          ..write('presentacion: $presentacion, ')
           ..write('nombre: $nombre, ')
           ..write('descripcion: $descripcion, ')
           ..write('categoria: $categoria, ')
@@ -5407,10 +5518,13 @@ class Producto extends DataClass implements Insertable<Producto> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     empresaId,
     codigo,
+    barcode,
+    marca,
+    presentacion,
     nombre,
     descripcion,
     categoria,
@@ -5428,7 +5542,7 @@ class Producto extends DataClass implements Insertable<Producto> {
     updatedAt,
     synced,
     lastSyncAttempt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5436,6 +5550,9 @@ class Producto extends DataClass implements Insertable<Producto> {
           other.id == this.id &&
           other.empresaId == this.empresaId &&
           other.codigo == this.codigo &&
+          other.barcode == this.barcode &&
+          other.marca == this.marca &&
+          other.presentacion == this.presentacion &&
           other.nombre == this.nombre &&
           other.descripcion == this.descripcion &&
           other.categoria == this.categoria &&
@@ -5459,6 +5576,9 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
   final Value<String> id;
   final Value<String> empresaId;
   final Value<String?> codigo;
+  final Value<String?> barcode;
+  final Value<String?> marca;
+  final Value<String?> presentacion;
   final Value<String> nombre;
   final Value<String?> descripcion;
   final Value<String?> categoria;
@@ -5481,6 +5601,9 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
     this.id = const Value.absent(),
     this.empresaId = const Value.absent(),
     this.codigo = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.marca = const Value.absent(),
+    this.presentacion = const Value.absent(),
     this.nombre = const Value.absent(),
     this.descripcion = const Value.absent(),
     this.categoria = const Value.absent(),
@@ -5504,6 +5627,9 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
     required String id,
     required String empresaId,
     this.codigo = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.marca = const Value.absent(),
+    this.presentacion = const Value.absent(),
     required String nombre,
     this.descripcion = const Value.absent(),
     this.categoria = const Value.absent(),
@@ -5529,6 +5655,9 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
     Expression<String>? id,
     Expression<String>? empresaId,
     Expression<String>? codigo,
+    Expression<String>? barcode,
+    Expression<String>? marca,
+    Expression<String>? presentacion,
     Expression<String>? nombre,
     Expression<String>? descripcion,
     Expression<String>? categoria,
@@ -5552,6 +5681,9 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
       if (id != null) 'id': id,
       if (empresaId != null) 'empresa_id': empresaId,
       if (codigo != null) 'codigo': codigo,
+      if (barcode != null) 'barcode': barcode,
+      if (marca != null) 'marca': marca,
+      if (presentacion != null) 'presentacion': presentacion,
       if (nombre != null) 'nombre': nombre,
       if (descripcion != null) 'descripcion': descripcion,
       if (categoria != null) 'categoria': categoria,
@@ -5577,6 +5709,9 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
     Value<String>? id,
     Value<String>? empresaId,
     Value<String?>? codigo,
+    Value<String?>? barcode,
+    Value<String?>? marca,
+    Value<String?>? presentacion,
     Value<String>? nombre,
     Value<String?>? descripcion,
     Value<String?>? categoria,
@@ -5600,6 +5735,9 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
       id: id ?? this.id,
       empresaId: empresaId ?? this.empresaId,
       codigo: codigo ?? this.codigo,
+      barcode: barcode ?? this.barcode,
+      marca: marca ?? this.marca,
+      presentacion: presentacion ?? this.presentacion,
       nombre: nombre ?? this.nombre,
       descripcion: descripcion ?? this.descripcion,
       categoria: categoria ?? this.categoria,
@@ -5632,6 +5770,15 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
     }
     if (codigo.present) {
       map['codigo'] = Variable<String>(codigo.value);
+    }
+    if (barcode.present) {
+      map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (marca.present) {
+      map['marca'] = Variable<String>(marca.value);
+    }
+    if (presentacion.present) {
+      map['presentacion'] = Variable<String>(presentacion.value);
     }
     if (nombre.present) {
       map['nombre'] = Variable<String>(nombre.value);
@@ -5696,6 +5843,9 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
           ..write('id: $id, ')
           ..write('empresaId: $empresaId, ')
           ..write('codigo: $codigo, ')
+          ..write('barcode: $barcode, ')
+          ..write('marca: $marca, ')
+          ..write('presentacion: $presentacion, ')
           ..write('nombre: $nombre, ')
           ..write('descripcion: $descripcion, ')
           ..write('categoria: $categoria, ')
@@ -34121,6 +34271,9 @@ typedef $$ProductosTableCreateCompanionBuilder =
       required String id,
       required String empresaId,
       Value<String?> codigo,
+      Value<String?> barcode,
+      Value<String?> marca,
+      Value<String?> presentacion,
       required String nombre,
       Value<String?> descripcion,
       Value<String?> categoria,
@@ -34145,6 +34298,9 @@ typedef $$ProductosTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> empresaId,
       Value<String?> codigo,
+      Value<String?> barcode,
+      Value<String?> marca,
+      Value<String?> presentacion,
       Value<String> nombre,
       Value<String?> descripcion,
       Value<String?> categoria,
@@ -34186,6 +34342,21 @@ class $$ProductosTableFilterComposer
 
   ColumnFilters<String> get codigo => $composableBuilder(
     column: $table.codigo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get marca => $composableBuilder(
+    column: $table.marca,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get presentacion => $composableBuilder(
+    column: $table.presentacion,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -34299,6 +34470,21 @@ class $$ProductosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get marca => $composableBuilder(
+    column: $table.marca,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get presentacion => $composableBuilder(
+    column: $table.presentacion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get nombre => $composableBuilder(
     column: $table.nombre,
     builder: (column) => ColumnOrderings(column),
@@ -34403,6 +34589,17 @@ class $$ProductosTableAnnotationComposer
   GeneratedColumn<String> get codigo =>
       $composableBuilder(column: $table.codigo, builder: (column) => column);
 
+  GeneratedColumn<String> get barcode =>
+      $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<String> get marca =>
+      $composableBuilder(column: $table.marca, builder: (column) => column);
+
+  GeneratedColumn<String> get presentacion => $composableBuilder(
+    column: $table.presentacion,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get nombre =>
       $composableBuilder(column: $table.nombre, builder: (column) => column);
 
@@ -34500,6 +34697,9 @@ class $$ProductosTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> empresaId = const Value.absent(),
                 Value<String?> codigo = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<String?> marca = const Value.absent(),
+                Value<String?> presentacion = const Value.absent(),
                 Value<String> nombre = const Value.absent(),
                 Value<String?> descripcion = const Value.absent(),
                 Value<String?> categoria = const Value.absent(),
@@ -34522,6 +34722,9 @@ class $$ProductosTableTableManager
                 id: id,
                 empresaId: empresaId,
                 codigo: codigo,
+                barcode: barcode,
+                marca: marca,
+                presentacion: presentacion,
                 nombre: nombre,
                 descripcion: descripcion,
                 categoria: categoria,
@@ -34546,6 +34749,9 @@ class $$ProductosTableTableManager
                 required String id,
                 required String empresaId,
                 Value<String?> codigo = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<String?> marca = const Value.absent(),
+                Value<String?> presentacion = const Value.absent(),
                 required String nombre,
                 Value<String?> descripcion = const Value.absent(),
                 Value<String?> categoria = const Value.absent(),
@@ -34568,6 +34774,9 @@ class $$ProductosTableTableManager
                 id: id,
                 empresaId: empresaId,
                 codigo: codigo,
+                barcode: barcode,
+                marca: marca,
+                presentacion: presentacion,
                 nombre: nombre,
                 descripcion: descripcion,
                 categoria: categoria,

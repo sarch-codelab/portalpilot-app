@@ -192,29 +192,42 @@ class _ProductoFormState extends State<ProductoForm> {
 
   void _cargarProducto() {
     final p = widget.productoExistente!;
-    _codigoController.text = p['codigo'] ?? '';
-    _barcodeController.text = p['barcode'] ?? '';
-    _nombreController.text = p['nombre'] ?? '';
-    _descripcionController.text = p['descripcion'] ?? '';
-    _precioCompraController.text = (p['precio_compra'] as num?)?.toString() ?? '';
-    _precioVentaController.text = (p['precio_venta'] as num?)?.toString() ?? '';
-    _stockActualController.text = (p['stock_actual'] as num?)?.toString() ?? '0';
-    _stockMinimoController.text = (p['stock_minimo'] as num?)?.toString() ?? '0';
-    _categoria = p['categoria'] ?? 'General';
-    _unidadMedida = p['unidad_medida'] ?? 'Unidad';
-    _bodega = p['bodega'] ?? 'General';
-    _isvRate = (p['isv_rate'] as num?)?.toDouble() ?? 15.0;
+    _codigoController.text = p['codigo']?.toString() ?? '';
+    _barcodeController.text = p['barcode']?.toString() ?? '';
+    _nombreController.text = p['nombre']?.toString() ?? '';
+    _descripcionController.text = p['descripcion']?.toString() ?? '';
+    _precioCompraController.text = _numTexto(p['precio_compra']);
+    _precioVentaController.text = _numTexto(p['precio_venta']);
+    _stockActualController.text = _numTexto(p['stock_actual'], fallback: '0');
+    _stockMinimoController.text = _numTexto(p['stock_minimo'], fallback: '0');
+    _categoria = (p['categoria'] ?? 'General').toString();
+    _unidadMedida = (p['unidad_medida'] ?? 'Unidad').toString();
+    _bodega = (p['bodega'] ?? 'General').toString();
+    _isvRate = _toDouble(p['isv_rate']) ?? 15.0;
     _exento = p['exento'] == true;
     _imagenBase64 = _normalizarBase64(p['imagen_base64'] as String?);
     _imagenUrl = p['imagen_url'] as String? ?? p['imagenUrl'] as String?;
-    _marcaController.text = p['marca'] ?? '';
-    _presentacionController.text = p['presentacion'] ?? '';
+    _marcaController.text = p['marca']?.toString() ?? '';
+    _presentacionController.text = p['presentacion']?.toString() ?? '';
     // Si no hay base64 local pero la URL es una data URL, derivarla para el preview
     if ((_imagenBase64 == null || _imagenBase64!.isEmpty) &&
         (_imagenUrl ?? '').isNotEmpty &&
         !(_imagenUrl ?? '').startsWith('http')) {
       _imagenBase64 = _normalizarBase64(_imagenUrl);
     }
+  }
+
+  /// Convierte un valor numérico (num o string) a texto sin lanzar TypeError.
+  String _numTexto(dynamic v, {String fallback = ''}) {
+    if (v is num) return v.toString();
+    if (v is String && v.trim().isNotEmpty) return v.trim();
+    return fallback;
+  }
+
+  double? _toDouble(dynamic v) {
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v.trim());
+    return null;
   }
 
   /// Extrae el base64 "puro" de un valor que puede ser base64 plano o una data URL.
@@ -1059,6 +1072,9 @@ Future<void> _identificarProductoConIA() async {
     final productoPos = {
       'id': producto['id'],
       'codigo': producto['codigo'],
+      'barcode': producto['barcode'],
+      'marca': producto['marca'],
+      'presentacion': producto['presentacion'],
       'nombre': producto['nombre'],
       'descripcion': producto['descripcion'],
       'categoria': producto['categoria'],
@@ -1123,13 +1139,29 @@ Future<void> _identificarProductoConIA() async {
         'presentacion': producto['presentacion'],
         'imagen_url': _imagenUrl,
       };
+      // En edición se usa el batch upsert (idempotente por codigo/barcode en el
+      // servidor): así la edición persiste aunque el id local no sea el UUID
+      // remoto. En creación el POST individual devuelve 409 si el codigo de
+      // barras ya existe, y ese error se muestra para no crear duplicados.
       final result = esEdicion
-          ? await api.put('/api/productos/$id', body: backendBody)
+          ? await api.post('/api/productos', body: {
+              'empresa_codigo': empresaCodigo,
+              'productos': [backendBody],
+            })
           : await api.post('/api/productos', body: backendBody);
       if (api.isSuccess(result)) {
         debugPrint('[ProductoForm] Synced to backend: $codigo');
       } else {
-        debugPrint('[ProductoForm] Backend sync failed: ${api.getError(result)}');
+        final error = api.getError(result);
+        debugPrint('[ProductoForm] Backend sync failed: $error');
+        if (!esEdicion && mounted && error != null && error.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('El servidor rechazó el producto: $error', style: GoogleFonts.dmSans()),
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+          );
+        }
       }
     } catch (e) {
       debugPrint('[ProductoForm] Backend sync error: $e');
@@ -1344,10 +1376,12 @@ Future<void> _identificarProductoConIA() async {
               const SizedBox(height: 8),
               _buildImagenPicker(),
               const SizedBox(height: 16),
-Row(
+_buildField('Código / SKU', _codigoController, hint: 'Se genera automáticamente si está vacío'),
+              const SizedBox(height: 12),
+              Row(
                 children: [
                   Expanded(
-                    child: _buildField('Código / SKU', _codigoController, hint: 'Se genera automáticamente si está vacío'),
+                    child: _buildField('Código de barras', _barcodeController, hint: 'EAN/UPC/GTIN (opcional)'),
                   ),
                   const SizedBox(width: 8),
                   IconButton(
@@ -1357,8 +1391,6 @@ Row(
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              _buildField('Código de barras', _barcodeController, hint: 'EAN/UPC/GTIN (opcional)'),
               const SizedBox(height: 12),
               _buildField('Nombre del Producto *', _nombreController),
           const SizedBox(height: 12),

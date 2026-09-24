@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
 import 'package:portal_pilot_app/Modules/Inventario/producto_list.dart';
@@ -10,6 +9,7 @@ import 'package:portal_pilot_app/Modules/Inventario/bodegas.dart';
 import 'package:portal_pilot_app/Modules/CanalModerno/canal_moderno_home.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/utils/mobile_utils.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_stats_card.dart';
@@ -118,10 +118,12 @@ class _InventarioHomeState extends State<InventarioHome> {
     }
   }
 
-  Future<void> _abrirProductoForm() async {
+  Future<void> _abrirProductoForm([Map<String, dynamic>? producto]) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ProductoForm()),
+      MaterialPageRoute(
+        builder: (_) => ProductoForm(productoExistente: producto),
+      ),
     );
     await _cargarDatos();
   }
@@ -431,7 +433,7 @@ class _InventarioHomeState extends State<InventarioHome> {
             accentColor: bajo ? palette.errorRed : _inventarioColor,
             onTap: () => _verDetalle(p),
             onDelete: () => _eliminarProducto(p),
-            onEdit: _abrirProductoForm,
+            onEdit: () => _abrirProductoForm(p),
             contextMenuItems: () => [
               PPContextMenuItem(
                 icon: Icons.visibility_rounded,
@@ -442,7 +444,7 @@ class _InventarioHomeState extends State<InventarioHome> {
                 icon: Icons.edit_rounded,
                 label: 'Editar',
                 color: palette.infoBlue,
-                onTap: _abrirProductoForm,
+                onTap: () => _abrirProductoForm(p),
               ),
               PPContextMenuItem(
                 icon: Icons.delete_rounded,
@@ -536,11 +538,14 @@ class _InventarioHomeState extends State<InventarioHome> {
     if (confirmed != true) return;
 
     final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('productos') ?? '[]';
-    final lista = JsonGuard.safeListOfMaps(json, source: 'Inventario/eliminar');
-    final codigo = (p['codigo'] ?? '').toString();
-    lista.removeWhere((x) => (x['codigo'] ?? '').toString() == codigo);
-    await prefs.setString('productos', jsonEncode(lista));
+    final empresaCodigo = prefs.getString('empresa_codigo') ?? 'ROOT';
+
+    // Borra de Drift, de 'productos'/'productos_pos' y encola el borrado en el
+    // backend (por id UUID o codigo) para que el producto no reaparezca.
+    await LocalDatabaseService.instance.eliminarProductoGlobal(
+      empresaId: empresaCodigo,
+      producto: p,
+    );
 
     if (mounted) {
       PPNotifications.success(context, 'Producto eliminado correctamente', title: 'Eliminado');
