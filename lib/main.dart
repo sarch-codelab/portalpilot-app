@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
@@ -9,6 +10,7 @@ import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 import 'package:portal_pilot_app/Shared/services/window_manager.dart';
 import 'package:portal_pilot_app/Shared/services/orientation_service.dart';
 import 'package:portal_pilot_app/Shared/services/offline_sync_service.dart';
+import 'package:portal_pilot_app/Shared/services/sync_service.dart' as durable_sync;
 import 'package:portal_pilot_app/Shared/services/session_guard.dart';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
@@ -61,6 +63,17 @@ Future<void> _initApp() async {
     await OfflineSyncService.instance.initialize();
   } catch (e) {
     debugPrint('⚠️ OfflineSyncService init error: $e');
+  }
+
+  // La capa actual de datos encola cambios en SyncService (SQLite). Debe
+  // arrancar siempre para vaciar la cola persistente tras un reinicio y para
+  // reintentar automáticamente cuando vuelva la conectividad. El servicio
+  // OfflineSyncService anterior se conserva para las pantallas que lo usan,
+  // pero no reemplaza esta cola durable.
+  try {
+    await durable_sync.SyncService.instance.initialize();
+  } catch (e) {
+    debugPrint('⚠️ SyncService persistente init error: $e');
   }
 
   try {
@@ -140,59 +153,88 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
                   ),
                 ),
           builder: (context, child) {
-            if (!Platform.isWindows || child == null) {
-              return child ?? const SizedBox.shrink();
+            final appWidget = CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.f11): () {
+                  AppWindowManager.instance.toggleFullScreen();
+                },
+                const SingleActivator(LogicalKeyboardKey.f11, alt: true): () {
+                  AppWindowManager.instance.toggleFullScreen();
+                },
+              },
+              child: Focus(
+                autofocus: true,
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+
+            if (!Platform.isWindows) {
+              return appWidget;
             }
+
             final isDark = Theme.of(context).brightness == Brightness.dark;
-            return Column(
-              children: [
-                SizedBox(
-                  height: 44,
-                  child: WindowCaption(
-                    backgroundColor: isDark ? const Color(0xFF0A0814) : Colors.white,
-                    brightness: isDark ? Brightness.dark : Brightness.light,
-                    title: Row(
-                      children: [
-                        Image.asset(
-                          'assets/img/robot_logo.png',
-                          width: 24,
-                          height: 24,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Portal Pilot',
-                          style: TextStyle(
-                            color: isDark
-                                ? const Color(0xFFF5F2FF)
-                                : const Color(0xFF1E1B2A),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFB94DDC).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'WORKSPACE',
-                            style: TextStyle(
-                              color: isDark ? const Color(0xFFD16BF0) : const Color(0xFF8B2FB0),
-                              fontSize: 8,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.1,
+            return ValueListenableBuilder<bool>(
+              valueListenable: AppWindowManager.instance.isFullScreenNotifier,
+              builder: (context, isFullScreen, _) {
+                if (isFullScreen) {
+                  return appWidget;
+                }
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: 44,
+                      child: WindowCaption(
+                        backgroundColor:
+                            isDark ? const Color(0xFF0A0814) : Colors.white,
+                        brightness: isDark ? Brightness.dark : Brightness.light,
+                        title: Row(
+                          children: [
+                            Image.asset(
+                              'assets/img/robot_logo.png',
+                              width: 24,
+                              height: 24,
+                              fit: BoxFit.contain,
                             ),
-                          ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Portal Pilot',
+                              style: TextStyle(
+                                color: isDark
+                                    ? const Color(0xFFF5F2FF)
+                                    : const Color(0xFF1E1B2A),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFB94DDC)
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'WORKSPACE',
+                                style: TextStyle(
+                                  color: isDark
+                                      ? const Color(0xFFD16BF0)
+                                      : const Color(0xFF8B2FB0),
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-                Expanded(child: child),
-              ],
+                    Expanded(child: appWidget),
+                  ],
+                );
+              },
             );
           },
         );

@@ -9,6 +9,7 @@ import 'package:portal_pilot_app/Shared/services/biometric_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:portal_pilot_app/Home/home_screen.dart';
+import 'package:portal_pilot_app/onboarding/onboarding_screen.dart';
 import 'unico.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -49,8 +50,8 @@ class _LoginScreenState extends State<LoginScreen>
     'img/fondos-img/foto-login-tegus-bandera.jpg',
   ];
   static const _loginCarouselAlignments = [
-    Alignment(0.6, 0),
-    Alignment(-0.85, -0.15), // tegus: mueve la bandera un poco a la izquierda
+    Alignment(0.0, -0.05), // abarrotista: centrado equilibrado de tienda y personajes
+    Alignment(0.0, -0.25), // tegus: bandera hondureña y Monumento a la Paz en el eje focal
   ];
   static const _loginCarouselInterval = Duration(seconds: 5);
 
@@ -442,6 +443,102 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  Future<void> _restartOnboarding() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: borderLight),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: accentPurple.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.refresh_rounded, color: accentPurpleLight, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Reiniciar Onboarding',
+                style: GoogleFonts.syne(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Deseas volver a configurar tu negocio desde cero? Podrás elegir nuevamente tu tipo de comercio, clientes y operaciones.',
+          style: GoogleFonts.dmSans(
+            color: textMuted,
+            fontSize: 13.5,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.inter(
+                color: textMuted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: accentPurple,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              'Comenzar de cero',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('onboarding_completed');
+    await prefs.remove('business_type');
+    await prefs.remove('customer_type');
+    await prefs.remove('operation_type');
+    await prefs.remove('industria');
+    await prefs.remove('categoria');
+    await prefs.remove('operacion');
+    await prefs.remove('empresa_area_negocio');
+
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const OnboardingScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -495,100 +592,158 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildLeftPanel(BoxConstraints constraints) {
+    final isCompact = constraints.maxHeight < 800;
+    final titleSize = (constraints.maxHeight * 0.038).clamp(24.0, 36.0);
+    final subtitleSize = (constraints.maxHeight * 0.015).clamp(12.5, 14.5);
+
     return Stack(
       fit: StackFit.expand,
-        children: [
-          // Fondo: carrusel de fotos del login (cambia cada 5s)
-          PageView.builder(
-            controller: _loginPageController,
-            itemCount: _loginCarouselImages.length,
-            onPageChanged: (index) {
-              _loginImageIndex = index;
-              setState(() {});
-            },
-            itemBuilder: (context, index) {
-              return Image.asset(
-                _loginCarouselImages[index],
+      children: [
+        // Fondo: carrusel de fotos del login adaptado sin cortes ni bandas
+        PageView.builder(
+          controller: _loginPageController,
+          itemCount: _loginCarouselImages.length,
+          onPageChanged: (index) {
+            _loginImageIndex = index;
+            setState(() {});
+          },
+          itemBuilder: (context, index) {
+            return SizedBox.expand(
+              child: FittedBox(
                 fit: BoxFit.cover,
                 alignment: _loginCarouselAlignments[index],
-                gaplessPlayback: true,
-              );
-            },
-          ),
-          // Overlay oscuro suave para que el texto blanco siga legible
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.45),
-                  Colors.black.withValues(alpha: 0.2),
-                  Colors.black.withValues(alpha: 0.78),
-                ],
-                stops: const [0.0, 0.5, 1.0],
+                clipBehavior: Clip.hardEdge,
+                child: Image.asset(
+                  _loginCarouselImages[index],
+                  gaplessPlayback: true,
+                ),
               ),
+            );
+          },
+        ),
+        // Overlay suave: mantiene el dibujo completamente despejado y brillante,
+        // con un sutil desvanecimiento al fondo para integrar la tarjeta flotante.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.15),
+                Colors.transparent,
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.75),
+              ],
+              stops: const [0.0, 0.25, 0.60, 1.0],
             ),
           ),
-          // Contenido de texto (cambia con cada imagen) anclado abajo
-          Align(
-            alignment: Alignment.bottomLeft,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(64, 24, 64, 64),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 700),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, animation) =>
-                      FadeTransition(opacity: animation, child: child),
-                  child: Column(
-                    key: ValueKey(_loginImageIndex),
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildBrandLogo(),
-                      const SizedBox(height: 28),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          _loginCarouselContents[_loginImageIndex]['title']!,
-                          style: GoogleFonts.syne(
-                            fontSize: 50,
-                            fontWeight: FontWeight.w900,
-                            color: textPrimary,
-                            letterSpacing: -1.2,
-                            height: 1.1,
+        ),
+        // Tarjeta flotante compacta centrada abajo, sin tocar las paredes laterales
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              constraints.maxWidth > 700 ? 40 : 20,
+              12,
+              constraints.maxWidth > 700 ? 40 : 20,
+              isCompact ? 20 : 32,
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 540),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 20 : 24,
+                      vertical: isCompact ? 16 : 20,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xC409090E),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.10),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.50),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 550),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) =>
+                          FadeTransition(opacity: animation, child: child),
+                      child: Column(
+                        key: ValueKey(_loginImageIndex),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              _buildBrandLogo(),
+                              const SizedBox(width: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: accentPurple.withValues(alpha: 0.16),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: accentPurple.withValues(alpha: 0.3)),
+                                ),
+                                child: Text(
+                                  'PORTAL PILOT AI',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: accentPurpleLight,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                          SizedBox(height: isCompact ? 10 : 14),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _loginCarouselContents[_loginImageIndex]['title']!,
+                              style: GoogleFonts.syne(
+                                fontSize: titleSize,
+                                fontWeight: FontWeight.w900,
+                                color: textPrimary,
+                                letterSpacing: -1.0,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _loginCarouselContents[_loginImageIndex]['subtitle']!,
+                            style: GoogleFonts.dmSans(
+                              fontSize: subtitleSize,
+                              color: textMuted,
+                              height: 1.45,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _loginCarouselContents[_loginImageIndex]['subtitle']!,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 15,
-                          color: textMuted,
-                          height: 1.6,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 28),
-                      _buildStepTile(1, 'Crea tu empresa', true),
-                      const SizedBox(height: 12),
-                      _buildStepTile(2, 'Accede a tu dashboard', false),
-                      const SizedBox(height: 12),
-                      _buildStepTile(3, 'Gestiona con IA', false),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ],
-      );
+        ),
+      ],
+    );
   }
 
   Widget _buildRightPanel(BoxConstraints constraints) {
@@ -837,107 +992,6 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildStepTile(int step, String label, bool active) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        gradient: active
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  accentPurple.withValues(alpha: 0.18),
-                  accentPurpleDark.withValues(alpha: 0.08),
-                ],
-              )
-            : null,
-        color: active ? null : bgTertiary,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: active ? accentPurple.withValues(alpha: 0.4) : borderLight,
-        ),
-        boxShadow: active
-            ? [
-                BoxShadow(
-                  color: accentPurple.withValues(alpha: 0.25),
-                  blurRadius: 14,
-                  offset: const Offset(0, 5),
-                ),
-              ]
-            : [],
-      ),
-      child: Row(
-        children: [
-          if (active)
-            Container(
-              width: 3.5,
-              height: 22,
-              margin: const EdgeInsets.only(right: 14),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [accentPurple, accentPurpleDark],
-                ),
-                borderRadius: BorderRadius.circular(3),
-                boxShadow: [
-                  BoxShadow(
-                    color: accentPurple.withValues(alpha: 0.7),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-            ),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: active
-                  ? const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [accentPurple, accentPurpleDark],
-                    )
-                  : null,
-              color: active ? null : bgSecondary,
-              border: Border.all(
-                color: active ? Colors.transparent : borderLight,
-              ),
-            ),
-            child: Center(
-              child: active
-                  ? const Icon(
-                      Icons.check_rounded,
-                      color: textPrimary,
-                      size: 16,
-                    )
-                  : Text(
-                      '$step',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: textMuted,
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              label,
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                fontWeight: active ? FontWeight.bold : FontWeight.w500,
-                color: active ? textPrimary : textMuted,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildAuthCard() {
     return Container(
@@ -1289,6 +1343,35 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                     const Spacer(),
+                    InkWell(
+                      onTap: _restartOnboarding,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: accentPurple.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: accentPurple.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.refresh_rounded, size: 11, color: accentPurpleLight),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Reiniciar',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: accentPurpleLight,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -1359,6 +1442,31 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           textAlign: TextAlign.center,
         ),
+        if (hasOnboarding) ...[
+          const SizedBox(height: 16),
+          Center(
+            child: TextButton.icon(
+              onPressed: _restartOnboarding,
+              icon: const Icon(Icons.refresh_rounded, size: 16, color: accentPurpleLight),
+              label: Text(
+                '¿Quieres cambiar de opción? Reiniciar Onboarding',
+                style: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: accentPurpleLight,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                backgroundColor: accentPurple.withValues(alpha: 0.10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(color: accentPurple.withValues(alpha: 0.25)),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

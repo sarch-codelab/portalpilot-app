@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/db_service.dart';
+import 'package:portal_pilot_app/Shared/services/connectivity_service.dart';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 
 enum SyncOperation { insert, update, delete }
@@ -103,6 +104,7 @@ class SyncService {
   final AppDatabase _db = AppDatabase();
   Timer? _syncTimer;
   Timer? _retryTimer;
+  StreamSubscription<bool>? _connectivitySubscription;
   StreamController<SyncStatus>? _statusController;
   bool _isSyncing = false;
   bool _isOnline = true;
@@ -118,6 +120,12 @@ class SyncService {
   }
 
   Future<void> initialize() async {
+    // La cola es persistente, pero el estado de red no lo es. Reconectarla al
+    // iniciar permite enviar los cambios guardados durante un uso sin señal.
+    await ConnectivityService.instance.initialize();
+    _isOnline = ConnectivityService.instance.isOnline;
+    await _connectivitySubscription?.cancel();
+    _connectivitySubscription = ConnectivityService.instance.connectivityStream.listen(setOnlineStatus);
     await _processPendingSync();
     _startPeriodicSync();
   }
@@ -348,8 +356,12 @@ class SyncService {
       case SyncOperation.insert:
         return await PortalPilotDB.insertFactura(factura: factura, empresaCodigo: empresaCodigo);
       case SyncOperation.update:
+        // Antes de recibir el UUID remoto, la factura local se identifica por
+        // correlativo. El backend admite ambos identificadores dentro del
+        // tenant autenticado.
+        final remoteIdentity = (factura['correlativo'] as String?)?.trim();
         return await PortalPilotDB.anularFactura(
-          id: factura['id'] as String,
+          id: (remoteIdentity?.isNotEmpty ?? false) ? remoteIdentity! : factura['id'] as String,
           empresaCodigo: empresaCodigo,
         );
       case SyncOperation.delete:

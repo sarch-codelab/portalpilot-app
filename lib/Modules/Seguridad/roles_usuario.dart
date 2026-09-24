@@ -40,6 +40,8 @@ class _RolesUsuarioState extends State<RolesUsuario> {
   @override
   void initState() {
     super.initState();
+    // Los roles deben provenir del servicio de permisos; nunca de fixtures.
+    _roles.clear();
     appThemeNotifier.addListener(_onThemeChanged);
   }
 
@@ -88,11 +90,11 @@ class _RolesUsuarioState extends State<RolesUsuario> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddRolDialog(),
+        onPressed: null,
         backgroundColor: const Color(0xFF6366F1),
         icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
-          'Nuevo Rol',
+          'Integración pendiente',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
             color: appPalette.textPrimary,
@@ -152,92 +154,6 @@ class _RolesUsuarioState extends State<RolesUsuario> {
               color: appThemeNotifier.isDark
                   ? appPalette.textMuted
                   : appPalette.textMuted,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddRolDialog() {
-    final nombreController = TextEditingController();
-    final permisosController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: appPalette.cardColor,
-        title: Text(
-          'Nuevo Rol',
-          style: GoogleFonts.syne(
-            fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nombreController,
-              decoration: InputDecoration(
-                labelText: 'Nombre del rol',
-                labelStyle: TextStyle(
-                  color: appThemeNotifier.isDark
-                      ? appPalette.textMuted
-                      : appPalette.textMuted,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: appPalette.borderLight,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: permisosController,
-              decoration: InputDecoration(
-                labelText: 'Permisos',
-                labelStyle: TextStyle(
-                  color: appThemeNotifier.isDark
-                      ? appPalette.textMuted
-                      : appPalette.textMuted,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: appPalette.borderLight,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.dmSans(color: appPalette.textMuted),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _roles.add({
-                  'id': DateTime.now().toString(),
-                  'nombre': nombreController.text,
-                  'permisos': permisosController.text,
-                  'usuarios': 0,
-                });
-              });
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1),
-            ),
-            child: Text(
-              'Guardar',
-              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
             ),
           ),
         ],

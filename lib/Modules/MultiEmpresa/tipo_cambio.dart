@@ -18,6 +18,8 @@ class _TipoCambioState extends State<TipoCambio> {
   @override
   void initState() {
     super.initState();
+    // No publicar tasas codificadas como si fueran cotizaciones vigentes.
+    _tasas.clear();
     appThemeNotifier.addListener(_onThemeChanged);
   }
 
@@ -66,11 +68,11 @@ class _TipoCambioState extends State<TipoCambio> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddTasaDialog(),
+        onPressed: null,
         backgroundColor: const Color(0xFF10B981),
         icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
-          'Nueva Tasa',
+          'Integración pendiente',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
             color: appPalette.textPrimary,
@@ -162,112 +164,6 @@ class _TipoCambioState extends State<TipoCambio> {
           ),
         ),
       ],
-    );
-  }
-
-  void _showAddTasaDialog() {
-    final monedaController = TextEditingController();
-    final compraController = TextEditingController();
-    final ventaController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: appPalette.cardColor,
-        title: Text(
-          'Nueva Tasa',
-          style: GoogleFonts.syne(
-            fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: monedaController,
-              decoration: InputDecoration(
-                labelText: 'Moneda (USD/EUR)',
-                labelStyle: TextStyle(
-                  color: appThemeNotifier.isDark
-                      ? appPalette.textMuted
-                      : appPalette.textMuted,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: appPalette.borderLight,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: compraController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Tasa Compra (L.)',
-                labelStyle: TextStyle(
-                  color: appThemeNotifier.isDark
-                      ? appPalette.textMuted
-                      : appPalette.textMuted,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: appPalette.borderLight,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ventaController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Tasa Venta (L.)',
-                labelStyle: TextStyle(
-                  color: appThemeNotifier.isDark
-                      ? appPalette.textMuted
-                      : appPalette.textMuted,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: appPalette.borderLight,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.dmSans(color: appPalette.textMuted),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _tasas.add({
-                  'moneda': monedaController.text,
-                  'compra': double.tryParse(compraController.text) ?? 0.0,
-                  'venta': double.tryParse(ventaController.text) ?? 0.0,
-                  'fecha': DateTime.now().toString().substring(0, 10),
-                });
-              });
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF10B981),
-            ),
-            child: Text(
-              'Guardar',
-              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

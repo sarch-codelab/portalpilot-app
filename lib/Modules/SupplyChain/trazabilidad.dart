@@ -40,6 +40,9 @@ class _TrazabilidadState extends State<Trazabilidad> {
   @override
   void initState() {
     super.initState();
+    // No se muestran datos de ejemplo en producción. Esta pantalla se
+    // habilitará al conectarla al backend de trazabilidad.
+    _movimientos.clear();
     appThemeNotifier.addListener(_onThemeChanged);
   }
 
@@ -88,11 +91,11 @@ class _TrazabilidadState extends State<Trazabilidad> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddMovimientoDialog(),
+        onPressed: null,
         backgroundColor: const Color(0xFF14B8A6),
         icon: Icon(Icons.add_rounded, color: appPalette.cardColor),
         label: Text(
-          'Nuevo Movimiento',
+          'Integración pendiente',
           style: GoogleFonts.dmSans(
             fontWeight: FontWeight.w600,
             color: appPalette.textPrimary,
@@ -189,112 +192,6 @@ class _TrazabilidadState extends State<Trazabilidad> {
           ),
         ),
       ],
-    );
-  }
-
-  void _showAddMovimientoDialog() {
-    final productoController = TextEditingController();
-    final origenController = TextEditingController();
-    final destinoController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: appPalette.cardColor,
-        title: Text(
-          'Nuevo Movimiento',
-          style: GoogleFonts.syne(
-            fontWeight: FontWeight.w700,
-            color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: productoController,
-              decoration: InputDecoration(
-                labelText: 'Producto',
-                labelStyle: TextStyle(
-                  color: appThemeNotifier.isDark
-                      ? appPalette.textMuted
-                      : appPalette.textMuted,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: appPalette.borderLight,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: origenController,
-              decoration: InputDecoration(
-                labelText: 'Origen',
-                labelStyle: TextStyle(
-                  color: appThemeNotifier.isDark
-                      ? appPalette.textMuted
-                      : appPalette.textMuted,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: appPalette.borderLight,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: destinoController,
-              decoration: InputDecoration(
-                labelText: 'Destino',
-                labelStyle: TextStyle(
-                  color: appThemeNotifier.isDark
-                      ? appPalette.textMuted
-                      : appPalette.textMuted,
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: appPalette.borderLight,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.dmSans(color: appPalette.textMuted),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _movimientos.add({
-                  'id': DateTime.now().toString(),
-                  'producto': productoController.text,
-                  'origen': origenController.text,
-                  'destino': destinoController.text,
-                  'fecha': DateTime.now().toString().substring(0, 10),
-                  'estado': 'En Transito',
-                });
-              });
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF14B8A6),
-            ),
-            child: Text(
-              'Guardar',
-              style: GoogleFonts.dmSans(color: appPalette.textPrimary),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -40,6 +40,8 @@ class _StockConsolidadoState extends State<StockConsolidado> {
   @override
   void initState() {
     super.initState();
+    // Evita presentar cifras de muestra como inventario del cliente.
+    _productos.clear();
     appThemeNotifier.addListener(_onThemeChanged);
   }
 

@@ -79,14 +79,29 @@ class PPNotifications {
           builder: (context, _) {
             final toasts = _queue.items;
             if (toasts.isEmpty) return const SizedBox.shrink();
+            final mq = MediaQuery.of(context);
+            final isDesktop = mq.size.width >= 700;
+            // Estilo Sileo: tarjetas compactas. En PC van apiladas arriba a
+            // la derecha (máx. 380px); en teléfono ocupan el ancho útil.
             return Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              left: 0,
-              right: 0,
+              top: mq.padding.top + (isDesktop ? 12 : 8),
+              left: isDesktop ? 12 : 0,
+              right: isDesktop ? 12 : 0,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment:
+                    isDesktop ? CrossAxisAlignment.end : CrossAxisAlignment.stretch,
                 children: [
-                  for (final t in toasts) _ToastCard(key: ValueKey(t.id), toast: t),
+                  for (final t in toasts)
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: isDesktop ? 380 : double.infinity,
+                        ),
+                        child: _ToastCard(key: ValueKey(t.id), toast: t),
+                      ),
+                    ),
                 ],
               ),
             );
@@ -158,9 +173,13 @@ class _ToastQueue extends ChangeNotifier {
   final List<_ToastData> items = [];
 
   void push(_ToastData toast) {
-    // Límite visible: descarta el más antiguo.
+    // Si ya existe un toast con el mismo mensaje, no bombardear con duplicados
+    final alreadyExists = items.any((it) => it.message == toast.message);
+    if (alreadyExists) return;
+
+    // Límite visible: descarta el más antiguo del final de la cola
     while (items.length >= PPNotifications._maxVisible) {
-      items.removeAt(0);
+      items.removeLast();
     }
     items.insert(0, toast); // El más nuevo arriba.
     notifyListeners();
@@ -276,11 +295,17 @@ class _ToastCardState extends State<_ToastCard>
         final t = Curves.easeOutCubic.transform(_enter.value);
         final dy = (1 - t) * -60;
         final closingLift = _closing ? -18.0 : 0.0;
+        // Resorte suave estilo Sileo en la entrada (overshoot mínimo).
+        final ts = Curves.easeOutBack.transform(_enter.value.clamp(0.0, 1.0));
         return Opacity(
           opacity: t.clamp(0, 1),
           child: Transform.translate(
             offset: Offset(0, dy + closingLift + _dragOffset),
-            child: child,
+            child: Transform.scale(
+              scale: 0.92 + 0.08 * ts,
+              alignment: Alignment.topCenter,
+              child: child,
+            ),
           ),
         );
       },
@@ -302,129 +327,110 @@ class _ToastCardState extends State<_ToastCard>
             borderRadius: BorderRadius.circular(16),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: palette.isDark
-                      ? const Color(0xE61A1526)
-                      : const Color(0xF2FFFFFF),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
+              child: Material(
+                type: MaterialType.transparency,
+                child: Container(
+                  decoration: BoxDecoration(
                     color: palette.isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.06),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
+                        ? const Color(0xE61A1526)
+                        : const Color(0xF2FFFFFF),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
                       color: palette.isDark
-                          ? Colors.black.withValues(alpha: 0.45)
-                          : Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.06),
                     ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Glifo iOS: cuadrado redondeado con tinte del estado
-                          // y un pulso de entrada.
-                          AnimatedBuilder(
-                            animation: _glow,
-                            builder: (context, child) {
-                              final t = Curves.easeOutBack.transform(
-                                _glow.value.clamp(0, 1),
-                              );
-                              return Transform.scale(
-                                scale: 0.6 + 0.4 * t,
-                                child: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: color.withValues(
-                                      alpha: 0.14 + 0.08 * (1 - _glow.value),
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(icon, color: color, size: 19),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (widget.toast.title != null)
-                                  Text(
-                                    widget.toast.title!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      height: 1.25,
-                                      color: palette.textPrimary,
-                                    ),
-                                  ),
-                                Text(
-                                  widget.toast.message,
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 12.5,
-                                    height: 1.35,
-                                    color: palette.textMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: _close,
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Icon(
-                                Icons.close_rounded,
-                                size: 16,
-                                color: palette.textDim,
-                              ),
-                            ),
-                          ),
-                        ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: palette.isDark
+                            ? Colors.black.withValues(alpha: 0.45)
+                            : Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
                       ),
-                    ),
-                    // Barra de progreso de tiempo restante (estilo Sileo).
-                    AnimatedBuilder(
-                      animation: _progress,
-                      builder: (context, _) {
-                        return Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: FractionallySizedBox(
-                            widthFactor: 1 - _progress.value,
-                            child: Container(
-                              height: 2.5,
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.85),
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(3),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Glifo iOS: cuadrado redondeado con tinte del estado
+                            // y un pulso de entrada.
+                            AnimatedBuilder(
+                              animation: _glow,
+                              builder: (context, child) {
+                                final t = Curves.easeOutBack.transform(
+                                  _glow.value.clamp(0, 1),
+                                );
+                                return Transform.scale(
+                                  scale: 0.6 + 0.4 * t,
+                                  child: Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: color.withValues(
+                                        alpha: 0.14 + 0.08 * (1 - _glow.value),
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(icon, color: color, size: 19),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (widget.toast.title != null)
+                                    Text(
+                                      widget.toast.title!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.25,
+                                        color: palette.textPrimary,
+                                        decoration: TextDecoration.none,
+                                      ),
+                                    ),
+                                  Text(
+                                    widget.toast.message,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12.5,
+                                      height: 1.35,
+                                      color: palette.textMuted,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: _close,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 16,
+                                  color: palette.textDim,
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 3),
-                  ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

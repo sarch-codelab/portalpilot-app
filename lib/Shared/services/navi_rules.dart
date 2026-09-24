@@ -168,8 +168,57 @@ ${RPAExecutor.instance.getActionSchema()}
 ```
 
 El sistema detectará el JSON y lo ejecutará automáticamente, informando al usuario del resultado.
+
+## REPORTES AUTOMÁTICOS (HERRAMIENTAS CONTROLADAS)
+Cuando el usuario pida un **reporte** con datos reales de la empresa (gastos, ventas, movimientos de inventario, stock, compras, clientes, facturación, cuentas por cobrar, caja, resumen financiero o empleados), NO respondas con números inventados: devuelve el siguiente bloque JSON en tu respuesta y el sistema generará el reporte con los datos reales:
+
+Lista de herramientas válidas (usa EXACTAMENTE uno de estos nombres):
+- `$reporteToolsSchemaList`
+
+Formato:
+```json
+{"tool":"gastos","periodo":"mes","mes":9,"anio":2026,"categoria":"combustible"}
+```
+```json
+{"tool":"ventas","periodo":"rango","desde":"01/09/2026","hasta":"22/09/2026"}
+```
+```json
+{"tool":"inventario_movimientos","periodo":"mes"}
+```
+```json
+{"tool":"stock"}
+```
+```json
+{"tool":"compras","periodo":"mes"}
+```
+```json
+{"tool":"clientes"}
+```
+```json
+{"tool":"facturacion","periodo":"mes"}
+```
+```json
+{"tool":"cuentas_por_cobrar","periodo":"mes"}
+```
+```json
+{"tool":"caja","periodo":"mes"}
+```
+```json
+{"tool":"resumen_financiero","periodo":"mes"}
+```
+```json
+{"tool":"empleados"}
+```
+
+`periodo` admitido: `hoy`, `semana`, `mes` (con `mes` y `anio` numéricos opcionales) o `rango` (con `desde`/`hasta` en `dd/MM/yyyy`). `categoria` es opcional. `clientes` y `empleados` no requieren periodo.
+
+Después del JSON, añade un texto breve para el usuario explicando que estás preparando el reporte.
 ''';
   }
+
+  /// Schema de herramientas de reportes expuesto al prompt maestro.
+  static const String reporteToolsSchemaList = '''
+"gastos", "ventas", "inventario_movimientos", "stock", "compras", "clientes", "facturacion", "cuentas_por_cobrar", "caja", "resumen_financiero", "empleados"''';
 
   /// Devuelve las limitaciones de la IA según el plan contratado.
   static String _limitesPorPlan(String plan) {

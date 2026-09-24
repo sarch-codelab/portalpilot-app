@@ -3,28 +3,52 @@ import 'package:flutter/foundation.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AppWindowManager {
+class AppWindowManager with WindowListener {
   AppWindowManager._();
   static final instance = AppWindowManager._();
 
   final WindowManager _wm = WindowManager.instance;
   bool _initialized = false;
+  final ValueNotifier<bool> isFullScreenNotifier = ValueNotifier<bool>(false);
 
   Future<void> initialize() async {
     if (_initialized) return;
     _initialized = true;
     await _wm.ensureInitialized();
+    _wm.addListener(this);
     await _wm.setTitleBarStyle(
       TitleBarStyle.hidden,
       windowButtonVisibility: false,
     );
   }
 
+  @override
+  void onWindowEnterFullScreen() {
+    isFullScreenNotifier.value = true;
+  }
+
+  @override
+  void onWindowLeaveFullScreen() {
+    isFullScreenNotifier.value = false;
+  }
+
+  Future<void> toggleFullScreen() async {
+    if (kIsWeb) return;
+    try {
+      final isFull = await _wm.isFullScreen();
+      await _wm.setFullScreen(!isFull);
+      isFullScreenNotifier.value = !isFull;
+    } catch (e) {
+      debugPrint('Error toggling fullscreen: $e');
+    }
+  }
+
   Future<void> restoreWindow() async {
     try {
       await initialize();
       await Future.delayed(const Duration(milliseconds: 500));
-      await _wm.setMinimumSize(const Size(720, 560));
+      // Permitir achicar la ventana en PC hasta tamaño de teléfono (380px)
+      await _wm.setMinimumSize(const Size(380, 500));
 
       final prefs = await SharedPreferences.getInstance();
       final left = prefs.getInt('win_x');

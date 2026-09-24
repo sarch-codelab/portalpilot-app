@@ -73,3 +73,5 @@ app.*.map.json
 
 # Entorno local de Python (no es parte del release)
 .venv/
+.playwright-mcp/
+reporte.html

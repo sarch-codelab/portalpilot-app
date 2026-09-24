@@ -49,7 +49,7 @@ void main() {
     expect(err, isNull);
   });
 
-  testWidgets('A5/P3 - Chat IA a 320px (ventana mínima): DESBORDA el layout [BUG CONFIRMADO]', (tester) async {
+  testWidgets('A5/P3 - Chat IA a 320px (ventana mínima): NO desborda [REMEDIADO]', (tester) async {
     GoogleFonts.config.allowRuntimeFetching = false;
     SharedPreferences.setMockInitialValues({});
     await tester.binding.setSurfaceSize(const Size(320, 640));
@@ -67,15 +67,14 @@ void main() {
     }
     final err = tester.takeException();
     print('[A5/P3-detalle] ${err?.toString() ?? 'sin overflow'}');
-    // Defecto visual real: chat_ia_home.dart no degrada en anchos < ~360px.
-    // Overflow HORIZONTAL de 161px en el Row del banner del greeting
-    // (chat_ia_home.dart:328: Row('Chat IA' + chip 'En línea')): su Expanded
-    // colapsa a <=57px pero el contenido natural mide ~218px.
-    // Overflow VERTICAL de 6px en la Column de textos de cada sugerencia
-    // (chat_ia_home.dart:547): limitada a h<=62px con contenido de 68px.
-    expect(err, isNotNull,
-        reason: 'ChatIA 320px: RenderFlex overflow horizontal de 161px (chat_ia_home.dart:328) y verticales de 6px '
-            '(chat_ia_home.dart:547) - la UI NO es adaptativa a anchos mínimos');
+    // El título del AppBar usa el modo stack (columna) cuando el ancho
+    // disponible es < 150px, por lo que el chip "En línea" NO desborda a los
+    // 320px mínimos. Antes desbordaba 48-161px (bug confirmado).
+    expect(captured, isEmpty,
+        reason: 'ChatIA 320px: no debe haber RenderFlex overflow (título en '
+            'modo stack para anchos mínimos)');
+    expect(err, isNull,
+        reason: 'ChatIA 320px: no debe lanzar overflow tras el arreglo del AppBar');
   });
 
   testWidgets('A5/P4 - MarkdownBody con tabla gigante a 400px: overflow de tabla', (tester) async {

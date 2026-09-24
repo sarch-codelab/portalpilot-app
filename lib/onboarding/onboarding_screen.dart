@@ -1,11 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:portal_pilot_app/Auth/login.dart';
 import 'package:portal_pilot_app/Shared/services/multi_area_config.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
-import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
 /// Onboarding — Apple Design Language, con diseño separado por plataforma.
 ///
@@ -35,16 +37,19 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       'title': 'Bienvenido a\nPortal Pilot',
       'subtitle':
           'Inventario, ventas, clientes y facturación.\nTodo tu negocio, desde un solo lugar.',
+      'img': 'img/onboarding/navi_feliz_risueno.png',
     },
     {
       'title': 'Control total\nde tu operación',
       'subtitle':
           'Sincronización offline, reportes en tiempo real\ny control multi-sucursal.',
+      'img': 'img/onboarding/navi_feliz_telefono.png',
     },
     {
       'title': 'Creado para\ncrecer contigo',
       'subtitle':
           'Desde una pulpería hasta una cadena comercial.\nSe adapta a tu modelo y escala contigo.',
+      'img': 'img/onboarding/navi_creciendo.png',
     },
   ];
 
@@ -61,10 +66,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   )..repeat(reverse: true);
 
   final List<Map<String, dynamic>> _businessOptions = [
-    {'label': 'Pulpería / Mercadito', 'icon': Icons.storefront_rounded, 'desc': 'Barrio, colonia'},
-    {'label': 'Tienda / Supermercado', 'icon': Icons.shopping_cart_rounded, 'desc': 'Retail, abarrotes'},
-    {'label': 'Área Comercial', 'icon': Icons.business_center_rounded, 'desc': 'Distribución mayorista'},
-    {'label': 'Club / Membresía', 'icon': Icons.card_membership_rounded, 'desc': 'Membresías, socios'},
+    {'label': 'Pulpería / Mercadito', 'icon': Icons.storefront_rounded, 'desc': 'Barrio, colonia', 'img': 'img/onboarding/pulperia_mercadito.png'},
+    {'label': 'Tienda / Supermercado', 'icon': Icons.shopping_cart_rounded, 'desc': 'Retail, abarrotes', 'img': 'img/onboarding/tienda_supermercado.png'},
+    {'label': 'Club / Membresía', 'icon': Icons.card_membership_rounded, 'desc': 'Membresías, socios', 'img': 'img/onboarding/club_membresia.png'},
   ];
 
   final List<Map<String, dynamic>> _customerOptions = [
@@ -75,12 +79,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   ];
 
   final List<Map<String, dynamic>> _operationOptions = [
-    {'label': 'Tienda física', 'icon': Icons.storefront_rounded, 'desc': 'Punto de venta'},
-    {'label': 'Online', 'icon': Icons.language_rounded, 'desc': 'E-commerce'},
-    {'label': 'Distribución', 'icon': Icons.local_shipping_rounded, 'desc': 'Rutas, reparto'},
-    {'label': 'Autoservicio', 'icon': Icons.shopping_basket_rounded, 'desc': 'Self-service'},
-    {'label': 'Membresía', 'icon': Icons.verified_user_rounded, 'desc': 'Club exclusivo'},
-    {'label': 'Tienda física + Online', 'icon': Icons.hub_rounded, 'desc': 'Omnicanal'},
+    {'label': 'Tienda física', 'icon': Icons.storefront_rounded, 'desc': 'Punto de venta y mostrador', 'img': 'img/onboarding/tienda_fisica.png'},
+    {'label': 'Tienda física + Online', 'icon': Icons.hub_rounded, 'desc': 'Omnicanal (local comercial y web)', 'img': 'img/onboarding/tienda_fisica_online.png'},
+    {'label': 'Online', 'icon': Icons.language_rounded, 'desc': 'E-commerce y redes sociales', 'img': 'img/onboarding/online.png'},
+    {'label': 'Distribución', 'icon': Icons.local_shipping_rounded, 'desc': 'Rutas, preventa y reparto', 'img': 'img/onboarding/distribucion.png'},
+    {'label': 'Autoservicio', 'icon': Icons.shopping_basket_rounded, 'desc': 'Kioscos y self-checkout', 'img': 'img/onboarding/autoservicio.png'},
+    {'label': 'Membresía', 'icon': Icons.verified_user_rounded, 'desc': 'Club exclusivo o socios', 'img': 'img/onboarding/membresia.png'},
   ];
 
   @override
@@ -96,8 +100,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       Navigator.of(context).pop();
     }
   }
-
-  ThemePalette get _p => ThemePalette(isDark: true);
 
   // ── Tokens Apple ──────────────────────────────────────────────────────────
   static const Color _accent = Color(0xFF8B5CF6);
@@ -127,7 +129,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       return;
     }
     if (_isLastStep) {
-      _finishOnboarding();
+      if (_selectedOperation == null) {
+        _showNeedSelection('Selecciona tu modelo de operación');
+        return;
+      }
+      _showPlanRecommendationModal();
       return;
     }
     _pageController.nextPage(
@@ -135,13 +141,46 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _showNeedSelection(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg,
-            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500)),
-        backgroundColor: _p.errorRed,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    PPNotifications.dismissAll();
+    PPNotifications.warning(context, msg, title: 'Selección requerida');
+  }
+
+  void _showPlanRecommendationModal() {
+    final isEnterprise = (_selectedBusiness?.contains('Supermercado') ?? false) ||
+        (_selectedBusiness?.contains('Club') ?? false) ||
+        (_selectedOperation?.contains('Distribución') ?? false) ||
+        (_selectedOperation?.contains('Autoservicio') ?? false) ||
+        (_selectedOperation?.contains('Omnicanal') ?? false) ||
+        (_selectedCustomer?.contains('Empresas') ?? false) ||
+        (_selectedCustomer?.contains('Comercios') ?? false) ||
+        (_selectedCustomer?.contains('Ambos') ?? false);
+
+    final planName = isEnterprise ? 'Plan Enterprise' : 'Plan Business';
+    final planPrice = isEnterprise ? 'L 4,999' : 'L 1,499';
+    final planDesc = isEnterprise
+        ? 'Control multi-sucursal, facturación SAR masiva, rutas y autoservicio.'
+        : 'Punto de venta rápido, facturación electrónica SAR y control de inventario.';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _PlanRecommendationSheet(
+        business: _selectedBusiness ?? '',
+        customer: _selectedCustomer ?? '',
+        operation: _selectedOperation ?? '',
+        planName: planName,
+        planPrice: planPrice,
+        planDesc: planDesc,
+        isEnterprise: isEnterprise,
+        onConfirm: () {
+          Navigator.of(ctx).pop();
+          _finishOnboarding();
+        },
+        onGoToLogin: () {
+          Navigator.of(ctx).pop();
+          _finishOnboarding();
+        },
       ),
     );
   }
@@ -153,58 +192,72 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return Scaffold(
       backgroundColor: _fallbackBg,
       body: LayoutBuilder(builder: (context, c) {
-        final isWide = c.maxWidth >= 700 && c.maxHeight >= 640;
+        final aspectRatio = c.maxWidth / c.maxHeight;
+        // Solo se considera PC landscape si la ventana tiene proporción apaisada
+        // (aspectRatio >= 1.15) y ancho >= 768. Si el usuario reduce el ancho en PC
+        // (dejándola vertical como un teléfono), cambia automáticamente a telefono.png.
+        final isWide = c.maxWidth >= 768 && c.maxHeight >= 550 && aspectRatio >= 1.15;
+        // Escala adaptativa: tipografía/tamaños crecen o se reducen según la
+        // altura REAL de la ventana (PC grande, PC pequeña, celular).
+        final double s = (c.maxHeight / (isWide ? 860 : 760)).clamp(0.80, isWide ? 1.35 : 1.20);
+        // En móvil, las preguntas (pasos 4, 5 y 6) usan un fondo limpio estilo Uber
+        // para que las luces no interfieran. Las 3 intros conservan el fondo curvo con Navi.
+        final showCurvedBg = isWide || !_isQuestionStep;
         final bg = isWide
-            ? 'assets/img/onboarding-bg.jpg'
-            : 'assets/img/onboarding-bg-mobile.jpg';
+            ? 'img/onboarding/pc.png'
+            : 'img/onboarding/telefono.png';
         return Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset(
-              bg,
-              fit: BoxFit.cover,
-              // Ancla arriba: la parte icónica del arte (curvas/haz de luz)
-              // siempre es visible aunque el viewport recorte.
-              alignment: Alignment.topCenter,
-              errorBuilder: (context, error, stackTrace) =>
-                  const ColoredBox(color: _fallbackBg),
-            ),
-            // Scrims de legibilidad.
-            Positioned(
-              top: 0, left: 0, right: 0, height: 170,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.black.withValues(alpha: 0.5), Colors.transparent],
+            if (showCurvedBg)
+              Image.asset(
+                bg,
+                key: ValueKey(bg),
+                gaplessPlayback: true,
+                fit: isWide ? BoxFit.cover : BoxFit.fill,
+                alignment: Alignment.center,
+                errorBuilder: (context, error, stackTrace) =>
+                    const ColoredBox(color: _fallbackBg),
+              )
+            else
+              const ColoredBox(color: Color(0xFF090614)),
+            if (showCurvedBg) ...[
+              Positioned(
+                top: 0, left: 0, right: 0, height: 170,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.black.withValues(alpha: 0.5), Colors.transparent],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              bottom: 0, left: 0, right: 0, height: 250,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [Colors.black.withValues(alpha: 0.55), Colors.transparent],
+              Positioned(
+                bottom: 0, left: 0, right: 0, height: 250,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [Colors.black.withValues(alpha: 0.55), Colors.transparent],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
             SafeArea(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildHeader(isWide),
+                  _buildHeader(isWide, s),
                   Expanded(
                     child: PageView(
                       controller: _pageController,
                       onPageChanged: (p) => setState(() => _currentPage = p),
                       children: [
-                        ..._introPages.map((d) => _buildIntroPage(d, isWide)),
+                        ..._introPages.map((d) => _buildIntroPage(d, isWide, s)),
                         _QuestionPage(
                           title: '¿Cómo funciona tu negocio?',
                           subtitle: 'Elige la opción que mejor te describa.',
@@ -212,6 +265,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           selected: _selectedBusiness,
                           onSelected: (v) => setState(() => _selectedBusiness = v),
                           isDesktop: isWide,
+                          scale: s,
                         ),
                         _QuestionPage(
                           title: '¿A quién le vendes?',
@@ -220,6 +274,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           selected: _selectedCustomer,
                           onSelected: (v) => setState(() => _selectedCustomer = v),
                           isDesktop: isWide,
+                          scale: s,
                         ),
                         _QuestionPage(
                           title: '¿Cómo operas?',
@@ -228,11 +283,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           selected: _selectedOperation,
                           onSelected: (v) => setState(() => _selectedOperation = v),
                           isDesktop: isWide,
+                          scale: s,
                         ),
                       ],
                     ),
                   ),
-                  _buildFooter(isWide),
+                  _buildFooter(isWide, s),
                 ],
               ),
             ),
@@ -246,15 +302,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   // ── Header: lockup discreto arriba a la izquierda ─────────────────────────
 
-  Widget _buildHeader(bool isWide) {
+  Widget _buildHeader(bool isWide, double s) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(isWide ? 32 : 24, isWide ? 18 : 14, 24, 0),
+      padding: EdgeInsets.fromLTRB(
+          isWide ? 32 * s : 24, isWide ? 18 * s : 14, 24, 0),
       child: Row(
         children: [
           Image.asset(
             'assets/img/robot_logo.png',
-            width: isWide ? 24 : 22,
-            height: isWide ? 24 : 22,
+            width: (isWide ? 24 : 22) * s,
+            height: (isWide ? 24 : 22) * s,
             errorBuilder: (context, error, stackTrace) =>
                 const Icon(Icons.blur_on_rounded, color: _accent, size: 22),
           ),
@@ -262,7 +319,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           Text(
             'Portal Pilot',
             style: GoogleFonts.inter(
-              fontSize: isWide ? 15.5 : 15,
+              fontSize: (isWide ? 15.5 : 15) * s,
               fontWeight: FontWeight.w600,
               color: Colors.white.withValues(alpha: 0.92),
               letterSpacing: -0.2,
@@ -275,77 +332,75 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   // ── Intro ── PC: asistente macOS · Teléfono: Setup Assistant iOS ──────────
 
-  Widget _buildIntroPage(Map<String, String> data, bool isWide) {
+  Widget _buildIntroPage(Map<String, String> data, bool isWide, double s) {
     return Center(
       child: ConstrainedBox(
-        // PC: columna 520; teléfono: todo el ancho con márgenes.
-        constraints: BoxConstraints(maxWidth: isWide ? 520 : double.infinity),
+        // PC: columna 560; teléfono: todo el ancho con márgenes.
+        constraints: BoxConstraints(maxWidth: isWide ? 560 : double.infinity),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: isWide ? 0 : 32),
-          child: Column(
-            children: [
-              const Spacer(flex: 4),
-              // Navi — la mascota saluda flotando sobre el titular.
-              AnimatedBuilder(
-                animation: _floatController,
-                builder: (context, child) => Transform.translate(
-                  offset: Offset(0, -5 + 7 * _floatController.value),
-                  child: child,
-                ),
-                child: Container(
-                  width: isWide ? 116 : 96,
-                  height: isWide ? 116 : 96,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.06),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+          padding: EdgeInsets.symmetric(horizontal: isWide ? 0 : 28),
+          child: LayoutBuilder(builder: (context, lv) {
+            // Navi grande pero proporcional: ~40% del alto útil de la página.
+            final h = lv.maxHeight;
+            final double naviH =
+                (h * (isWide ? 0.40 : 0.38)).clamp(isWide ? 220 : 160, 380.0);
+            return Column(
+              children: [
+                const Spacer(flex: 3),
+                // Navi — la mascota (imagen propia de cada página) flota sobre
+                // el titular. Sin caja detrás y con contain jamás se recorta.
+                AnimatedBuilder(
+                  animation: _floatController,
+                  builder: (context, child) => Transform.translate(
+                    offset: Offset(0, -4 + 7 * _floatController.value),
+                    child: child,
                   ),
-                  padding: const EdgeInsets.all(14),
                   child: Image.asset(
-                    'assets/img/robot_logo.png',
+                    data['img']!,
+                    height: naviH,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) => const Icon(
                         Icons.smart_toy_rounded,
                         color: Color(0xFF8B5CF6),
-                        size: 44),
+                        size: 64),
                   ),
                 ),
-              ),
-              SizedBox(height: isWide ? 20 : 18),
-              Text(
-                '${_currentPage + 1} de $_totalPages',
-                style: GoogleFonts.inter(
-                  fontSize: isWide ? 13.5 : 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white.withValues(alpha: 0.4),
-                  letterSpacing: 0.2,
+                SizedBox(height: (isWide ? 22 : 18) * s),
+                Text(
+                  '${_currentPage + 1} de $_totalPages',
+                  style: GoogleFonts.inter(
+                    fontSize: (isWide ? 13.5 : 13) * s,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.4),
+                    letterSpacing: 0.2,
+                  ),
                 ),
-              ),
-              SizedBox(height: isWide ? 20 : 18),
-              Text(
-                data['title']!,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: isWide ? 36 : 30,
-                  height: 1.12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: isWide ? -1.2 : -1.0,
-                  color: Colors.white,
+                SizedBox(height: (isWide ? 20 : 18) * s),
+                Text(
+                  data['title']!,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: (isWide ? 36 : 30) * s,
+                    height: 1.12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: isWide ? -1.2 : -1.0,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              SizedBox(height: isWide ? 16 : 14),
-              Text(
-                data['subtitle']!,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: isWide ? 16.5 : 15.5,
-                  height: 1.5,
-                  color: Colors.white.withValues(alpha: 0.6),
+                SizedBox(height: (isWide ? 16 : 14) * s),
+                Text(
+                  data['subtitle']!,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: (isWide ? 16.5 : 15.5) * s,
+                    height: 1.5,
+                    color: Colors.white.withValues(alpha: 0.6),
+                  ),
                 ),
-              ),
-              const Spacer(flex: 5),
-            ],
-          ),
+                const Spacer(flex: 4),
+              ],
+            );
+          }),
         ),
       ),
     );
@@ -353,9 +408,41 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   // ── Footer: CTA iOS/macOS + acción gris ───────────────────────────────────
 
-  Widget _buildFooter(bool isWide) {
-    final button = SizedBox(
-      height: isWide ? 52 : 50,
+  Widget _buildFooter(bool isWide, double s) {
+    final backButton = SizedBox(
+      height: (isWide ? 52 : 50) * s,
+      child: OutlinedButton(
+        onPressed: _currentPage == 0 || _isLoading
+            ? null
+            : () => _pageController.previousPage(
+                duration: const Duration(milliseconds: 360),
+                curve: Curves.easeOutCubic),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white.withValues(alpha: 0.8),
+          disabledForegroundColor: Colors.white.withValues(alpha: 0.25),
+          side: _currentPage == 0 || _isLoading
+              ? BorderSide(color: Colors.white.withValues(alpha: 0.10))
+              : BorderSide(color: Colors.white.withValues(alpha: 0.25)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(isWide ? 14 : 13)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.arrow_back_rounded, size: 17 * s.clamp(1, 1.15)),
+            const SizedBox(width: 6),
+            Text('Atrás',
+                style: GoogleFonts.inter(
+                    fontSize: (isWide ? 16 : 15.5) * s,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2)),
+          ],
+        ),
+      ),
+    );
+
+    final nextButton = SizedBox(
+      height: (isWide ? 52 : 50) * s,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _nextWithValidation,
         style: ElevatedButton.styleFrom(
@@ -378,14 +465,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   Text(
                     _primaryLabel,
                     style: GoogleFonts.inter(
-                        fontSize: isWide ? 16.5 : 16,
+                        fontSize: (isWide ? 16.5 : 16) * s,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.2),
                   ),
                   const SizedBox(width: 6),
                   Icon(
                     _isLastStep ? Icons.check_rounded : Icons.arrow_forward_rounded,
-                    size: 17,
+                    size: 17 * s.clamp(1, 1.15),
                     color: Colors.white.withValues(alpha: 0.85),
                   ),
                 ],
@@ -393,11 +480,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       ),
     );
 
+    final button = Row(
+      children: [
+        Expanded(child: backButton),
+        const SizedBox(width: 10),
+        Expanded(child: nextButton),
+      ],
+    );
+
     return Center(
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: isWide ? 520 : double.infinity),
+        constraints: BoxConstraints(maxWidth: isWide ? 560 : double.infinity),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(isWide ? 0 : 24, 8, isWide ? 0 : 24, isWide ? 28 : 16),
+          padding: EdgeInsets.fromLTRB(
+              isWide ? 0 : 24, 8, isWide ? 0 : 24, isWide ? 28 * s : 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -410,7 +506,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic),
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white.withValues(alpha: 0.5),
-                    textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
+                    textStyle: GoogleFonts.inter(
+                        fontSize: 14 * s, fontWeight: FontWeight.w500),
                   ),
                   child: const Text('Saltar'),
                 ),
@@ -419,13 +516,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   'Podrás cambiar esto en Configuración → Mi Empresa.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
-                      fontSize: 12.5, color: Colors.white.withValues(alpha: 0.42), height: 1.4),
+                      fontSize: 12.5 * s, color: Colors.white.withValues(alpha: 0.42), height: 1.4),
                 ),
                 TextButton(
                   onPressed: _isLoading ? null : _goToLoginDirect,
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white.withValues(alpha: 0.42),
-                    textStyle: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w500),
+                    textStyle: GoogleFonts.inter(
+                        fontSize: 12.5 * s, fontWeight: FontWeight.w500),
                   ),
                   child: const Text('Ir directo a Acceder'),
                 ),
@@ -466,14 +564,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Future<void> _finishOnboarding() async {
     debugPrint('🔵 _finishOnboarding click: $_selectedBusiness / $_selectedCustomer / $_selectedOperation');
     if (_selectedBusiness == null || _selectedCustomer == null || _selectedOperation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Por favor completa las 3 secciones (pasos 4, 5 y 6)',
-              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500)),
-          backgroundColor: _p.errorRed,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+      PPNotifications.warning(
+        context,
+        'Por favor completa las 3 secciones (pasos 4, 5 y 6)',
+        title: 'Selección requerida',
       );
       return;
     }
@@ -537,9 +631,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     } catch (e, st) {
       debugPrint('❌ _finishOnboarding error: $e\n$st');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: const Color(0xFFEF4444)),
-        );
+        PPNotifications.error(context, 'Error: $e');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -587,6 +679,7 @@ class _QuestionPage extends StatelessWidget {
   final String? selected;
   final ValueChanged<String> onSelected;
   final bool isDesktop;
+  final double scale;
 
   const _QuestionPage({
     required this.title,
@@ -595,26 +688,28 @@ class _QuestionPage extends StatelessWidget {
     required this.selected,
     required this.onSelected,
     required this.isDesktop,
+    required this.scale,
   });
 
   static const Color _accent = Color(0xFF8B5CF6);
 
   @override
   Widget build(BuildContext context) {
+    final s = scale;
     return Center(
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: isDesktop ? 520 : double.infinity),
+        constraints: BoxConstraints(maxWidth: isDesktop ? 560 : double.infinity),
         child: Padding(
           padding: EdgeInsets.fromLTRB(isDesktop ? 0 : 20, 8, isDesktop ? 0 : 20, 4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(height: isDesktop ? 16 : 12),
+              SizedBox(height: (isDesktop ? 16 : 12) * s),
               Text(
                 title,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
-                  fontSize: isDesktop ? 27 : 24,
+                  fontSize: (isDesktop ? 27 : 24) * s,
                   height: 1.15,
                   fontWeight: FontWeight.w700,
                   letterSpacing: isDesktop ? -1.0 : -0.8,
@@ -626,94 +721,166 @@ class _QuestionPage extends StatelessWidget {
                 subtitle,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
-                  fontSize: isDesktop ? 15 : 14,
+                  fontSize: (isDesktop ? 15 : 14) * s,
                   color: Colors.white.withValues(alpha: 0.55),
                 ),
               ),
-              SizedBox(height: isDesktop ? 26 : 20),
+              SizedBox(height: (isDesktop ? 26 : 20) * s),
               Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(isDesktop ? 16 : 12),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: ListView.separated(
-                    padding: EdgeInsets.zero,
-                    itemCount: options.length,
-                    separatorBuilder: (context, i) => Padding(
-                      padding: EdgeInsets.only(left: isDesktop ? 58 : 52),
-                      child: Divider(
-                          height: 1,
-                          thickness: 0.8,
-                          color: Colors.white.withValues(alpha: 0.08)),
-                    ),
-                    itemBuilder: (context, i) {
-                      final opt = options[i];
-                      final label = opt['label'] as String;
-                      final desc = opt['desc'] as String;
-                      final icon = opt['icon'] as IconData;
-                      final isSelected = selected == label;
-                      return Material(
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.transparent,
-                        child: InkWell(
-                          onTap: () => onSelected(label),
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isDesktop ? 18 : 16,
-                              vertical: isDesktop ? 15 : 11,
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  icon,
-                                  size: isDesktop ? 22 : 21,
-                                  color: isSelected
-                                      ? _accent
-                                      : Colors.white.withValues(alpha: 0.6),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        label,
-                                        style: GoogleFonts.inter(
-                                          fontSize: isDesktop ? 15.5 : 15,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.white,
-                                          letterSpacing: -0.2,
-                                        ),
-                                      ),
-                                      Text(
-                                        desc,
-                                        style: GoogleFonts.inter(
-                                          fontSize: isDesktop ? 13 : 12.5,
-                                          color: Colors.white.withValues(alpha: 0.42),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 180),
-                                  transitionBuilder: (child, anim) =>
-                                      ScaleTransition(scale: anim, child: child),
-                                  child: isSelected
-                                      ? const Icon(Icons.check_rounded,
-                                          key: ValueKey('check'), size: 20, color: _accent)
-                                      : const SizedBox(width: 20),
-                                ),
-                              ],
-                            ),
-                          ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(isDesktop ? 18 : 16),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDesktop
+                            ? const Color(0xEE140F24)
+                            : const Color(0xF20F0A1C), // Opacidad alta en teléfono para que las luces laterales no manchen el texto
+                        borderRadius: BorderRadius.circular(isDesktop ? 18 : 16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: isDesktop ? 0.08 : 0.12),
+                          width: 1,
                         ),
-                      );
-                    },
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            blurRadius: 28,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: ListView.separated(
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.symmetric(vertical: 4 * s),
+                        itemCount: options.length,
+                        separatorBuilder: (context, i) => Padding(
+                          padding: EdgeInsets.only(left: (isDesktop ? 68 : 62) * s),
+                          child: Divider(
+                              height: 1,
+                              thickness: 0.8,
+                              color: Colors.white.withValues(alpha: 0.08)),
+                        ),
+                        itemBuilder: (context, i) {
+                          final opt = options[i];
+                          final label = opt['label'] as String;
+                          final desc = opt['desc'] as String;
+                          final icon = opt['icon'] as IconData;
+                          final img = opt['img'] as String?;
+                          final isSelected = selected == label;
+                          return Material(
+                            color: isSelected
+                                ? _accent.withValues(alpha: 0.12)
+                                : Colors.transparent,
+                            child: InkWell(
+                              onTap: () => onSelected(label),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: (isDesktop ? 18 : 16) * s,
+                                  vertical: (isDesktop ? 14 : 11) * s,
+                                ),
+                                child: Row(
+                                  children: [
+                                    if (img != null)
+                                      Padding(
+                                        padding: EdgeInsets.only(right: 14 * s),
+                                        child: Image.asset(
+                                          img,
+                                          width: (isDesktop ? 54 : 46) * s,
+                                          height: (isDesktop ? 54 : 46) * s,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (context, error,
+                                                  stackTrace) =>
+                                              Icon(icon,
+                                                  size:
+                                                      (isDesktop ? 24 : 22) * s,
+                                                  color: _accent),
+                                        ),
+                                      )
+                                    else
+                                      Padding(
+                                        padding: EdgeInsets.only(right: 14 * s),
+                                        child: Icon(
+                                          icon,
+                                          size: (isDesktop ? 26 : 24) * s,
+                                          color: isSelected
+                                              ? _accent
+                                              : Colors.white.withValues(alpha: 0.70),
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            label,
+                                            style: GoogleFonts.inter(
+                                              fontSize:
+                                                  (isDesktop ? 15.5 : 15) * s,
+                                              fontWeight: isSelected
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                              color: Colors.white,
+                                              letterSpacing: -0.2,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            desc,
+                                            style: GoogleFonts.inter(
+                                              fontSize:
+                                                  (isDesktop ? 13 : 12.5) * s,
+                                              color: isSelected
+                                                  ? Colors.white.withValues(alpha: 0.75)
+                                                  : Colors.white.withValues(alpha: 0.55),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    AnimatedSwitcher(
+                                      duration:
+                                          const Duration(milliseconds: 180),
+                                      transitionBuilder: (child, anim) =>
+                                          ScaleTransition(
+                                              scale: anim, child: child),
+                                      child: isSelected
+                                          ? Container(
+                                              key: const ValueKey('selected'),
+                                              width: 22 * s.clamp(1.0, 1.2),
+                                              height: 22 * s.clamp(1.0, 1.2),
+                                              decoration: const BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: _accent,
+                                              ),
+                                              child: const Icon(
+                                                Icons.check_rounded,
+                                                size: 15,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : Container(
+                                              key: const ValueKey('unselected'),
+                                              width: 22 * s.clamp(1.0, 1.2),
+                                              height: 22 * s.clamp(1.0, 1.2),
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: Colors.white.withValues(alpha: 0.22),
+                                                  width: 1.5,
+                                                ),
+                                              ),
+                                            ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -757,28 +924,19 @@ class _SuccessOverlayState extends State<_SuccessOverlay>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Navi con badge de check verde, dentro del halo circular.
+                  // Navi con badge de check verde, sin halo circular detrás.
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Container(
-                        width: 128,
-                        height: 128,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.07),
-                          border:
-                              Border.all(color: Colors.white.withValues(alpha: 0.12)),
-                        ),
-                        padding: const EdgeInsets.all(18),
-                        child: Image.asset(
-                          'assets/img/robot_logo.png',
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
-                              Icons.smart_toy_rounded,
-                              color: Color(0xFF8B5CF6),
-                              size: 56),
-                        ),
+                      Image.asset(
+                        'assets/img/robot_logo.png',
+                        width: 148,
+                        height: 148,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => const Icon(
+                            Icons.smart_toy_rounded,
+                            color: Color(0xFF8B5CF6),
+                            size: 64),
                       ),
                       Positioned(
                         right: -2,
@@ -823,3 +981,388 @@ class _SuccessOverlayState extends State<_SuccessOverlay>
     );
   }
 }
+
+/// Hoja modal de recomendación de plan según las selecciones del usuario.
+/// Muestra el plan recomendado (Business o Enterprise) y la oferta de 15 días gratis.
+class _PlanRecommendationSheet extends StatelessWidget {
+  final String business;
+  final String customer;
+  final String operation;
+  final String planName;
+  final String planPrice;
+  final String planDesc;
+  final bool isEnterprise;
+  final VoidCallback onConfirm;
+  final VoidCallback? onGoToLogin;
+
+  const _PlanRecommendationSheet({
+    required this.business,
+    required this.customer,
+    required this.operation,
+    required this.planName,
+    required this.planPrice,
+    required this.planDesc,
+    required this.isEnterprise,
+    required this.onConfirm,
+    this.onGoToLogin,
+  });
+
+  static const Color _accent = Color(0xFF8B5CF6);
+
+  Future<void> _openWebPlans() async {
+    final uri = Uri.parse('https://portal-pilot.vercel.app');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('No se pudo abrir enlace: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 700;
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: isDesktop ? 540 : double.infinity,
+          maxHeight: MediaQuery.of(context).size.height * 0.90,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F0A1C),
+            borderRadius: BorderRadius.vertical(
+              top: const Radius.circular(24),
+              bottom: isDesktop ? const Radius.circular(24) : Radius.zero,
+            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.6),
+                blurRadius: 36,
+                offset: const Offset(0, -8),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Manija superior
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 18),
+              // Encabezado con Navi / logo
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: _accent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Image.asset(
+                      'assets/img/robot_logo.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.auto_awesome_rounded, color: _accent),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '¡Felicidades!',
+                          style: GoogleFonts.inter(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                        Text(
+                          'Tenemos tu plan recomendado listo',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              // Tarjetas de los 2 Planes (Recomendado + Oferta 15 días gratis)
+              Flexible(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      // Tarjeta 1: Plan Recomendado según sus selecciones
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              _accent.withValues(alpha: 0.18),
+                              const Color(0xFF1B142F),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _accent.withValues(alpha: 0.5),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: _accent,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'PLAN RECOMENDADO',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.6,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  planPrice,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  ' / mes',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              planName,
+                              style: GoogleFonts.inter(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              planDesc,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.75),
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Tarjeta 2: Prueba Gratuita (15 días de oferta)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF140E24),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFF30D158).withValues(alpha: 0.45),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF30D158),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '🔥 OFERTA DE 15 DÍAS',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.5,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  'GRATIS',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF30D158),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Prueba Gratuita Completa',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '¡Prueba tu plan recomendado con 15 días de acceso total sin costo ni tarjeta de crédito!',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5,
+                                color: Colors.white.withValues(alpha: 0.70),
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Enlace clickable a portal-pilot.vercel.app
+                      InkWell(
+                        onTap: _openWebPlans,
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.open_in_new_rounded,
+                                size: 14,
+                                color: _accent.withValues(alpha: 0.9),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Ver y comparar todos los planes en ',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                ),
+                              ),
+                              Text(
+                                'portal-pilot.vercel.app',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: _accent,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: _accent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              // Botón principal
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: onConfirm,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _accent,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Comenzar Prueba Gratuita (15 días)',
+                        style: GoogleFonts.inter(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward_rounded, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Botón secundario: Iniciar Sesión / Ir al Login
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: onGoToLogin ?? onConfirm,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white.withValues(alpha: 0.9),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.20)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.login_rounded, size: 18, color: Colors.white70),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Iniciar Sesión',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

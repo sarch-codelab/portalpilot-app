@@ -4,6 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/reportes/report_models.dart';
+import 'package:portal_pilot_app/Shared/reportes/report_tool_parser.dart';
+import 'package:portal_pilot_app/Shared/reportes/report_tools.dart';
+import 'package:portal_pilot_app/Modules/Reportes/report_viewer.dart';
+import 'package:portal_pilot_app/Modules/Reportes/historial_reportes_screen.dart';
 import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 import 'package:portal_pilot_app/Shared/services/haptic_service.dart';
 import 'package:portal_pilot_app/Shared/widgets/page_transitions.dart';
@@ -19,6 +24,7 @@ class ChatIAMessage {
   final bool isUser;
   final DateTime time;
   final bool isError;
+  final ReportData? reporte;
   bool isStreaming;
   ChatIAMessage({
     required this.id,
@@ -26,6 +32,7 @@ class ChatIAMessage {
     required this.isUser,
     required this.time,
     this.isError = false,
+    this.reporte,
     this.isStreaming = false,
   });
 }
@@ -148,11 +155,44 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
       // Usamos el gateway central: AIManager.generate
       final ai = AIManager.instance;
       final res = await ai.generate(prompt: raw, maxTokens: 1600, temperature: 0.7);
+
+      // Reporte: si la IA detectó una solicitud de reporte (bloque JSON o
+      // keywords), se ejecuta la herramienta CONTROLADA y se adjunta el
+      // ReportData al mensaje para el botón "Ver reporte".
+      String texto = res.text;
+      bool esError = false;
+      ReportData? reporte;
+      if (res.success) {
+        final intent = ReportToolParser.interpretar(res.text, mensajeUsuario: raw);
+        if (intent != null) {
+          try {
+            final resultado = await ReportToolDispatcher.instance
+                .execute(intent.tool, intent.params);
+            reporte = resultado.data;
+            texto = resultado.mensaje;
+          } on ReportPermissionException catch (e) {
+            texto = e.message;
+            esError = true;
+          } on ReportToolException catch (e) {
+            texto = e.message;
+            esError = true;
+          } catch (_) {
+            texto = res.text;
+          }
+        }
+      }
+
       if (!mounted) return;
       setState(() {
         _current.messages.removeWhere((m) => m.id == 'typing');
         if (res.success) {
-          _current.messages.add(ChatIAMessage(id: _id(), text: res.text, isUser: false, time: DateTime.now()));
+          _current.messages.add(ChatIAMessage(
+              id: _id(),
+              text: texto,
+              isUser: false,
+              time: DateTime.now(),
+              isError: esError,
+              reporte: reporte));
         } else {
           _current.messages.add(ChatIAMessage(id: _id(), text: res.error ?? 'No pude responder. Intenta de nuevo.', isUser: false, time: DateTime.now(), isError: true));
           _errorBanner = res.error;
@@ -361,6 +401,16 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
         ],
       ),
       actions: [
+        // Acceso a los reportes guardados en el historial local.
+        Tooltip(
+          message: 'Reportes guardados',
+          child: IconButton(
+            icon: Icon(Icons.history_rounded, color: p.brandOnSurface, size: 20),
+            onPressed: () => Navigator.of(context).push(FadeThroughTransition(
+              child: const HistorialReportesScreen(),
+            )),
+          ),
+        ),
         // Acceso directo al panel de módulos (Home), visible en móvil y PC.
         Tooltip(
           message: 'Panel de módulos',
@@ -713,6 +763,27 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
               _bubbleAction(Icons.refresh_rounded, 'Reintentar', () => _send(m.text)),
             ]),
           ),
+          if (m.reporte != null && !m.reporte!.noData) ...[
+            Divider(height: 1, color: appPalette.borderLight),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.14),
+                  foregroundColor: const Color(0xFF059669),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  minimumSize: const Size.fromHeight(38),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(FadeThroughTransition(
+                    child: ReportViewer(data: m.reporte!),
+                  ));
+                },
+                icon: const Icon(Icons.analytics_rounded, size: 17),
+                label: Text('Ver reporte', style: GoogleFonts.dmSans(fontSize: 12.5, fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ],
         ]),
       ),
     );

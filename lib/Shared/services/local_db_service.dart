@@ -206,6 +206,7 @@ class LocalDatabaseService {
           'empresa_codigo': existing.empresaId,
           'factura': {
             'id': id,
+            'correlativo': existing.correlativo,
             'estado': factura.estado.value,
             'fecha_anulacion': factura.fechaAnulacion.value?.toIso8601String(),
             'motivo_anulacion': factura.motivoAnulacion.value,
@@ -236,6 +237,7 @@ class LocalDatabaseService {
           'empresa_codigo': existing.empresaId,
           'factura': {
             'id': id,
+            'correlativo': existing.correlativo,
             'estado': 'anulada',
             'fecha_anulacion': DateTime.now().toIso8601String(),
             'motivo_anulacion': motivo,
