@@ -58,6 +58,16 @@ void main() {
       );
     });
 
+    test('interpretarSinJson infiere por palabras (fallback final del chat)', () {
+      final i = ReportToolParser.interpretarSinJson('muéstrame un reporte de ventas de este mes');
+      expect(i, isNotNull);
+      expect(i!.tool, ReportToolType.ventas);
+    });
+
+    test('interpretarSinJson devuelve null sin verbo de reporte', () {
+      expect(ReportToolParser.interpretarSinJson('hola qué tal'), isNull);
+    });
+
     test('devuelve null si no hay bloque JSON y no se pasa mensaje', () {
       expect(ReportToolParser.interpretar('Respuesta normal de la IA'), isNull);
     });

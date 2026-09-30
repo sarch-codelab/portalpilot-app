@@ -100,6 +100,13 @@ class ReportToolParser {
     return null;
   }
 
+  /// Infiere la herramienta SOLO del mensaje del usuario (fallback por
+  /// palabras, sin JSON de por medio). Útil cuando la IA insiste en devolver
+  /// herramientas inexistentes tras varios reintentos.
+  static ReportToolIntent? interpretarSinJson(String mensajeUsuario) {
+    return _porPalabras(mensajeUsuario);
+  }
+
   static ReportToolIntent? _porJson(String reply) {
     final m = _jsonBlock.firstMatch(reply);
     if (m == null) return null;

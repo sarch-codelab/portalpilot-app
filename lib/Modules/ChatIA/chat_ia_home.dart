@@ -160,39 +160,58 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
       // keywords), se ejecuta la herramienta CONTROLADA y se adjunta el
       // ReportData al mensaje para el botón "Ver reporte".
       String texto = res.text;
+      String reintentoTxt = '';
       bool esError = false;
       ReportData? reporte;
       if (res.success) {
         ReportToolIntent? intent;
-        try {
-          intent = ReportToolParser.interpretar(res.text, mensajeUsuario: raw);
-        } on ReportToolDesconocida catch (e) {
-          // La IA inventó una herramienta que no existe (p.ej. {"tool":"users"}).
-          // Reintentamos una vez con el contexto de las herramientas válidas;
-          // si igual falla, mostramos texto útil y NO el JSON crudo.
-          final reintento = await ai.generate(
-            prompt: raw,
-            maxTokens: 1600,
-            temperature: 0.4,
-            contextoAdicional:
-                'Tu respuesta anterior fue invalida: usaste la herramienta '
-                '"${e.tool}" que NO existe. Herramientas validas (usa EXACTAMENTE una): '
+        // Hasta 2 reintentos cuando la IA inventa una herramienta inexistente
+        // (p.ej. {"tool":"users"} o {"tool":"sales_report"}). En cada vuelta
+        // se le recuerdan las herramientas VÁLIDAS; si al final insiste,
+        // se recurre al fallback por palabras (misma vía que el parser) para
+        // inferir la herramienta del mensaje del usuario. NUNCA se muestra
+        // el JSON crudo al usuario.
+        var correctionContext =
+            'Tu respuesta anterior fue invalida: usaste una herramienta que NO '
+            'existe. Herramientas validas (usa EXACTAMENTE una): gastos, ventas, '
+            'inventario_movimientos, stock, compras, clientes, facturacion, '
+            'cuentas_por_cobrar, caja, resumen_financiero, empleados. '
+            'Si la peticion del usuario no corresponde a ninguna, responde en '
+            'texto sin JSON. Vuelve a responder a: $raw';
+        for (var vuelta = 0; vuelta < 3 && intent == null; vuelta++) {
+          try {
+            intent = vuelta == 0
+                ? ReportToolParser.interpretar(res.text, mensajeUsuario: raw)
+                : ReportToolParser.interpretar(reintentoTxt, mensajeUsuario: raw);
+          } on ReportToolDesconocida catch (e) {
+            debugPrint('[ChatIA] tool inventada "${e.tool}" (vuelta $vuelta); reintentando…');
+            final reintento = await ai.generate(
+              prompt: raw,
+              maxTokens: 1600,
+              temperature: 0.4,
+              contextoAdicional: correctionContext,
+            );
+            reintentoTxt = reintento.success ? reintento.text : '';
+            correctionContext =
+                'Tu respuesta anterior fue invalida otra vez: usaste la herramienta '
+                '"${e.tool}" que NO existe. COPIA EXACTAMENTE uno de estos nombres: '
                 'gastos, ventas, inventario_movimientos, stock, compras, clientes, '
                 'facturacion, cuentas_por_cobrar, caja, resumen_financiero, empleados. '
-                'Si la peticion del usuario no corresponde a ninguna, responde en texto '
-                'sin JSON. Vuelve a responder a: $raw',
-          );
-          try {
-            intent = ReportToolParser.interpretar(reintento.text, mensajeUsuario: raw);
-          } on ReportToolDesconocida {
-            intent = null;
-            texto = reintento.success && reintento.text.trim().isNotEmpty
-                ? reintento.text
-                : 'No pude generar ese reporte. Puedo generar: gastos, ventas, '
-                    'inventario (stock), movimientos de inventario, compras, clientes, '
-                    'facturación, cuentas por cobrar, caja, resumen financiero y empleados. '
-                    '¿Cuál necesitas?';
-            esError = !reintento.success;
+                'Si no corresponde ninguna, responde SOLO texto plano sin llaves JSON. '
+                'Vuelve a responder a: $raw';
+          }
+        }
+        // Última red: si tras los reintentos la IA sigue inventando, infiere
+        // la herramienta solo por palabras del usuario (sin JSON de por medio).
+        if (intent == null) {
+          final fallback = ReportToolParser.interpretarSinJson(raw);
+          intent = fallback;
+          if (fallback == null) {
+            texto = 'No pude identificar qué reporte generar. Puedo generar: '
+                'gastos, ventas, inventario (stock), movimientos de inventario, '
+                'compras, clientes, facturación, cuentas por cobrar, caja, '
+                'resumen financiero y empleados. ¿Cuál necesitas?';
+            esError = true;
           }
         }
         if (intent != null) {
