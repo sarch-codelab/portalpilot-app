@@ -228,8 +228,11 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
           const Icon(Icons.toggle_on_rounded, color: Color(0xFF737373), size: 18),
           const SizedBox(width: 12),
           Text('Estado', style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 14)),
-          const Spacer(),
-          SegmentedButton<String>(
+          const SizedBox(width: 12),
+          Flexible(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SegmentedButton<String>(
             segments: const [
               ButtonSegment(value: 'Activo', label: Text('Activo', style: TextStyle(fontSize: 11))),
               ButtonSegment(value: 'Inactivo', label: Text('Inactivo', style: TextStyle(fontSize: 11))),
@@ -246,6 +249,8 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
                 return const Color(0xFF737373);
               }),
               side: WidgetStateProperty.all(BorderSide.none),
+            ),
+          ),
             ),
           ),
         ],

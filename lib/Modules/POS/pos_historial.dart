@@ -184,9 +184,9 @@ class _PosHistorialState extends State<PosHistorial> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildItem('Ventas', '$count', const Color(0xFFF97316)),
-          _buildItem('Items', '$items', const Color(0xFF3B82F6)),
-          _buildItem('Total', 'L.${_formatNumber(total)}', const Color(0xFF10B981)),
+          Expanded(child: _buildItem('Ventas', '$count', const Color(0xFFF97316))),
+          Expanded(child: _buildItem('Items', '$items', const Color(0xFF3B82F6))),
+          Expanded(child: _buildItem('Total', 'L.${_formatNumber(total)}', const Color(0xFF10B981))),
         ],
       ),
     );
@@ -195,9 +195,15 @@ class _PosHistorialState extends State<PosHistorial> {
   Widget _buildItem(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w900, color: color)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(value, style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w900, color: color)),
+        ),
         const SizedBox(height: 4),
-        Text(label, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(label, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+        ),
       ],
     );
   }

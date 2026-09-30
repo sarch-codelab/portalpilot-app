@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS productos (
   bodega TEXT DEFAULT 'General',
   isv_rate NUMERIC(4,2) DEFAULT 15.00,
   exento BOOLEAN DEFAULT false,
+  is_perishable BOOLEAN DEFAULT false,
   imagen_url TEXT,
   activo BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -82,12 +83,12 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 -- INSERT INTO productos (
 --   empresa_id, codigo, nombre, descripcion, categoria, unidad_medida,
 --   precio_compra, precio_venta, stock_minimo, stock_actual, bodega,
---   isv_rate, exento, activo
+--   isv_rate, exento, is_perishable, activo
 -- ) VALUES (
 --   'REEMPLAZA-CON-UUID-DE-EMPRESA',  -- ← UUID de la empresa
 --   'P001', 'Coca Cola 12oz', 'Bebida carbonatada', 'Bebidas', 'Unidad',
 --   8.00, 15.00, 10, 50, 'General',
---   15.00, false, true
+--   15.00, false, false, true
 -- );
 
 -- Obtener el UUID de tu empresa:

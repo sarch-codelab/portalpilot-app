@@ -41,11 +41,17 @@ enum ReportToolType {
       return ventas;
     }
     if (['movimientos', 'entradas_salidas', 'entradas y salidas',
-            'inventario_movimientos', 'inventario']
+            'inventario_movimientos', 'kardex']
         .contains(n)) {
       return inventarioMovimientos;
     }
-    if (['stock', 'inventario_actual', 'existencias'].contains(n)) return stock;
+    // 'inventario' a secas = existencias actuales (`stock`). Los movimientos
+    // tienen su propio nombre explícito; mapear aquí devolvía un reporte vacío
+    // porque `compras`/`posVentas` casi nunca tienen filas.
+    if (['stock', 'inventario', 'inventario_actual', 'existencias']
+        .contains(n)) {
+      return stock;
+    }
     if (['compras', 'compra', 'adquisiciones', 'compras_realizadas']
         .contains(n)) {
       return compras;

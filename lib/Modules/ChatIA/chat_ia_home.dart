@@ -340,29 +340,6 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
       titleSpacing: 0,
       title: Row(
         children: [
-          // avatar con pulso
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              FadeTransition(
-                opacity: Tween<double>(begin: 0.5, end: 0).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeOut)),
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 1, end: 1.8).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeOut)),
-                  child: Container(width: 34, height: 34, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF8B5CF6).withValues(alpha: 0.25))),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)]),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: const Color(0xFF8B5CF6).withValues(alpha: 0.4), blurRadius: 16)],
-                ),
-                child: Icon(Icons.auto_awesome_rounded, color: appPalette.cardColor, size: 16),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: LayoutBuilder(builder: (ctx, c) {
               // En pantallas muy estrechas el título + badge no caben en un

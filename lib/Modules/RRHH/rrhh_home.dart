@@ -402,6 +402,8 @@ class _RrhhHomeState extends State<RrhhHome> {
                         fontWeight: FontWeight.w600,
                         color: appPalette.textPrimary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(

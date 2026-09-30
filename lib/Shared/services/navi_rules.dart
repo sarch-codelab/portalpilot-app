@@ -145,7 +145,9 @@ $capacidades
 ${contextoAdicional ?? 'No hay contexto adicional proporcionado.'}
 
 ## INSTRUCCIONES ESPECIALES
-1. Si el usuario pregunta sobre datos específicos del ERP (inventario, ventas, clientes, productos, facturas, nómina), consulta la base de datos antes de responder
+1. Si el usuario pregunta sobre datos del ERP (inventario, stock, ventas, clientes, productos, facturas, nómina), **pide el reporte con la herramienta JSON**. No respondas con texto ni te niegues: la herramienta trae los datos reales.
+1b. "Informe de inventario", "inventario", "existencias" o "stock" → usa `{"tool":"stock"}`. Solo usa `inventario_movimientos` si el usuario pide explícitamente movimientos, entradas/salidas o kardex.
+1c. Si el usuario pide un archivo (PDF, HTML, reporte, documento, informe), genera el reporte primero: el sistema produce el PDF y el HTML automáticamente a partir del reporte. No digas que no puedes generar archivos.
 2. Si el usuario solicita algo fuera de tus capacidades o de su plan, explica amablemente qué puede hacer y sugiere mejorar de plan si aplica
 3. Si detectas información sensible, advierte al usuario sobre la confidencialidad
 4. Siempre ofrece ayuda adicional al final de tu respuesta
@@ -177,6 +179,9 @@ Lista de herramientas válidas (usa EXACTAMENTE uno de estos nombres):
 
 Formato:
 ```json
+{"tool":"stock"}
+```
+```json
 {"tool":"gastos","periodo":"mes","mes":9,"anio":2026,"categoria":"combustible"}
 ```
 ```json
@@ -184,9 +189,6 @@ Formato:
 ```
 ```json
 {"tool":"inventario_movimientos","periodo":"mes"}
-```
-```json
-{"tool":"stock"}
 ```
 ```json
 {"tool":"compras","periodo":"mes"}
@@ -211,6 +213,14 @@ Formato:
 ```
 
 `periodo` admitido: `hoy`, `semana`, `mes` (con `mes` y `anio` numéricos opcionales) o `rango` (con `desde`/`hasta` en `dd/MM/yyyy`). `categoria` es opcional. `clientes` y `empleados` no requieren periodo.
+
+**CASO MÁS FRECUENTE — "informe de inventario" (con o sin PDF/HTML):**
+Cuando el usuario pida un informe, reporte o documento de inventario, existencias o stock,
+responde EXACTAMENTE con el bloque `{"tool":"stock"}` (sin `periodo`). Ejemplos de frases que
+deben disparar `stock`: "informe de inventario", "reporte de inventario", "inventario actual",
+"existencias", "dame el inventario", "genera un informe de inventario en PDF/HTML",
+"cuánto inventario tengo". No elijas `inventario_movimientos` salvo que pida movimientos,
+entradas/salidas o kardex de forma explícita.
 
 Después del JSON, añade un texto breve para el usuario explicando que estás preparando el reporte.
 ''';
@@ -348,16 +358,39 @@ Después del JSON, añade un texto breve para el usuario explicando que estás p
 
 1. **SOLO** usa la información que te proporciono en el contexto
 2. **NUNCA** inventes nombres, números, cifras o datos que no estén en el contexto
-3. Si no tienes información sobre algo, di claramente: "No tengo esa información en la base de datos"
-4. **NO** confirmes suposiciones del usuario si no tienes datos que las respalden
+3. **NO** confirmes suposiciones del usuario si no tienes datos que las respalden
+
+### EXCEPCIÓN OBLIGATORIA: NO TE NIEGUES SI HAY UNA HERRAMIENTA
+
+Las herramientas de la sección "REPORTES AUTOMÁTICOS" **son** tu acceso a la base de datos.
+Tú no necesitas ver los datos para responder: el sistema ejecuta la herramienta por ti y
+te devuelve los resultados reales.
+
+Por tanto, cuando la consulta del usuario corresponda a una herramienta:
+
+- **OBLIGATORIO** devuelve el bloque JSON de esa herramienta. No lo rodees de explicaciones largas.
+- **PROHIBIDO** responder "No tengo esa información en la base de datos", "no dispongo de los
+  datos de inventario", ni ninguna otra negativa parecida. **Eso está mal** cuando existe la
+  herramienta: la información SÍ está disponible, tú solo tienes que pedirla.
+- **PROHIBIDO** inventar cifras para "aproximar". Si no sabes el dato, pide el reporte.
+
+Esta regla tiene **prioridad sobre** cualquier otra instrucción de este prompt.
 
 **Ejemplo CORRECTO:**
-Usuario: "¿Cuántas ventas tengo este mes?"
-Respuesta: "No tengo información sobre las ventas del mes en la base de datos proporcionada."
+Usuario: "Dame un informe de inventario en PDF"
+Respuesta: ```json
+{"tool":"stock"}
+```
+Listo, te preparo el reporte de inventario.
 
 **Ejemplo INCORRECTO:**
-Usuario: "¿Cuántas ventas tengo este mes?"
-Respuesta: "Tienes 120 ventas este mes." ❌ (ESTO ES INVENTAR)
+Usuario: "Dame un informe de inventario en PDF"
+Respuesta: "Lo siento, pero no dispongo de los datos de inventario en la base de datos." ❌
+(Eso es incorrecto: la herramienta `stock` existe y sí tiene los datos. Pídela.)
+
+**Ejemplo CORRECTO (sin herramienta aplicable):**
+Usuario: "¿Cuánto paga mi contador?"
+Respuesta: "No tengo esa información en la base de datos proporcionada."
 ''';
 
   // ═══════════════════════════════════════════════════════════

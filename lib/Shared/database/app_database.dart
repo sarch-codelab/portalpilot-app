@@ -149,6 +149,7 @@ class Productos extends Table {
   TextColumn get bodega => text().withDefault(const Constant('General'))();
   RealColumn get isvRate => real().withDefault(const Constant(15.0))();
   BoolColumn get exento => boolean().withDefault(const Constant(false))();
+  BoolColumn get isPerishable => boolean().withDefault(const Constant(false))();
   TextColumn get imagenUrl => text().nullable()();
   BoolColumn get activo => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
@@ -929,7 +930,7 @@ class AppDatabase extends _$AppDatabase {
   factory AppDatabase() => instance;
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -980,6 +981,9 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(productos, productos.barcode);
             await m.addColumn(productos, productos.marca);
             await m.addColumn(productos, productos.presentacion);
+          }
+          if (from < 8) {
+            await m.addColumn(productos, productos.isPerishable);
           }
         },
       );

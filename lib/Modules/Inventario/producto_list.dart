@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:http/http.dart' as http;
 import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
@@ -92,6 +93,7 @@ class _ProductoListState extends State<ProductoList> {
         'bodega': p.bodega,
         'isv_rate': p.isvRate,
         'exento': p.exento,
+        'is_perishable': p.isPerishable,
         'imagen_url': p.imagenUrl,
         'created_at': p.createdAt.toIso8601String(),
       };
@@ -113,6 +115,7 @@ class _ProductoListState extends State<ProductoList> {
         'bodega': p['bodega'],
         'isv_rate': p['isv_rate'],
         'exento': p['exento'],
+        'is_perishable': p['is_perishable'],
         'imagen_base64': p['imagen_url'],
         'created_at': p['created_at'],
       };
@@ -414,26 +417,13 @@ class _ProductoListState extends State<ProductoList> {
                           ),
                           child: Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: (agotado
-                                          ? const Color(0xFFEF4444)
-                                          : bajo
-                                              ? const Color(0xFFF59E0B)
-                                              : const Color(0xFF10B981))
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(
-                                  Icons.inventory_2_rounded,
-                                  color: agotado
-                                      ? const Color(0xFFEF4444)
-                                      : bajo
-                                          ? const Color(0xFFF59E0B)
-                                          : const Color(0xFF10B981),
-                                  size: 20,
-                                ),
+                              _buildProductoImagen(
+                                p,
+                                agotado
+                                    ? const Color(0xFFEF4444)
+                                    : bajo
+                                        ? const Color(0xFFF59E0B)
+                                        : const Color(0xFF10B981),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -510,6 +500,58 @@ class _ProductoListState extends State<ProductoList> {
         ],
       ),
     );
+  }
+
+  Widget _buildProductoImagen(Map<String, dynamic> producto, Color accent) {
+    const double size = 44;
+    final url = (producto['imagen_url'] as String? ?? '').trim();
+    final base64Raw = (producto['imagen_base64'] as String? ?? '').trim();
+    final esUrl = url.isNotEmpty && url.startsWith('http');
+    Uint8List? bytes;
+    if (!esUrl && base64Raw.isNotEmpty) {
+      try {
+        var b = base64Raw;
+        if (b.contains(',')) b = b.split(',').last;
+        bytes = base64Decode(b);
+      } catch (_) {
+        bytes = null;
+      }
+    }
+    final fallback = Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(Icons.inventory_2_rounded, color: accent, size: 20),
+    );
+    if (esUrl) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          url,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback,
+        ),
+      );
+    }
+    if (bytes != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.memory(
+          bytes,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback,
+        ),
+      );
+    }
+    return fallback;
   }
 
   Widget _buildFilterChip(String label, bool selected, VoidCallback onTap) {

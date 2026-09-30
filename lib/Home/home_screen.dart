@@ -37,6 +37,7 @@ import 'package:portal_pilot_app/Shared/widgets/refresh_wrapper.dart';
 import 'package:portal_pilot_app/Shared/widgets/page_transitions.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 import 'package:portal_pilot_app/Home/multi_area_config_screen.dart';
+import 'package:portal_pilot_app/Shared/utils/modulo_icons.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -370,6 +371,8 @@ class _HomeScreenState extends State<HomeScreen>
     String greeting = 'Buenos días';
     if (hour >= 12 && hour < 19) greeting = 'Buenas tardes';
     if (hour >= 19) greeting = 'Buenas noches';
+    // Círculo de perfil adaptativo: escala según la pantalla (móvil y PC).
+    final avatarSize = (MediaQuery.sizeOf(context).shortestSide * 0.22).clamp(76.0, 108.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,13 +411,6 @@ class _HomeScreenState extends State<HomeScreen>
                   ],
                 ),
               ),
-              _headerIconButton(
-                palette: palette,
-                tooltip: 'Menú',
-                icon: Icons.menu_rounded,
-                onPressed: () => Scaffold.of(context).openDrawer(),
-              ),
-              const SizedBox(width: 8),
               _headerIconButton(
                 palette: palette,
                 tooltip: appThemeNotifier.isDark ? 'Modo claro' : 'Modo oscuro',
@@ -505,22 +501,60 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
         ],
-        const SizedBox(height: 32),
-        Text(
-          '$greeting, ${_userName.split(' ').first}',
-          style: GoogleFonts.syne(
-            fontSize: isMobile ? 32 : 42,
-            fontWeight: FontWeight.w900,
-            color: palette.textPrimary,
-            letterSpacing: -1,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '¿Qué módulo deseas usar hoy?',
-          style: GoogleFonts.dmSans(
-            fontSize: 16,
-            color: palette.textMuted,
+        SizedBox(height: isMobile ? 28 : 40),
+        // Foto de perfil centrada: círculo responsive, con el nombre y
+        // apellido completos debajo y el saludo como subtítulo.
+        Center(
+          child: Column(
+            children: [
+              Container(
+                width: avatarSize,
+                height: avatarSize,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: palette.brandGradient),
+                  boxShadow: [
+                    BoxShadow(
+                      color: palette.brand.withValues(alpha: 0.3),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  _userName.trim().isEmpty ? 'U' : _userName.trim()[0].toUpperCase(),
+                  style: GoogleFonts.syne(
+                    fontSize: avatarSize * 0.38,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _userName.trim().isEmpty ? 'Usuario' : _userName,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.syne(
+                  fontSize: isMobile ? 24 : 32,
+                  fontWeight: FontWeight.w900,
+                  color: palette.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$greeting · ¿Qué módulo deseas usar hoy?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: palette.textMuted,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1437,6 +1471,20 @@ class _ModuleCardState extends State<ModuleCard> {
     );
   }
 
+  /// Usa el PNG de marca del módulo si existe; si no, cae al IconData.
+  Widget _buildModuleGlyph(Color accent) {
+    final asset = moduloIconAsset(widget.modulo.id);
+    if (asset != null) {
+      return Image.asset(
+        asset,
+        width: 34,
+        height: 34,
+        fit: BoxFit.contain,
+      );
+    }
+    return Icon(widget.modulo.icono, color: Colors.white, size: 22);
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = ThemePalette(isDark: appThemeNotifier.isDark);
@@ -1520,7 +1568,7 @@ class _ModuleCardState extends State<ModuleCard> {
                               ),
                             ],
                           ),
-                          child: Icon(widget.modulo.icono, color: Colors.white, size: 22),
+                          child: _buildModuleGlyph(accent),
                         ),
                         Container(
                           width: 8,

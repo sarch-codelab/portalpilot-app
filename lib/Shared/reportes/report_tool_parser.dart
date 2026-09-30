@@ -30,22 +30,31 @@ class ReportToolParser {
     r'\{[^{}]*(?:"tool"|\x27tool\x27)[^{}]*\}',
   );
 
-  static final List<String> _verbosReporte = [
-    'reporte', 'reportes', 'resumen', 'resumeme', 'enliste',
-    'listado', 'detalle de', 'registros de', 'generame', 'genera',
+  static const List<String> _verbosReporte = [
+    'reporte', 'reportes', 'informe', 'informes', 'resumen', 'resumeme',
+    'enliste', 'listado', 'listar', 'detalle de', 'registros de',
+    'generame', 'genera', 'generar', 'hazme', 'haz un', 'dame', 'damelo',
+    'muestrame', 'muéstrame', 'consulta', 'consultar', 'consultame',
+    'necesito', 'quiero', 'exportar', 'exporta', 'exportame',
+    'descargar', 'descarga', 'documento', 'archivo', 'pdf', 'html',
     'como van', 'cómo van',
   ];
 
   static const Map<String, ReportToolType> _categorias = {
+    'inventario_movimientos': ReportToolType.inventarioMovimientos,
+    'movimientos de inventario': ReportToolType.inventarioMovimientos,
+    'kardex': ReportToolType.inventarioMovimientos,
+    'movimientos': ReportToolType.inventarioMovimientos,
+    'entradas y salidas': ReportToolType.inventarioMovimientos,
     'gastos': ReportToolType.gastos,
     'gasto': ReportToolType.gastos,
     'egresos': ReportToolType.gastos,
     'ventas': ReportToolType.ventas,
     'venta': ReportToolType.ventas,
     'ingresos': ReportToolType.ventas,
-    'inventario': ReportToolType.inventarioMovimientos,
-    'stock': ReportToolType.stock,
     'existencias': ReportToolType.stock,
+    'inventario': ReportToolType.stock,
+    'stock': ReportToolType.stock,
     'compras': ReportToolType.compras,
     'compra': ReportToolType.compras,
     'adquisiciones': ReportToolType.compras,
@@ -165,10 +174,12 @@ class ReportToolParser {
     final tieneVerbo = _verbosReporte.any(low.contains);
 
     String? categoria;
+    // Gana la clave MÁS LARGA que coincida: así "movimientos de inventario" no
+    // cae en "inventario" (que es `stock`), sin depender del orden del mapa.
     for (final entry in _categorias.entries) {
-      if (low.contains(entry.key)) {
+      if (!low.contains(entry.key)) continue;
+      if (categoria == null || entry.key.length > categoria.length) {
         categoria = entry.key;
-        break;
       }
     }
     if (!tieneVerbo || categoria == null) return null;

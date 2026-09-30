@@ -173,9 +173,13 @@ class _EmpleadoListState extends State<EmpleadoList> {
                                   children: [
                                     Row(
                                       children: [
-                                        Text(
-                                          nombre.isNotEmpty ? nombre : 'Sin nombre',
-                                          style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                                        Flexible(
+                                          child: Text(
+                                            nombre.isNotEmpty ? nombre : 'Sin nombre',
+                                            style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
                                         if (!activo) ...[
                                           const SizedBox(width: 6),

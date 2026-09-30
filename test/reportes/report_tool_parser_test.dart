@@ -89,4 +89,59 @@ void main() {
       expect(ReportToolParser.interpretar('{"tool": "'), isNull);
     });
   });
+
+  // Regresión: el asistente se negaba a responder ("no dispongo de los datos
+  // de inventario") porque 'informe' no era verbo de reporte y 'inventario'
+  // mapeaba a `inventario_movimientos`, que lee compras/posVentas (vacíos).
+  group('informe de inventario (regresión)', () {
+    final frases = <String>[
+      'genera un informe de inventario y me des el pdf',
+      'dame el informe de inventario en html',
+      'quiero un informe de inventario',
+      'reporte de inventario',
+      'exportame el inventario actual',
+      'necesito un reporte de existencias',
+      'cuánto inventario tengo, dame el documento',
+    ];
+
+    for (final frase in frases) {
+      test('"${frase.length > 46 ? '${frase.substring(0, 46)}…' : frase}" -> stock', () {
+        final i = ReportToolParser.interpretar('X', mensajeUsuario: frase);
+        expect(i, isNotNull, reason: 'debería detectar: $frase');
+        expect(i!.tool, ReportToolType.stock, reason: 'para: $frase');
+      });
+    }
+
+    test('"movimientos de inventario" sigue yendo a inventarioMovimientos', () {
+      final i = ReportToolParser.interpretar(
+        'X',
+        mensajeUsuario: 'generame un reporte de movimientos de inventario',
+      );
+      expect(i, isNotNull);
+      expect(i!.tool, ReportToolType.inventarioMovimientos);
+    });
+
+    test('kardex explícito sigue yendo a inventarioMovimientos', () {
+      final i = ReportToolParser.interpretar('X', mensajeUsuario: 'dame el kardex');
+      expect(i, isNotNull);
+      expect(i!.tool, ReportToolType.inventarioMovimientos);
+    });
+
+    test('"movimientos de caja" no se confunde con movimientos de inventario', () {
+      final i = ReportToolParser.interpretar(
+        'X',
+        mensajeUsuario: 'reporte de movimientos de caja',
+      );
+      expect(i, isNotNull);
+      expect(i!.tool, ReportToolType.caja);
+    });
+
+    test('fromName("inventario") es stock, no inventarioMovimientos', () {
+      expect(ReportToolType.fromName('inventario'), ReportToolType.stock);
+      expect(
+        ReportToolType.fromName('inventario_movimientos'),
+        ReportToolType.inventarioMovimientos,
+      );
+    });
+  });
 }

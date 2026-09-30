@@ -55,14 +55,85 @@ class _InventarioHomeState extends State<InventarioHome> {
 
   Future<void> _cargarDatos() async {
     if (mounted && _productos.isEmpty) setState(() => _cargando = true);
-    List<Map<String, dynamic>> productos = [];
-    List<Map<String, dynamic>> bodegas = [];
 
+    // 1. Carga local inmediata: la UI se pinta al instante y no se queda
+    //    en skeleton mientras la API responde.
+    await _cargarLocales();
+
+    // 2. Refresco con la API en segundo plano (actualiza el dashboard cuando
+    //    llega, sin bloquear la primera pintada).
+    try {
+      // Productos y bodegas en paralelo para cargar el dashboard más rápido.
+      final results = await Future.wait([_fetchProductos(), _fetchBodegas()]);
+      final productos = results[0];
+      final bodegas = results[1];
+
+      int stockBajo = 0;
+      double valor = 0.0;
+
+      for (final p in productos) {
+        final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
+        final minimo = (p['stock_minimo'] as num?)?.toInt() ?? 0;
+        final precio = (p['precio_venta'] as num?)?.toDouble() ?? 0.0;
+        if (stock <= minimo && minimo > 0) stockBajo++;
+        valor += stock * precio;
+      }
+
+      if (mounted) {
+        setState(() {
+          _productos = productos;
+          _bodegas = bodegas;
+          _totalProductos = productos.length;
+          _stockBajo = stockBajo;
+          _valorInventario = valor;
+          _cargando = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[Inventario] Error cargando datos: $e');
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  /// Pinta desde SharedPreferences al instante (sin esperar a la red).
+  Future<void> _cargarLocales() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final localProductos = JsonGuard
+          .safeListOfMaps(prefs.getString('productos'), source: 'Inventario/local/productos')
+          .cast<Map<String, dynamic>>();
+
+      if (!mounted || localProductos.isEmpty) return;
+
+      int stockBajo = 0;
+      double valor = 0.0;
+      for (final p in localProductos) {
+        final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
+        final minimo = (p['stock_minimo'] as num?)?.toInt() ?? 0;
+        final precio = (p['precio_venta'] as num?)?.toDouble() ?? 0.0;
+        if (stock <= minimo && minimo > 0) stockBajo++;
+        valor += stock * precio;
+      }
+
+      setState(() {
+        _productos = localProductos;
+        _totalProductos = localProductos.length;
+        _stockBajo = stockBajo;
+        _valorInventario = valor;
+        _cargando = false;
+      });
+    } catch (e) {
+      debugPrint('[Inventario] Carga local falló: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchProductos() async {
+    List<Map<String, dynamic>> productos = [];
     try {
       final api = ApiService.instance;
-      final productosRes = await api.get('/api/productos');
-      if (api.isSuccess(productosRes)) {
-        final data = productosRes['productos'] ?? productosRes['data'];
+      final res = await api.get('/api/productos');
+      if (api.isSuccess(res)) {
+        final data = res['productos'] ?? res['data'];
         if (data is List) {
           productos = data.cast<Map<String, dynamic>>();
         }
@@ -70,19 +141,22 @@ class _InventarioHomeState extends State<InventarioHome> {
     } catch (e) {
       debugPrint('[Inventario] API load failed, falling back to local: $e');
     }
-
     if (productos.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       final productosJson = prefs.getString('productos') ?? '[]';
       final List<dynamic> localProductos = JsonGuard.safeListOfMaps(productosJson, source: 'Inventario/productos');
       productos = localProductos.cast<Map<String, dynamic>>();
     }
+    return productos;
+  }
 
+  Future<List<Map<String, dynamic>>> _fetchBodegas() async {
+    List<Map<String, dynamic>> bodegas = [];
     try {
       final api = ApiService.instance;
-      final bodegasRes = await api.get('/api/bodegas');
-      if (api.isSuccess(bodegasRes)) {
-        final data = bodegasRes['bodegas'] ?? bodegasRes['data'];
+      final res = await api.get('/api/bodegas');
+      if (api.isSuccess(res)) {
+        final data = res['bodegas'] ?? res['data'];
         if (data is List) {
           bodegas = data.cast<Map<String, dynamic>>();
         }
@@ -90,32 +164,10 @@ class _InventarioHomeState extends State<InventarioHome> {
     } catch (e) {
       debugPrint('[Inventario] Bodegas API failed: $e');
     }
-
     if (bodegas.isEmpty) {
       bodegas = [{'nombre': 'General'}];
     }
-
-    int stockBajo = 0;
-    double valor = 0.0;
-
-    for (final p in productos) {
-      final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
-      final minimo = (p['stock_minimo'] as num?)?.toInt() ?? 0;
-      final precio = (p['precio_venta'] as num?)?.toDouble() ?? 0.0;
-      if (stock <= minimo && minimo > 0) stockBajo++;
-      valor += stock * precio;
-    }
-
-    if (mounted) {
-      setState(() {
-        _productos = productos;
-        _bodegas = bodegas;
-        _totalProductos = productos.length;
-        _stockBajo = stockBajo;
-        _valorInventario = valor;
-        _cargando = false;
-      });
-    }
+    return bodegas;
   }
 
   Future<void> _abrirProductoForm([Map<String, dynamic>? producto]) async {
@@ -226,30 +278,33 @@ class _InventarioHomeState extends State<InventarioHome> {
   }
 
   Widget _buildHeader(ThemePalette palette) {
-    // La acción "Nuevo" vive en el FAB móvil y en la topbar (botón Nuevo),
-    // aquí solo el título: nada de chips decorativos sin función.
-    return Row(
+    // Icono de marca PNG centrado sobre el título del dashboard.
+    final logoSize = (MediaQuery.sizeOf(context).shortestSide * 0.2).clamp(92.0, 128.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Inventario',
-                style: GoogleFonts.syne(
-                  fontSize: MobileUtils.responsiveFontSize(context, 24),
-                  fontWeight: FontWeight.w900,
-                  color: palette.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Productos, kardex y bodegas',
-                style: GoogleFonts.dmSans(fontSize: 13, color: palette.textMuted),
-              ),
-            ],
+        Center(
+          child: Image.asset(
+            'img/Iconos/Inventario.png',
+            width: logoSize,
+            height: logoSize,
+            fit: BoxFit.contain,
           ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Inventario',
+          style: GoogleFonts.syne(
+            fontSize: MobileUtils.responsiveFontSize(context, 24),
+            fontWeight: FontWeight.w900,
+            color: palette.textPrimary,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Productos, kardex y bodegas',
+          style: GoogleFonts.dmSans(fontSize: 13, color: palette.textMuted),
         ),
       ],
     );

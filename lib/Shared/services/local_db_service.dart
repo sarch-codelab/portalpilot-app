@@ -367,6 +367,7 @@ class LocalDatabaseService {
         bodega: Value(p['bodega'] as String? ?? 'General'),
         isvRate: Value((p['isv_rate'] as num?)?.toDouble() ?? 15.0),
         exento: Value(p['exento'] as bool? ?? false),
+        isPerishable: Value(p['is_perishable'] as bool? ?? false),
         imagenUrl: Value(p['imagen_url'] as String?),
         activo: const Value(true),
         synced: const Value(false),

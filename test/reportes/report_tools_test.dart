@@ -61,6 +61,7 @@ Producto _prod({
     bodega: 'Principal',
     isvRate: 15,
     exento: false,
+    isPerishable: false,
     activo: activo,
     createdAt: DateTime(2026, 1, 1),
     updatedAt: DateTime(2026, 1, 1),

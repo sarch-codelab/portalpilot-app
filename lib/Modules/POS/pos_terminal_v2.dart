@@ -217,7 +217,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             bodega: p['bodega']?.toString() ?? 'General',
             isvRate: (p['isv_rate'] as num?)?.toDouble() ?? (p['isvRate'] as num?)?.toDouble() ?? 15.0,
             exento: (p['exento'] as bool?) ?? false,
-            imagenUrl: p['imagen_url']?.toString() ?? p['imagenUrl']?.toString(),
+            isPerishable: (p['is_perishable'] as bool?) ?? false,
+            imagenUrl: p['imagen_url']?.toString() ??
+                p['imagenUrl']?.toString() ??
+                p['imagen_base64']?.toString(),
             activo: true,
             synced: false,
             createdAt: DateTime.now(),
@@ -479,7 +482,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             'isv_rate': i.isvRate,
           }).toList(),
           'subtotal': subtotal,
-          'isv': isv15 + isv18,
+          'isv_15': isv15,
+          'isv_18': isv18,
           'descuento': descuentoItems,
           'total': total,
           'metodo_pago': _metodoPago,
@@ -1051,7 +1055,14 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             child: const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 16),
           ),
           const SizedBox(width: 12),
-          Text('POS Terminal', style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+          Flexible(
+            child: Text(
+              'POS Terminal',
+              style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
       actions: [
@@ -1175,20 +1186,24 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   Widget _buildUpsellCard({required Producto producto, required String motivo}) {
-    final tieneImagen = producto.imagenUrl != null && producto.imagenUrl!.isNotEmpty;
-    final esDataUrl = tieneImagen && producto.imagenUrl!.startsWith('data:');
+    final imagenRaw = producto.imagenUrl;
+    final esDataUrl = (imagenRaw ?? '').startsWith('data:');
+    final esBase64Plano = !esDataUrl &&
+        (imagenRaw?.isNotEmpty ?? false) &&
+        RegExp(r'^[A-Za-z0-9+/=]+$').hasMatch(imagenRaw!);
+    final esUrl = (imagenRaw ?? '').startsWith('http') && !esDataUrl;
     Widget? imagen;
-    if (tieneImagen) {
-      if (esDataUrl) {
-        try {
-          final raw = producto.imagenUrl!.substring(producto.imagenUrl!.indexOf(',') + 1);
-          imagen = Image.memory(base64Decode(raw), width: 40, height: 40, fit: BoxFit.cover);
-        } catch (_) {
-          imagen = null;
-        }
-      } else {
-        imagen = Image.network(producto.imagenUrl!, width: 40, height: 40, fit: BoxFit.cover);
+    if (esDataUrl || esBase64Plano) {
+      try {
+        final String raw = esDataUrl
+            ? imagenRaw!.substring(imagenRaw.indexOf(',') + 1)
+            : imagenRaw!;
+        imagen = Image.memory(base64Decode(raw), width: 40, height: 40, fit: BoxFit.cover);
+      } catch (_) {
+        imagen = null;
       }
+    } else if (esUrl) {
+      imagen = Image.network(imagenRaw!, width: 40, height: 40, fit: BoxFit.cover);
     }
 
     return GestureDetector(
@@ -1449,13 +1464,19 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   Widget _buildProductCard(Producto producto) {
-    final tieneImagen = producto.imagenUrl != null && producto.imagenUrl!.isNotEmpty;
-    final esDataUrl = tieneImagen && producto.imagenUrl!.startsWith('data:');
-    final imagenUrl = tieneImagen && !esDataUrl ? producto.imagenUrl : null;
+    final imagenRaw = producto.imagenUrl;
+    final esDataUrl = (imagenRaw ?? '').startsWith('data:');
+    final esBase64Plano = !esDataUrl &&
+        (imagenRaw?.isNotEmpty ?? false) &&
+        RegExp(r'^[A-Za-z0-9+/=]+$').hasMatch(imagenRaw!);
+    final esUrl = (imagenRaw ?? '').startsWith('http') && !esDataUrl;
+    final imagenUrl = esUrl ? imagenRaw : null;
     Uint8List? imagenBytes;
-    if (esDataUrl) {
+    if (esDataUrl || esBase64Plano) {
       try {
-        final raw = producto.imagenUrl!.substring(producto.imagenUrl!.indexOf(',') + 1);
+        final String raw = esDataUrl
+            ? imagenRaw!.substring(imagenRaw.indexOf(',') + 1)
+            : imagenRaw!;
         imagenBytes = base64Decode(raw);
       } catch (_) {
         imagenBytes = null;

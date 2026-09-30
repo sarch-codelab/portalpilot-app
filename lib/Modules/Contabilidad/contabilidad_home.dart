@@ -468,6 +468,41 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
     );
   }
 
+  Widget _buildHeader() {
+    // Icono de marca PNG centrado sobre el título del dashboard.
+    final logoSize = (MediaQuery.sizeOf(context).shortestSide * 0.2).clamp(92.0, 128.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Image.asset(
+            'img/Iconos/Contabilidad.png',
+            width: logoSize,
+            height: logoSize,
+            fit: BoxFit.contain,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Contabilidad',
+          style: GoogleFonts.syne(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: appPalette.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Controla tus ingresos, gastos y cierres mensuales.',
+          style: GoogleFonts.dmSans(
+            fontSize: 14,
+            color: appPalette.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final transaccionesMes = _transacciones.where((t) {
@@ -485,6 +520,8 @@ class _ContabilidadHomeState extends State<ContabilidadHome> {
       child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
+            _buildHeader(),
+            const SizedBox(height: 16),
             _buildBalanceCard(),
             const SizedBox(height: 14),
             _buildResumenMensual(),

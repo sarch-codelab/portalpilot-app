@@ -149,7 +149,15 @@ class _VentasHomeState extends State<VentasHome> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('L.${monto.toStringAsFixed(2)}', style: GoogleFonts.dmMono(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFFF59E0B))),
+                                Flexible(
+                                  child: Text(
+                                    'L.${monto.toStringAsFixed(2)}',
+                                    style: GoogleFonts.dmMono(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFFF59E0B)),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
                                 PopupMenuButton<String>(
                                   icon: Icon(Icons.more_vert_rounded, color: color, size: 18),
                                   color: const Color(0xFF1A1A1A),

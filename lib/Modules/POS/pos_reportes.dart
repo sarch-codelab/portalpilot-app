@@ -243,9 +243,15 @@ class _PosReportesState extends State<PosReportes> {
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                total > 0 ? 'L.${_formatCompact(total)}' : '',
-                style: GoogleFonts.dmMono(fontSize: 9, color: const Color(0xFF10B981)),
+              SizedBox(
+                width: 22,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    total > 0 ? 'L.${_formatCompact(total)}' : '',
+                    style: GoogleFonts.dmMono(fontSize: 9, color: const Color(0xFF10B981)),
+                  ),
+                ),
               ),
               const SizedBox(height: 4),
               Container(

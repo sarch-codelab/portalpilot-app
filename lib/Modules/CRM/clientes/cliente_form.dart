@@ -274,8 +274,15 @@ class _ClienteFormState extends State<ClienteForm> {
                 child: const Icon(Icons.psychology_rounded, color: Color(0xFF8B5CF6), size: 16),
               ),
               const SizedBox(width: 10),
-              Text('Análisis IA del Cliente', style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
-              const Spacer(),
+              Expanded(
+                child: Text(
+                  'Análisis IA del Cliente',
+                  style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
               if (!_showAIInsights)
                 TextButton.icon(
                   onPressed: _aiLoading ? null : _fetchAIInsights,

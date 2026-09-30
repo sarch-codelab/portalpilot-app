@@ -111,10 +111,23 @@ class ReciboNomina extends StatelessWidget {
               border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2)),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('SALARIO NETO', style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF10B981))),
-                Text('L.${neto.toStringAsFixed(2)}', style: GoogleFonts.dmMono(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF10B981))),
+                Expanded(
+                  child: Text(
+                    'SALARIO NETO',
+                    style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'L.${neto.toStringAsFixed(2)}',
+                    textAlign: TextAlign.right,
+                    style: GoogleFonts.dmMono(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF10B981)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -167,13 +180,24 @@ class ReciboNomina extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFA3A3A3))),
-          Text(
-            value,
-            style: GoogleFonts.dmMono(
-              fontSize: 13,
-              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
-              color: valueColor ?? Colors.white,
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFFA3A3A3)),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.dmMono(
+                fontSize: 13,
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+                color: valueColor ?? Colors.white,
+              ),
             ),
           ),
         ],

@@ -932,7 +932,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: 20),
         Text(
-          'v0.1.5  •  sarch-codelab',
+          'v1.0.11  •  sarch-codelab',
           style: GoogleFonts.spaceGrotesk(
             fontSize: 10,
             color: textDark,
@@ -1242,6 +1242,23 @@ class _LoginScreenState extends State<LoginScreen>
             const SizedBox(height: 16),
             _buildBiometricButton(),
           ],
+          const SizedBox(height: 14),
+          Center(
+            child: TextButton.icon(
+              onPressed: _restartOnboarding,
+              icon: const Icon(Icons.refresh_rounded, size: 15, color: accentPurpleLight),
+              label: const Text('Reiniciar Onboarding'),
+              style: TextButton.styleFrom(
+                foregroundColor: accentPurpleLight,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                textStyle: GoogleFonts.dmSans(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

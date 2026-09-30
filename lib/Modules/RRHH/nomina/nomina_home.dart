@@ -240,11 +240,10 @@ class _NominaHomeState extends State<NominaHome> {
           Text('RESUMEN NOMINAL', style: GoogleFonts.syne(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFFEC4899), letterSpacing: 1)),
           const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildResumenItem('Bruto', _totalNomina, Colors.white),
-              _buildResumenItem('Deducciones', -_totalDeducciones, const Color(0xFFEF4444)),
-              _buildResumenItem('Neto a Pagar', _totalNeto, const Color(0xFF10B981)),
+              Expanded(child: _buildResumenItem('Bruto', _totalNomina, Colors.white)),
+              Expanded(child: _buildResumenItem('Deducciones', -_totalDeducciones, const Color(0xFFEF4444))),
+              Expanded(child: _buildResumenItem('Neto a Pagar', _totalNeto, const Color(0xFF10B981))),
             ],
           ),
         ],
@@ -255,12 +254,18 @@ class _NominaHomeState extends State<NominaHome> {
   Widget _buildResumenItem(String label, double amount, Color color) {
     return Column(
       children: [
-        Text(
-          'L.${amount.abs().toStringAsFixed(2)}',
-          style: GoogleFonts.dmMono(fontSize: 16, fontWeight: FontWeight.w700, color: color),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'L.${amount.abs().toStringAsFixed(2)}',
+            style: GoogleFonts.dmMono(fontSize: 16, fontWeight: FontWeight.w700, color: color),
+          ),
         ),
         const SizedBox(height: 4),
-        Text(label, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(label, style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373))),
+        ),
       ],
     );
   }
@@ -295,8 +300,15 @@ class _NominaHomeState extends State<NominaHome> {
       children: [
         Icon(icon, color: color, size: 16),
         const SizedBox(width: 10),
-        Text(title, style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
-        const Spacer(),
+        Expanded(
+          child: Text(
+            title,
+            style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 8),
         Text(detail, style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373))),
       ],
     );
@@ -312,6 +324,8 @@ class _NominaHomeState extends State<NominaHome> {
         label: Text(
           'Generar Recibos de ${_meses[_mesSeleccionado]}',
           style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFF59E0B),

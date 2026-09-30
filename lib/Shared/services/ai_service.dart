@@ -40,10 +40,12 @@ class ProductIdentification {
   final String? unidadMedida;
   final double? confianza;
   final String? barcode;
+  final bool? perecedero;
 
   ProductIdentification({
     this.nombre, this.marca, this.categoria, this.descripcion,
     this.presentacion, this.unidadMedida, this.confianza, this.barcode,
+    this.perecedero,
   });
 
   factory ProductIdentification.fromJson(Map<String, dynamic> json) {
@@ -56,6 +58,7 @@ class ProductIdentification {
       unidadMedida: json['unidad_medida']?.toString(),
       confianza: JsonGuard.numOrNull(json['confianza'])?.toDouble(),
       barcode: json['barcode']?.toString() ?? json['codigo_barras']?.toString(),
+      perecedero: json['is_perishable'] == true || json['perecedero'] == true,
     );
   }
 
@@ -68,6 +71,7 @@ class ProductIdentification {
     if (unidadMedida != null) 'unidad_medida': unidadMedida,
     if (confianza != null) 'confianza': confianza,
     if (barcode != null) 'barcode': barcode,
+    if (perecedero != null) 'is_perishable': perecedero,
   };
 }
 
@@ -241,7 +245,7 @@ class AIManager {
     final url = Uri.parse('$apiRoot/api/ai/vision');
     final startTime = DateTime.now();
 
-    final prompt = customPrompt ?? 'Identifica este producto y devuelve un JSON con: nombre, marca, categoria, descripcion, presentacion, unidad_medida, confianza (0-1). Si no puedes determinar algo, deja el campo como null. Responde SOLO con el JSON.';
+    final prompt = customPrompt ?? 'Identifica este producto y devuelve un JSON con: nombre, marca, categoria, descripcion, presentacion, unidad_medida, is_perishable (true/false: indica si el producto es perecedero, requiere refrigeración/cadena de frío o tiene fecha de vencimiento), confianza (0-1). Si no puedes determinar algo, deja el campo como null. Responde SOLO con el JSON.';
 
     // Evitar payloads gigantes que crashen por memoria en móviles:
     // si el base64 supera ~400KB, se recorta de forma segura limitando
@@ -408,6 +412,7 @@ class AIManager {
           unidadMedida: p['unidad_medida']?.toString(),
           confianza: 1.0,
           barcode: p['barcode']?.toString() ?? p['codigo']?.toString(),
+          perecedero: p['is_perishable'] == true,
         );
         return (barcode: barcodeResult, vision: null, identification: identification);
       }

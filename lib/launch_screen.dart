@@ -308,9 +308,9 @@ class _SplashScreenState extends State<SplashScreen>
                             builder: (context, child) {
                               return Opacity(
                                 opacity: _versionFade.value,
-                                child: Text(
-                                  'v1.0.7',
-                                  style: GoogleFonts.spaceGrotesk(
+child: Text(
+                                    'v1.0.11',
+                                    style: GoogleFonts.spaceGrotesk(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
                                     color: textDark,

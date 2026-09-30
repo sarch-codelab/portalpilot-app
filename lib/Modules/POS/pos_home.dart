@@ -147,6 +147,8 @@ class _PosHomeState extends State<PosHome> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
+                _buildDashboardHeader(),
+                const SizedBox(height: 16),
                 _buildStatsGrid(),
                 const SizedBox(height: 16),
                 _buildSectionTitle('Acciones Rápidas'),
@@ -163,6 +165,39 @@ class _PosHomeState extends State<PosHome> {
           if (_showAIChat) _buildAIChatPanel(),
         ],
       ),
+    );
+  }
+
+  Widget _buildDashboardHeader() {
+    // Icono de marca PNG centrado sobre el título del dashboard.
+    final logoSize = (MediaQuery.sizeOf(context).shortestSide * 0.2).clamp(92.0, 128.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Image.asset(
+            'img/Iconos/punto_de_venta.png',
+            width: logoSize,
+            height: logoSize,
+            fit: BoxFit.contain,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Punto de Venta',
+          style: GoogleFonts.syne(
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            color: appPalette.textPrimary,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Ventas, cobros y facturación',
+          style: GoogleFonts.dmSans(fontSize: 13, color: appPalette.textMuted),
+        ),
+      ],
     );
   }
 
@@ -407,6 +442,8 @@ class _PosHomeState extends State<PosHome> {
                       fontWeight: FontWeight.w600,
                       color: appPalette.textPrimary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -415,6 +452,8 @@ class _PosHomeState extends State<PosHome> {
                       fontSize: 11,
                       color: appPalette.textMuted,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -443,20 +482,26 @@ class _PosHomeState extends State<PosHome> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSummaryItem(
-                'Total Ventas',
-                '$_totalVentas',
-                const Color(0xFFF97316),
+              Expanded(
+                child: _buildSummaryItem(
+                  'Total Ventas',
+                  '$_totalVentas',
+                  const Color(0xFFF97316),
+                ),
               ),
-              _buildSummaryItem(
-                'Ingresos',
-                'L.${_formatNumber(_ventasHoy)}',
-                const Color(0xFF10B981),
+              Expanded(
+                child: _buildSummaryItem(
+                  'Ingresos',
+                  'L.${_formatNumber(_ventasHoy)}',
+                  const Color(0xFF10B981),
+                ),
               ),
-              _buildSummaryItem(
-                'Ticket Prom.',
-                'L.${_formatNumber(_ticketPromedio)}',
-                const Color(0xFF3B82F6),
+              Expanded(
+                child: _buildSummaryItem(
+                  'Ticket Prom.',
+                  'L.${_formatNumber(_ticketPromedio)}',
+                  const Color(0xFF3B82F6),
+                ),
               ),
             ],
           ),
@@ -468,17 +513,22 @@ class _PosHomeState extends State<PosHome> {
   Widget _buildSummaryItem(String label, String value, Color color) {
     return Column(
       children: [
-        Text(
-          value,
-          style: GoogleFonts.syne(
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-            color: color,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: GoogleFonts.syne(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
           ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.dmSans(
             fontSize: 10,
             color: appPalette.textMuted,

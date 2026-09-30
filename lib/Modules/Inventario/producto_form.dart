@@ -50,6 +50,7 @@ class _ProductoFormState extends State<ProductoForm> {
   String _bodega = 'General';
   double _isvRate = 15.0;
   bool _exento = false;
+  bool _isPerishable = false;
   String? _imagenBase64;
   String? _imagenUrl; // URL real de Supabase Storage
   bool _isAiAnalyzing = false;
@@ -119,6 +120,7 @@ class _ProductoFormState extends State<ProductoForm> {
         'bodega': _bodega,
         'isv_rate': _isvRate,
         'exento': _exento,
+        'is_perishable': _isPerishable,
         if (_imagenBase64 != null && _imagenBase64!.isNotEmpty)
           'imagen_base64': _imagenBase64,
       }));
@@ -153,6 +155,7 @@ class _ProductoFormState extends State<ProductoForm> {
       _bodega = d['bodega'] as String? ?? 'General';
       _isvRate = (d['isv_rate'] as num?)?.toDouble() ?? 15.0;
       _exento = d['exento'] == true;
+      _isPerishable = d['is_perishable'] == true;
       final img = d['imagen_base64'] as String?;
       if (img != null && img.isNotEmpty) _imagenBase64 = _normalizarBase64(img);
       if (mounted) {
@@ -205,6 +208,7 @@ class _ProductoFormState extends State<ProductoForm> {
     _bodega = (p['bodega'] ?? 'General').toString();
     _isvRate = _toDouble(p['isv_rate']) ?? 15.0;
     _exento = p['exento'] == true;
+    _isPerishable = p['is_perishable'] == true;
     _imagenBase64 = _normalizarBase64(p['imagen_base64'] as String?);
     _imagenUrl = p['imagen_url'] as String? ?? p['imagenUrl'] as String?;
     _marcaController.text = p['marca']?.toString() ?? '';
@@ -746,6 +750,7 @@ Future<void> _identificarProductoConIA() async {
       if (id.barcode != null && id.barcode!.isNotEmpty) _barcodeController.text = id.barcode!;
       if (id.marca != null && id.marca!.isNotEmpty) _marcaController.text = id.marca!;
       if (id.presentacion != null && id.presentacion!.isNotEmpty) _presentacionController.text = id.presentacion!;
+      if (id.perecedero != null) _isPerishable = id.perecedero!;
     });
   }
 
@@ -1035,6 +1040,7 @@ Future<void> _identificarProductoConIA() async {
       'bodega': _bodega,
       'isv_rate': _isvRate,
       'exento': _exento,
+      'is_perishable': _isPerishable,
       'barcode': _barcodeController.text,
       'marca': _marcaController.text,
       'presentacion': _presentacionController.text,
@@ -1086,6 +1092,7 @@ Future<void> _identificarProductoConIA() async {
       'bodega': producto['bodega'],
       'isv_rate': producto['isv_rate'],
       'exento': producto['exento'],
+      'is_perishable': producto['is_perishable'],
       'imagen_base64': producto['imagen_url'],
       'created_at': producto['created_at'],
     };
@@ -1137,7 +1144,10 @@ Future<void> _identificarProductoConIA() async {
         'barcode': producto['barcode'],
         'marca': producto['marca'],
         'presentacion': producto['presentacion'],
-        'imagen_url': _imagenUrl,
+        'imagen_url': _imagenUrl ??
+            (_imagenBase64 != null && _imagenBase64!.isNotEmpty
+                ? 'data:image/jpeg;base64,$_imagenBase64'
+                : null),
       };
       // En edición se usa el batch upsert (idempotente por codigo/barcode en el
       // servidor): así la edición persiste aunque el id local no sea el UUID
@@ -1273,8 +1283,10 @@ Future<void> _identificarProductoConIA() async {
             ),
           ),
         const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 10,
+          runSpacing: 10,
           children: [
             GestureDetector(
               onTap: _isAiAnalyzing ? null : _identificarProductoConIA,
@@ -1298,7 +1310,6 @@ Future<void> _identificarProductoConIA() async {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
             GestureDetector(
               onTap: _seleccionarImagen,
               child: Container(
@@ -1318,8 +1329,7 @@ Future<void> _identificarProductoConIA() async {
                 ),
               ),
             ),
-            if (tieneImagen) ...[
-              const SizedBox(width: 10),
+            if (tieneImagen)
               GestureDetector(
                 onTap: () {
                   setState(() {
@@ -1345,7 +1355,6 @@ Future<void> _identificarProductoConIA() async {
                   ),
                 ),
               ),
-            ],
           ],
         ),
       ],
@@ -1414,6 +1423,41 @@ _buildField('Código / SKU', _codigoController, hint: 'Se genera automáticament
               const SizedBox(width: 10),
               Expanded(child: _buildField('Presentación', _presentacionController, hint: 'Ej: Botella 500ml, Lata')),
             ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(
+              color: appPalette.cardColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: appPalette.borderLight),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.thermostat_rounded,
+                  color: _isPerishable ? const Color(0xFF3B82F6) : appPalette.textDim,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Producto perecedero',
+                    style: GoogleFonts.dmSans(fontSize: 13, color: appPalette.textPrimary),
+                  ),
+                ),
+                Switch(
+                  value: _isPerishable,
+                  onChanged: (v) => setState(() {
+                    _isPerishable = v;
+                    if (v) {
+                      _guardarBorrador();
+                    }
+                  }),
+                  activeThumbColor: const Color(0xFF3B82F6),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           _buildSection('Precios e ISV'),

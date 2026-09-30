@@ -1087,6 +1087,7 @@ async function productosHandler(req, res) {
           presentacion: (p.presentacion || null)?.toString().slice(0, 100) || null,
           barcode: (p.barcode || null)?.toString().slice(0, 100) || null,
           exento: p.exento === true,
+          is_perishable: p.is_perishable === true,
           precio_compra: Number(p.precio_compra) || 0,
           precio_venta: Number(p.precio) || Number(p.precio_venta) || 0,
           stock_minimo: Number(p.stock_minimo) || 0,

@@ -4807,6 +4807,21 @@ class $ProductosTable extends Productos
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isPerishableMeta = const VerificationMeta(
+    'isPerishable',
+  );
+  @override
+  late final GeneratedColumn<bool> isPerishable = GeneratedColumn<bool>(
+    'is_perishable',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_perishable" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _imagenUrlMeta = const VerificationMeta(
     'imagenUrl',
   );
@@ -4899,6 +4914,7 @@ class $ProductosTable extends Productos
     bodega,
     isvRate,
     exento,
+    isPerishable,
     imagenUrl,
     activo,
     createdAt,
@@ -5044,6 +5060,15 @@ class $ProductosTable extends Productos
         exento.isAcceptableOrUnknown(data['exento']!, _exentoMeta),
       );
     }
+    if (data.containsKey('is_perishable')) {
+      context.handle(
+        _isPerishableMeta,
+        isPerishable.isAcceptableOrUnknown(
+          data['is_perishable']!,
+          _isPerishableMeta,
+        ),
+      );
+    }
     if (data.containsKey('imagen_url')) {
       context.handle(
         _imagenUrlMeta,
@@ -5160,6 +5185,10 @@ class $ProductosTable extends Productos
         DriftSqlType.bool,
         data['${effectivePrefix}exento'],
       )!,
+      isPerishable: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_perishable'],
+      )!,
       imagenUrl: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}imagen_url'],
@@ -5211,6 +5240,7 @@ class Producto extends DataClass implements Insertable<Producto> {
   final String bodega;
   final double isvRate;
   final bool exento;
+  final bool isPerishable;
   final String? imagenUrl;
   final bool activo;
   final DateTime createdAt;
@@ -5235,6 +5265,7 @@ class Producto extends DataClass implements Insertable<Producto> {
     required this.bodega,
     required this.isvRate,
     required this.exento,
+    required this.isPerishable,
     this.imagenUrl,
     required this.activo,
     required this.createdAt,
@@ -5274,6 +5305,7 @@ class Producto extends DataClass implements Insertable<Producto> {
     map['bodega'] = Variable<String>(bodega);
     map['isv_rate'] = Variable<double>(isvRate);
     map['exento'] = Variable<bool>(exento);
+    map['is_perishable'] = Variable<bool>(isPerishable);
     if (!nullToAbsent || imagenUrl != null) {
       map['imagen_url'] = Variable<String>(imagenUrl);
     }
@@ -5318,6 +5350,7 @@ class Producto extends DataClass implements Insertable<Producto> {
       bodega: Value(bodega),
       isvRate: Value(isvRate),
       exento: Value(exento),
+      isPerishable: Value(isPerishable),
       imagenUrl: imagenUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(imagenUrl),
@@ -5354,6 +5387,7 @@ class Producto extends DataClass implements Insertable<Producto> {
       bodega: serializer.fromJson<String>(json['bodega']),
       isvRate: serializer.fromJson<double>(json['isvRate']),
       exento: serializer.fromJson<bool>(json['exento']),
+      isPerishable: serializer.fromJson<bool>(json['isPerishable']),
       imagenUrl: serializer.fromJson<String?>(json['imagenUrl']),
       activo: serializer.fromJson<bool>(json['activo']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -5383,6 +5417,7 @@ class Producto extends DataClass implements Insertable<Producto> {
       'bodega': serializer.toJson<String>(bodega),
       'isvRate': serializer.toJson<double>(isvRate),
       'exento': serializer.toJson<bool>(exento),
+      'isPerishable': serializer.toJson<bool>(isPerishable),
       'imagenUrl': serializer.toJson<String?>(imagenUrl),
       'activo': serializer.toJson<bool>(activo),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -5410,6 +5445,7 @@ class Producto extends DataClass implements Insertable<Producto> {
     String? bodega,
     double? isvRate,
     bool? exento,
+    bool? isPerishable,
     Value<String?> imagenUrl = const Value.absent(),
     bool? activo,
     DateTime? createdAt,
@@ -5434,6 +5470,7 @@ class Producto extends DataClass implements Insertable<Producto> {
     bodega: bodega ?? this.bodega,
     isvRate: isvRate ?? this.isvRate,
     exento: exento ?? this.exento,
+    isPerishable: isPerishable ?? this.isPerishable,
     imagenUrl: imagenUrl.present ? imagenUrl.value : this.imagenUrl,
     activo: activo ?? this.activo,
     createdAt: createdAt ?? this.createdAt,
@@ -5476,6 +5513,9 @@ class Producto extends DataClass implements Insertable<Producto> {
       bodega: data.bodega.present ? data.bodega.value : this.bodega,
       isvRate: data.isvRate.present ? data.isvRate.value : this.isvRate,
       exento: data.exento.present ? data.exento.value : this.exento,
+      isPerishable: data.isPerishable.present
+          ? data.isPerishable.value
+          : this.isPerishable,
       imagenUrl: data.imagenUrl.present ? data.imagenUrl.value : this.imagenUrl,
       activo: data.activo.present ? data.activo.value : this.activo,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -5507,6 +5547,7 @@ class Producto extends DataClass implements Insertable<Producto> {
           ..write('bodega: $bodega, ')
           ..write('isvRate: $isvRate, ')
           ..write('exento: $exento, ')
+          ..write('isPerishable: $isPerishable, ')
           ..write('imagenUrl: $imagenUrl, ')
           ..write('activo: $activo, ')
           ..write('createdAt: $createdAt, ')
@@ -5536,6 +5577,7 @@ class Producto extends DataClass implements Insertable<Producto> {
     bodega,
     isvRate,
     exento,
+    isPerishable,
     imagenUrl,
     activo,
     createdAt,
@@ -5564,6 +5606,7 @@ class Producto extends DataClass implements Insertable<Producto> {
           other.bodega == this.bodega &&
           other.isvRate == this.isvRate &&
           other.exento == this.exento &&
+          other.isPerishable == this.isPerishable &&
           other.imagenUrl == this.imagenUrl &&
           other.activo == this.activo &&
           other.createdAt == this.createdAt &&
@@ -5590,6 +5633,7 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
   final Value<String> bodega;
   final Value<double> isvRate;
   final Value<bool> exento;
+  final Value<bool> isPerishable;
   final Value<String?> imagenUrl;
   final Value<bool> activo;
   final Value<DateTime> createdAt;
@@ -5615,6 +5659,7 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
     this.bodega = const Value.absent(),
     this.isvRate = const Value.absent(),
     this.exento = const Value.absent(),
+    this.isPerishable = const Value.absent(),
     this.imagenUrl = const Value.absent(),
     this.activo = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -5641,6 +5686,7 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
     this.bodega = const Value.absent(),
     this.isvRate = const Value.absent(),
     this.exento = const Value.absent(),
+    this.isPerishable = const Value.absent(),
     this.imagenUrl = const Value.absent(),
     this.activo = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -5669,6 +5715,7 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
     Expression<String>? bodega,
     Expression<double>? isvRate,
     Expression<bool>? exento,
+    Expression<bool>? isPerishable,
     Expression<String>? imagenUrl,
     Expression<bool>? activo,
     Expression<DateTime>? createdAt,
@@ -5695,6 +5742,7 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
       if (bodega != null) 'bodega': bodega,
       if (isvRate != null) 'isv_rate': isvRate,
       if (exento != null) 'exento': exento,
+      if (isPerishable != null) 'is_perishable': isPerishable,
       if (imagenUrl != null) 'imagen_url': imagenUrl,
       if (activo != null) 'activo': activo,
       if (createdAt != null) 'created_at': createdAt,
@@ -5723,6 +5771,7 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
     Value<String>? bodega,
     Value<double>? isvRate,
     Value<bool>? exento,
+    Value<bool>? isPerishable,
     Value<String?>? imagenUrl,
     Value<bool>? activo,
     Value<DateTime>? createdAt,
@@ -5749,6 +5798,7 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
       bodega: bodega ?? this.bodega,
       isvRate: isvRate ?? this.isvRate,
       exento: exento ?? this.exento,
+      isPerishable: isPerishable ?? this.isPerishable,
       imagenUrl: imagenUrl ?? this.imagenUrl,
       activo: activo ?? this.activo,
       createdAt: createdAt ?? this.createdAt,
@@ -5813,6 +5863,9 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
     if (exento.present) {
       map['exento'] = Variable<bool>(exento.value);
     }
+    if (isPerishable.present) {
+      map['is_perishable'] = Variable<bool>(isPerishable.value);
+    }
     if (imagenUrl.present) {
       map['imagen_url'] = Variable<String>(imagenUrl.value);
     }
@@ -5857,6 +5910,7 @@ class ProductosCompanion extends UpdateCompanion<Producto> {
           ..write('bodega: $bodega, ')
           ..write('isvRate: $isvRate, ')
           ..write('exento: $exento, ')
+          ..write('isPerishable: $isPerishable, ')
           ..write('imagenUrl: $imagenUrl, ')
           ..write('activo: $activo, ')
           ..write('createdAt: $createdAt, ')
@@ -34285,6 +34339,7 @@ typedef $$ProductosTableCreateCompanionBuilder =
       Value<String> bodega,
       Value<double> isvRate,
       Value<bool> exento,
+      Value<bool> isPerishable,
       Value<String?> imagenUrl,
       Value<bool> activo,
       Value<DateTime> createdAt,
@@ -34312,6 +34367,7 @@ typedef $$ProductosTableUpdateCompanionBuilder =
       Value<String> bodega,
       Value<double> isvRate,
       Value<bool> exento,
+      Value<bool> isPerishable,
       Value<String?> imagenUrl,
       Value<bool> activo,
       Value<DateTime> createdAt,
@@ -34412,6 +34468,11 @@ class $$ProductosTableFilterComposer
 
   ColumnFilters<bool> get exento => $composableBuilder(
     column: $table.exento,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPerishable => $composableBuilder(
+    column: $table.isPerishable,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -34540,6 +34601,11 @@ class $$ProductosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isPerishable => $composableBuilder(
+    column: $table.isPerishable,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get imagenUrl => $composableBuilder(
     column: $table.imagenUrl,
     builder: (column) => ColumnOrderings(column),
@@ -34645,6 +34711,11 @@ class $$ProductosTableAnnotationComposer
   GeneratedColumn<bool> get exento =>
       $composableBuilder(column: $table.exento, builder: (column) => column);
 
+  GeneratedColumn<bool> get isPerishable => $composableBuilder(
+    column: $table.isPerishable,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get imagenUrl =>
       $composableBuilder(column: $table.imagenUrl, builder: (column) => column);
 
@@ -34711,6 +34782,7 @@ class $$ProductosTableTableManager
                 Value<String> bodega = const Value.absent(),
                 Value<double> isvRate = const Value.absent(),
                 Value<bool> exento = const Value.absent(),
+                Value<bool> isPerishable = const Value.absent(),
                 Value<String?> imagenUrl = const Value.absent(),
                 Value<bool> activo = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -34736,6 +34808,7 @@ class $$ProductosTableTableManager
                 bodega: bodega,
                 isvRate: isvRate,
                 exento: exento,
+                isPerishable: isPerishable,
                 imagenUrl: imagenUrl,
                 activo: activo,
                 createdAt: createdAt,
@@ -34763,6 +34836,7 @@ class $$ProductosTableTableManager
                 Value<String> bodega = const Value.absent(),
                 Value<double> isvRate = const Value.absent(),
                 Value<bool> exento = const Value.absent(),
+                Value<bool> isPerishable = const Value.absent(),
                 Value<String?> imagenUrl = const Value.absent(),
                 Value<bool> activo = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -34788,6 +34862,7 @@ class $$ProductosTableTableManager
                 bodega: bodega,
                 isvRate: isvRate,
                 exento: exento,
+                isPerishable: isPerishable,
                 imagenUrl: imagenUrl,
                 activo: activo,
                 createdAt: createdAt,

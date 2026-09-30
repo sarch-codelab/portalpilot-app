@@ -336,37 +336,46 @@ class _FiadoScreenState extends State<FiadoScreen> {
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'SALDO',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 9,
-                        letterSpacing: 1,
-                        color: const Color(0xFF737373),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'SALDO',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 9,
+                          letterSpacing: 1,
+                          color: const Color(0xFF737373),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'L.${_format(c.saldo)}',
-                      style: GoogleFonts.syne(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: c.saldo > 0 ? const Color(0xFFF97316) : const Color(0xFF10B981),
+                      const SizedBox(height: 2),
+                      Text(
+                        'L.${_format(c.saldo)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.syne(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: c.saldo > 0 ? const Color(0xFFF97316) : const Color(0xFF10B981),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                Row(
+                const SizedBox(width: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     _accionCorta(
                       Icons.payments_rounded,
                       'Abonar',
                       () => _abonar(c),
                     ),
-                    const SizedBox(width: 8),
                     _accionCorta(
                       Icons.tune_rounded,
                       'Config.',

@@ -93,6 +93,7 @@ class PortalPilotDB {
       'bodega': p.bodega,
       'isv_rate': p.isvRate,
       'exento': p.exento,
+      'is_perishable': p.isPerishable,
       'imagen_url': p.imagenUrl,
       'activo': p.activo,
       'created_at': p.createdAt.toIso8601String(),
