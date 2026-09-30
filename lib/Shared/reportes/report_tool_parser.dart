@@ -202,7 +202,23 @@ class ReportToolParser {
         categoria = entry.key;
       }
     }
-    if (!tieneVerbo || categoria == null) return null;
+    if (!tieneVerbo) return null;
+
+    // Petición VAGA de reporte ("un reporte de lo que sea", "un reporte general",
+    // "un reporte" a secas): en vez de fallar, produce el resumen financiero
+    // del mes — es el reporte más completo y útil por defecto.
+    if (categoria == null) {
+      final vago = RegExp(
+        r'lo que sea|cualquiera|general|de todo|completo|resumen general',
+      ).hasMatch(low);
+      if (vago) {
+        return const ReportToolIntent(
+          ReportToolType.resumenFinanciero,
+          ReportToolParams(mes: null, anio: null),
+        );
+      }
+      return null;
+    }
 
     ReportToolParams? params;
     // Detecta "del 01/09/2026 al 22/09/2026" o "entre dd/MM/yyyy y dd/MM/yyyy".

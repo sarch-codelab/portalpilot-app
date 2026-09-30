@@ -15,6 +15,7 @@ class AuthController extends ChangeNotifier {
   String _nombre = '';
   String _apellido = '';
   String _email = '';
+  String _fotoPerfilUrl = '';
   String _rol = '';
   String _area = '';
   String _rango = '';
@@ -31,6 +32,10 @@ class AuthController extends ChangeNotifier {
   String get nombre => _nombre;
   String get apellido => _apellido;
   String get email => _email;
+
+  /// URL pública de la foto de perfil (Supabase Storage o data URL).
+  /// Vacía = sin foto: las pantallas muestran la inicial como fallback.
+  String get fotoPerfilUrl => _fotoPerfilUrl;
   String get rol => _rol;
   String get area => _area;
   String get rango => _rango;
@@ -73,6 +78,7 @@ class AuthController extends ChangeNotifier {
     _nombre = prefs.getString('user_nombre') ?? '';
     _apellido = prefs.getString('user_apellido') ?? '';
     _email = prefs.getString('user_email') ?? '';
+    _fotoPerfilUrl = prefs.getString('user_foto_perfil') ?? '';
     _rol = prefs.getString('user_role') ?? 'admin';
     _area = prefs.getString('user_area') ?? '';
     _rango = prefs.getString('user_rango') ?? '';
@@ -118,10 +124,12 @@ class AuthController extends ChangeNotifier {
     bool? soloLectura,
     String? empresaAreaNegocio,
     String? empresaPlan,
+    String? fotoPerfilUrl,
   }) async {
     _nombre = nombre;
     _apellido = apellido;
     _email = email;
+    _fotoPerfilUrl = (fotoPerfilUrl ?? '').trim();
     _rol = rol;
     _area = area;
     _rango = rango;
@@ -144,6 +152,7 @@ class AuthController extends ChangeNotifier {
     await prefs.setString('company_code', _empresaCodigo);
     await prefs.setString('user_nombre', nombre);
     await prefs.setString('user_apellido', apellido);
+    await prefs.setString('user_foto_perfil', _fotoPerfilUrl);
     await prefs.setString('empresa_nombre', empresaNombre);
     await prefs.setString('empresa_area_negocio', _empresaAreaNegocio);
     await prefs.setString('empresa_plan', _empresaPlan);
@@ -172,12 +181,14 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Actualiza el nombre/rol de la sesión en memoria y en disco (perfil).
-  Future<void> updateProfile({String? nombre, String? apellido}) async {
+  Future<void> updateProfile({String? nombre, String? apellido, String? fotoPerfilUrl}) async {
     if (nombre != null) _nombre = nombre;
     if (apellido != null) _apellido = apellido;
+    if (fotoPerfilUrl != null) _fotoPerfilUrl = fotoPerfilUrl.trim();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_nombre', _nombre);
     await prefs.setString('user_apellido', _apellido);
+    if (fotoPerfilUrl != null) await prefs.setString('user_foto_perfil', _fotoPerfilUrl);
     notifyListeners();
   }
 

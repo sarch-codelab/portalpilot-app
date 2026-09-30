@@ -202,13 +202,18 @@ class _PosHomeState extends State<PosHome> {
   }
 
   Widget _buildStatsGrid() {
-    return GridView.count(
+    // El ratio fijo 6.5 aplasta las tarjetas en pantallas angostas y el
+    // contenido (icono + 2 líneas) desborda ~35px por abajo; con un ancho
+    // menor a ~380px usamos tarjetas más altas.
+    return LayoutBuilder(builder: (ctx, c) {
+      final ratio = c.maxWidth < 380 ? 4.6 : 6.5;
+      return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 6.5,
+      childAspectRatio: ratio,
       children: [
         _buildStatCard(
           'Ventas Hoy',
@@ -235,7 +240,8 @@ class _PosHomeState extends State<PosHome> {
           const Color(0xFF8B5CF6),
         ),
       ],
-    );
+      );
+    });
   }
 
   Widget _buildStatCard(

@@ -27,6 +27,20 @@ class _KardexScreenState extends State<KardexScreen> {
   Future<void> _cargarDatos() async {
     if (mounted) setState(() => _cargando = true);
 
+    // Primero pintamos lo local (offline-first): si el endpoint remoto falla
+    // (p.ej. despliegue con esquema viejo), el kardex IGUAL muestra los
+    // movimientos guardados en el dispositivo.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final movsLocal = JsonGuard.safeListOfMaps(prefs.getString('kardex'), source: 'Inventario/kardex/movimientos');
+      final prodsLocal = JsonGuard.safeListOfMaps(prefs.getString('productos'), source: 'Inventario/kardex/productos');
+      if (movsLocal.isNotEmpty || prodsLocal.isNotEmpty) {
+        _movimientos = movsLocal;
+        _productos = prodsLocal;
+        if (mounted) setState(() => _cargando = false);
+      }
+    } catch (_) {}
+
     try {
       final api = ApiService.instance;
 
@@ -34,8 +48,12 @@ class _KardexScreenState extends State<KardexScreen> {
       final prodResult = await api.get('/api/productos', queryParams: {'limit': '500'});
 
       if (api.isSuccess(movResult)) {
-        final movs = movResult['movimientos'] ?? [];
-        _movimientos = (movs is List) ? movs.map((m) => Map<String, dynamic>.from(m)).toList() : [];
+        final movs = movResult['movimientos'] ?? movResult['data'] ?? [];
+        if (movs is List && movs.isNotEmpty) {
+          _movimientos = movs.map((m) => Map<String, dynamic>.from(m)).toList();
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('kardex', jsonEncode(_movimientos));
+        }
       }
 
       if (api.isSuccess(prodResult)) {
@@ -44,12 +62,6 @@ class _KardexScreenState extends State<KardexScreen> {
       }
     } catch (e) {
       debugPrint('⚠️ Error cargando kardex: $e');
-      // Fallback a SharedPreferences
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        _movimientos = JsonGuard.safeListOfMaps(prefs.getString('kardex'), source: 'Inventario/kardex/movimientos');
-        _productos = JsonGuard.safeListOfMaps(prefs.getString('productos'), source: 'Inventario/kardex/productos');
-      } catch (_) {}
     }
 
     if (mounted) setState(() => _cargando = false);

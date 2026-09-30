@@ -181,6 +181,11 @@ Lista de herramientas válidas (usa EXACTAMENTE uno de estos nombres):
 `empleados_nomina`, `nomina_empleados` ni ninguna otra fuera de la lista. Si ninguna
 herramienta corresponde a la petición, responde con texto normal (sin JSON).
 
+Si la petición pide "un reporte" de algo VAGO o genérico ("de lo que sea", "general",
+"de todo", "un reporte" sin especificar), NO preguntes nada: responde directamente con
+el bloque `{"tool":"resumen_financiero","periodo":"mes"}` (el resumen financiero del mes
+incluye ingresos, gastos, utilidad y cuentas por cobrar).
+
 Formato:
 ```json
 {"tool":"stock"}

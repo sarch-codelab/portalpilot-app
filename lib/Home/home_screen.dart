@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -64,6 +65,29 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isOnline = true;
   StreamSubscription<bool>? _connectivitySubscription;
   StreamSubscription<SyncStatus>? _syncStatusSubscription;
+
+  // ── Foto de perfil (Supabase Storage vía login) ───────────────
+  bool get _fotoPerfilEsValida {
+    final f = AuthController.instance.fotoPerfilUrl.trim();
+    return f.startsWith('http://') ||
+        f.startsWith('https://') ||
+        f.startsWith('data:image');
+  }
+
+  ImageProvider get _imagenPerfilProvider {
+    final f = AuthController.instance.fotoPerfilUrl.trim();
+    if (f.startsWith('data:image')) {
+      try {
+        final b64 = f.contains(',') ? f.split(',').last : f;
+        return Image.memory(base64Decode(b64)).image;
+      } catch (_) {
+        // cae al iniciales vía _fotoPerfilEsValida… pero ya decidimos mostrar;
+        // mejor devolvemos un NetworkImage vacío que fallará y usará onError.
+        return const NetworkImage('');
+      }
+    }
+    return NetworkImage(f);
+  }
 
   @override
   void initState() {
@@ -511,9 +535,18 @@ class _HomeScreenState extends State<HomeScreen>
                 width: avatarSize,
                 height: avatarSize,
                 alignment: Alignment.center,
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(colors: palette.brandGradient),
+                  image: _fotoPerfilEsValida
+                      ? DecorationImage(
+                          image: _imagenPerfilProvider,
+                          fit: BoxFit.cover,
+                          onError: (_, _) =>
+                              debugPrint('[Home] foto de perfil no disponible'),
+                        )
+                      : null,
                   boxShadow: [
                     BoxShadow(
                       color: palette.brand.withValues(alpha: 0.3),
@@ -522,15 +555,17 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ],
                 ),
-                child: Text(
-                  _userName.trim().isEmpty ? 'U' : _userName.trim()[0].toUpperCase(),
-                  style: GoogleFonts.syne(
-                    fontSize: avatarSize * 0.38,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                child: _fotoPerfilEsValida
+                    ? null
+                    : Text(
+                        _userName.trim().isEmpty ? 'U' : _userName.trim()[0].toUpperCase(),
+                        style: GoogleFonts.syne(
+                          fontSize: avatarSize * 0.38,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
               ),
               const SizedBox(height: 16),
               Text(

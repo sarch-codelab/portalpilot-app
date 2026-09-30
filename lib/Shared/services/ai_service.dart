@@ -348,29 +348,90 @@ class AIManager {
     }
   }
 
-  /// Parse vision response into ProductIdentification
+  /// Parse vision response into ProductIdentification.
+  ///
+  /// Los modelos de visión (Qwen) suelen envolver la respuesta en
+  /// `<think>…</think>` con razonamiento que puede contener llaves, por lo que
+  /// el viejo truco "primer { al último }" rompía el parseo y el formulario
+  /// nunca recibía resultados. Ahora: se elimina el bloque think, se extraen
+  /// los objetos JSON BALANCEADOS y se prueba el ÚLTIMO primero (el final es
+  /// la respuesta definitiva; el think es borrador).
   ProductIdentification parseProductIdentification(String aiResponse) {
-    try {
-      String jsonStr = aiResponse.trim();
-      // Extract JSON from markdown code blocks if present
-      if (jsonStr.contains('```')) {
-        final match = RegExp(r'```(?:json)?\s*([\s\S]*?)```').firstMatch(jsonStr);
-        if (match != null) jsonStr = match.group(1)!.trim();
-      }
-      // Try to find JSON object in the response
-      final jsonStart = jsonStr.indexOf('{');
-      final jsonEnd = jsonStr.lastIndexOf('}');
-      if (jsonStart >= 0 && jsonEnd > jsonStart) {
-        jsonStr = jsonStr.substring(jsonStart, jsonEnd + 1);
-      }
-      final parsed = jsonDecode(jsonStr);
-      if (parsed is Map<String, dynamic>) {
-        return ProductIdentification.fromJson(parsed);
-      }
-    } catch (e) {
-      debugPrint('[AI] Failed to parse product identification: $e');
+    var text = aiResponse.trim();
+    if (text.isEmpty) return ProductIdentification();
+
+    // 1. Quitar razonamiento <think>…</think> (con o sin cierre).
+    text = text.replaceFirst(RegExp(r'<think>[\s\S]*?</think>', caseSensitive: false), '').trim();
+    if (text.isEmpty) return ProductIdentification();
+
+    // 2. Bloques de código markdown (```json … ```) → candidatos.
+    final candidates = <String>[];
+    final fence = RegExp(r'```(?:json)?\s*([\s\S]*?)```', caseSensitive: false);
+    for (final m in fence.allMatches(text)) {
+      final inner = m.group(1)?.trim() ?? '';
+      if (inner.isNotEmpty) candidates.add(inner);
     }
+    candidates.add(text);
+
+    // 3. Extraer objetos JSON balanceados de cada candidato y probar del
+    //    último al primero.
+    for (final c in candidates) {
+      for (final obj in _extraerJsonBalanceados(c).reversed) {
+        try {
+          final parsed = jsonDecode(obj);
+          if (parsed is Map<String, dynamic>) {
+            final id = ProductIdentification.fromJson(parsed);
+            if (id.nombre != null && id.nombre!.trim().isNotEmpty) {
+              return id;
+            }
+          }
+        } catch (_) {
+          // siguiente candidato
+        }
+      }
+    }
+
+    debugPrint('[AI] No se pudo parsear identificación. Respuesta (recortada): '
+        '${text.length > 200 ? '${text.substring(0, 200)}…' : text}');
     return ProductIdentification();
+  }
+
+  /// Extrae objetos JSON balanceados (llaves anidadas respetadas, ignorando
+  /// las que estén dentro de strings).
+  static List<String> _extraerJsonBalanceados(String input) {
+    final results = <String>[];
+    var depth = 0;
+    int? start;
+    var inString = false;
+    var escape = false;
+    for (var i = 0; i < input.length; i++) {
+      final ch = input[i];
+      if (inString) {
+        if (escape) {
+          escape = false;
+        } else if (ch == r'\') {
+          escape = true;
+        } else if (ch == '"') {
+          inString = false;
+        }
+        continue;
+      }
+      if (ch == '"') {
+        inString = true;
+      } else if (ch == '{') {
+        if (depth == 0) start = i;
+        depth++;
+      } else if (ch == '}') {
+        if (depth > 0) {
+          depth--;
+          if (depth == 0 && start != null) {
+            results.add(input.substring(start, i + 1));
+            start = null;
+          }
+        }
+      }
+    }
+    return results;
   }
 
   /// Barcode lookup: search products in Supabase by barcode

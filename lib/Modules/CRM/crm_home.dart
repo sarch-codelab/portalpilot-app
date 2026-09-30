@@ -133,13 +133,17 @@ class _CrmHomeState extends State<CrmHome> {
   }
 
   Widget _buildStatsGrid() {
-    return GridView.count(
+    // Ratio adaptativo: 6.5 aplasta las tarjetas en pantallas angostas
+    // (overflow ~35px); abajo de ~380px se dan más alto.
+    return LayoutBuilder(builder: (ctx, c) {
+      final ratio = c.maxWidth < 380 ? 4.6 : 6.5;
+      return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 6.5,
+      childAspectRatio: ratio,
       children: [
         _buildStatCard(
           'Clientes',
@@ -166,7 +170,8 @@ class _CrmHomeState extends State<CrmHome> {
           const Color(0xFFEF4444),
         ),
       ],
-    );
+      );
+    });
   }
 
   Widget _buildStatCard(

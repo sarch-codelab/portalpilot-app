@@ -294,6 +294,8 @@ class _LoginScreenState extends State<LoginScreen>
           soloLectura: trialVencido,
           empresaAreaNegocio: areaNegocio,
           empresaPlan: planEmpresa,
+          // Foto de perfil real del usuario (Supabase Storage o data URL).
+          fotoPerfilUrl: (userJson['foto_perfil_url'] ?? userJson['avatar_url'] ?? userJson['foto'] ?? '') as String,
         ),
         MultiAreaConfig.instance.cargar(
           areaNegocio: areaNegocio,

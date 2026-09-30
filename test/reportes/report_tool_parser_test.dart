@@ -68,6 +68,18 @@ void main() {
       expect(ReportToolParser.interpretarSinJson('hola qué tal'), isNull);
     });
 
+    test('petición vaga "un reporte de lo que sea" → resumen financiero', () {
+      final i = ReportToolParser.interpretar('X', mensajeUsuario: 'Dame un reporte de lo que sea');
+      expect(i, isNotNull);
+      expect(i!.tool, ReportToolType.resumenFinanciero);
+    });
+
+    test('"reporte general del mes" → resumen financiero', () {
+      final i = ReportToolParser.interpretar('X', mensajeUsuario: 'necesito un reporte general del mes');
+      expect(i, isNotNull);
+      expect(i!.tool, ReportToolType.resumenFinanciero);
+    });
+
     test('devuelve null si no hay bloque JSON y no se pasa mensaje', () {
       expect(ReportToolParser.interpretar('Respuesta normal de la IA'), isNull);
     });

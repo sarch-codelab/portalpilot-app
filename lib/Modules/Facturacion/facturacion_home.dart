@@ -10,7 +10,6 @@ import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
-import 'package:portal_pilot_app/Shared/utils/network_helper.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 
 class FacturacionHome extends StatefulWidget {
@@ -75,46 +74,55 @@ class _FacturacionHomeState extends State<FacturacionHome> {
       _fechaLimite = row.fechaLimiteEmision?.toIso8601String() ?? '';
     });
 
-    // Cargar resumen de facturas desde el backend
+    // Cargar resumen de facturas desde el backend. Si el endpoint de resumen
+    // falla (p.ej. despliegue viejo con columna isv inexistente), se calcula
+    // TODO localmente desde la lista de facturas para que el home NUNCA
+    // quede en ceros ni muestre error al usuario.
+    final api = ApiService.instance;
     try {
-      final api = ApiService.instance;
-      final result = await api.get('/api/facturas/resumen', queryParams: {'empresaCodigo': api.empresaCodigo});
-      if (api.isSuccess(result)) {
-        final resumen = result['resumen'] ?? result;
-        final hoy = DateTime.now();
-
-        // También cargar lista para计算 facturasHoy
-        final listResult = await api.get('/api/facturas', queryParams: {'empresaCodigo': api.empresaCodigo, 'limit': '200'});
-        int fHoy = 0;
-        double tHoy = 0.0;
-        if (api.isSuccess(listResult)) {
-          final facturas = listResult['facturas'] ?? listResult['data'] ?? [];
-          for (final f in (facturas is List ? facturas : [])) {
-            final fecha = DateTime.tryParse(f['created_at'] ?? '') ?? DateTime.now();
-            if (fecha.year == hoy.year && fecha.month == hoy.month && fecha.day == hoy.day) {
-              fHoy++;
-              tHoy += (f['total'] as num?)?.toDouble() ?? 0.0;
-            }
+      final hoy = DateTime.now();
+      final listResult = await api.get('/api/facturas', queryParams: {'empresaCodigo': api.empresaCodigo, 'limit': '200'});
+      if (api.isSuccess(listResult)) {
+        final facturas = (listResult['facturas'] ?? listResult['data'] ?? []) as List;
+        int fHoy = 0, fTotal = 0;
+        double tHoy = 0.0, tTotal = 0.0;
+        for (final f in facturas) {
+          final estado = (f['estado'] ?? '').toString().toLowerCase();
+          if (estado == 'anulada') continue;
+          final total = (f['total'] as num?)?.toDouble() ?? 0.0;
+          fTotal++;
+          tTotal += total;
+          final fecha = DateTime.tryParse(f['created_at'] ?? '');
+          if (fecha != null && fecha.year == hoy.year && fecha.month == hoy.month && fecha.day == hoy.day) {
+            fHoy++;
+            tHoy += total;
           }
         }
-
         if (mounted) {
           setState(() {
             _facturasHoy = fHoy;
             _totalHoy = tHoy;
-            _totalFacturas = (resumen['total_facturas'] as num?)?.toInt() ?? 0;
-            _montoTotal = (resumen['total_facturado'] as num?)?.toDouble() ?? 0.0;
+            _totalFacturas = fTotal;
+            _montoTotal = tTotal;
           });
         }
-      } else if (mounted) {
-        // Mostrar error de red si aplica
-        NetworkHelper.showNetworkError(context, result);
+      } else {
+        // Sin lista (error de red/endpoint): intenta el resumen puro.
+        final result = await api.get('/api/facturas/resumen', queryParams: {'empresaCodigo': api.empresaCodigo});
+        if (api.isSuccess(result)) {
+          final resumen = result['resumen'] ?? result;
+          if (mounted) {
+            setState(() {
+              _facturasHoy = (resumen['facturas_hoy'] as num?)?.toInt() ?? 0;
+              _totalHoy = (resumen['facturado_hoy'] as num?)?.toDouble() ?? 0.0;
+              _totalFacturas = (resumen['total_facturas'] as num?)?.toInt() ?? 0;
+              _montoTotal = (resumen['total_facturado'] as num?)?.toDouble() ?? 0.0;
+            });
+          }
+        }
       }
     } catch (e) {
       debugPrint('⚠️ Error cargando facturas del backend: $e');
-      if (mounted) {
-        NetworkHelper.showNetworkError(context, {'error': e.toString()});
-      }
     }
   }
 

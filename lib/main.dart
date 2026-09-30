@@ -16,37 +16,39 @@ import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 import 'package:portal_pilot_app/launch_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Aviso global al usuario cuando se detectan datos JSON corruptos (P1):
-  // los servicios avisan vía JsonGuard.reportCorrupt sin contexto, y aquí la
-  // raíz de la app muestra el toast oficial.
-  JsonGuard.onCorrupt = (_) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      try {
-        final ctx = SessionGuard.navigatorKey.currentContext;
-        if (ctx == null) return;
-        PPNotifications.error(ctx, JsonGuard.kCorruptDataMessage, title: 'Datos corruptos');
-      } catch (e) {
-        debugPrint('⚠️ No se pudo notificar datos corruptos: $e');
-      }
-    });
-  };
-
-  // Atrapar errores async no recuperados para evitar crashes en móvil.
+void main() {
+  // TODO el arranque (ensureInitialized incluido) corre en la MISMA zona
+  // capturadora: mezclar zonas entre ensureInitialized y runApp dispara el
+  // assertion "Zone mismatch" del framework.
   runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    // Aviso global al usuario cuando se detectan datos JSON corruptos (P1):
+    // los servicios avisan vía JsonGuard.reportCorrupt sin contexto, y aquí la
+    // raíz de la app muestra el toast oficial.
+    JsonGuard.onCorrupt = (_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          final ctx = SessionGuard.navigatorKey.currentContext;
+          if (ctx == null) return;
+          PPNotifications.error(ctx, JsonGuard.kCorruptDataMessage, title: 'Datos corruptos');
+        } catch (e) {
+          debugPrint('⚠️ No se pudo notificar datos corruptos: $e');
+        }
+      });
+    };
+
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+      debugPrint('🚨 Flutter error: ${details.exception}');
+      debugPrint('Stack: ${details.stack}');
+    };
+
     await _initApp();
   }, (error, stack) {
     debugPrint('🚨 Error no capturado: $error');
     debugPrint('Stack: $stack');
   });
-
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    debugPrint('🚨 Flutter error: ${details.exception}');
-    debugPrint('Stack: ${details.stack}');
-  };
 }
 
 Future<void> _initApp() async {

@@ -1363,7 +1363,17 @@ Future<void> _identificarProductoConIA() async {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      // Al salir sin guardar: si es un producto NUEVO se limpia el borrador
+      // para que la próxima vez el formulario esté VACÍO. (Al guardar ya se
+      // limpia en _guardarProducto.)
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop && widget.productoExistente == null) {
+          _limpiarBorrador();
+        }
+      },
+      child: Scaffold(
       backgroundColor: appPalette.bgPrimary,
       appBar: AppBar(
         backgroundColor: appPalette.appBarColor,
@@ -1550,6 +1560,7 @@ _buildField('Código / SKU', _codigoController, hint: 'Se genera automáticament
           ),
           const SizedBox(height: 30),
         ],
+      ),
       ),
     );
   }
