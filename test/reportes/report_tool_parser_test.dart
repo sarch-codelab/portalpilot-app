@@ -35,8 +35,26 @@ void main() {
 
     test('rechaza tool desconocido', () {
       expect(
-        ReportToolParser.interpretar('{"tool":"borrar_todo"}'),
-        isNull,
+        () => ReportToolParser.interpretar('{"tool":"borrar_todo"}'),
+        throwsA(isA<ReportToolDesconocida>()),
+      );
+    });
+
+    test('tool inexistente lanza ReportToolDesconocida (ej. "users")', () {
+      expect(
+        () => ReportToolParser.interpretar('{"tool":"users"}'),
+        throwsA(isA<ReportToolDesconocida>()
+            .having((e) => e.tool, 'tool', 'users')),
+      );
+    });
+
+    test('tool inexistente con mensaje de usuario no cae al fallback', () {
+      // El JSON explícito inválido no debe enmascararse con el fallback por
+      // palabras: el chat decide reintentar con contexto.
+      expect(
+        () => ReportToolParser.interpretar('{"tool":"users"}',
+            mensajeUsuario: 'dame el reporte de empleados'),
+        throwsA(isA<ReportToolDesconocida>()),
       );
     });
 

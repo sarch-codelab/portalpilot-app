@@ -23,6 +23,14 @@ class ReportToolIntent {
   const ReportToolIntent(this.tool, this.params);
 }
 
+/// La IA devolvió un bloque JSON con una herramienta que NO existe
+/// (ej. {"tool":"users"}). No se ejecuta nada: el chat debe reintentar con
+/// texto normal o avisar al usuario, nunca mostrar el JSON crudo.
+class ReportToolDesconocida implements Exception {
+  final String tool;
+  const ReportToolDesconocida(this.tool);
+}
+
 class ReportToolParser {
   ReportToolParser._();
 
@@ -99,8 +107,13 @@ class ReportToolParser {
     final mapa = JsonGuard.tryDecodeMap(m.group(0));
     if (mapa == null || mapa.isEmpty) return null;
 
-    final tool = ReportToolType.fromName(mapa['tool']?.toString());
-    if (tool == null) return null;
+    final toolNombre = mapa['tool']?.toString();
+    final tool = ReportToolType.fromName(toolNombre);
+    if (tool == null) {
+      // Herramienta inventada (p.ej. "users"): señal clara para el dispatcher
+      // y el chat de que el intent falló; no es "no pediste reporte".
+      throw ReportToolDesconocida(toolNombre ?? 'desconocida');
+    }
 
     return ReportToolIntent(tool, _paramsDesdeMapa(mapa));
   }

@@ -177,6 +177,10 @@ Cuando el usuario pida un **reporte** con datos reales de la empresa (gastos, ve
 Lista de herramientas válidas (usa EXACTAMENTE uno de estos nombres):
 - `$reporteToolsSchemaList`
 
+**PROHIBIDO** inventar nombres de herramientas: no existen `users`, `usuarios`, `productos`,
+`empleados_nomina`, `nomina_empleados` ni ninguna otra fuera de la lista. Si ninguna
+herramienta corresponde a la petición, responde con texto normal (sin JSON).
+
 Formato:
 ```json
 {"tool":"stock"}

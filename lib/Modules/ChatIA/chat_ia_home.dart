@@ -163,7 +163,38 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
       bool esError = false;
       ReportData? reporte;
       if (res.success) {
-        final intent = ReportToolParser.interpretar(res.text, mensajeUsuario: raw);
+        ReportToolIntent? intent;
+        try {
+          intent = ReportToolParser.interpretar(res.text, mensajeUsuario: raw);
+        } on ReportToolDesconocida catch (e) {
+          // La IA inventó una herramienta que no existe (p.ej. {"tool":"users"}).
+          // Reintentamos una vez con el contexto de las herramientas válidas;
+          // si igual falla, mostramos texto útil y NO el JSON crudo.
+          final reintento = await ai.generate(
+            prompt: raw,
+            maxTokens: 1600,
+            temperature: 0.4,
+            contextoAdicional:
+                'Tu respuesta anterior fue invalida: usaste la herramienta '
+                '"${e.tool}" que NO existe. Herramientas validas (usa EXACTAMENTE una): '
+                'gastos, ventas, inventario_movimientos, stock, compras, clientes, '
+                'facturacion, cuentas_por_cobrar, caja, resumen_financiero, empleados. '
+                'Si la peticion del usuario no corresponde a ninguna, responde en texto '
+                'sin JSON. Vuelve a responder a: $raw',
+          );
+          try {
+            intent = ReportToolParser.interpretar(reintento.text, mensajeUsuario: raw);
+          } on ReportToolDesconocida {
+            intent = null;
+            texto = reintento.success && reintento.text.trim().isNotEmpty
+                ? reintento.text
+                : 'No pude generar ese reporte. Puedo generar: gastos, ventas, '
+                    'inventario (stock), movimientos de inventario, compras, clientes, '
+                    'facturación, cuentas por cobrar, caja, resumen financiero y empleados. '
+                    '¿Cuál necesitas?';
+            esError = !reintento.success;
+          }
+        }
         if (intent != null) {
           try {
             final resultado = await ReportToolDispatcher.instance
@@ -318,6 +349,9 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
 
   PreferredSizeWidget _buildAppBar(ThemePalette p) {
     final isDark = p.isDark;
+    // En pantallas angostas (<420px) los actions se comprimen a un menú: 4
+    // iconos + separadores consumían ~200px y aplastaban el título (overflow).
+    final actionsCompacto = MediaQuery.of(context).size.width < 420;
     return AppBar(
       backgroundColor: isDark ? appPalette.bgSecondary : appPalette.cardColor,
       elevation: 0,
@@ -338,45 +372,41 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
         );
       }),
       titleSpacing: 0,
-      title: Row(
-        children: [
-          Expanded(
-            child: LayoutBuilder(builder: (ctx, c) {
-              // En pantallas muy estrechas el título + badge no caben en un
-              // Row: se apilan en columna para no desbordar horizontalmente.
-              final stack = c.maxWidth < 150;
-              final badge = Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
-                  const SizedBox(width: 5),
-                  Text('En línea', style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF10B981))),
-                ]),
-              );
-              final titulo = Text(
-                'Chat IA',
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary),
-              );
-              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                if (stack) ...[
-                  titulo,
-                  const SizedBox(height: 6),
-                  badge,
-                ] else
-                  Row(children: [
-                    Flexible(child: titulo),
-                    const SizedBox(width: 8),
-                    Flexible(child: badge),
-                  ]),
-                Text('Groq • openai/gpt-oss-20b • Portal Pilot',
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 11, color: p.textMuted)),
-              ]);
-            }),
+      title: LayoutBuilder(builder: (ctx, c) {
+        // En pantallas muy estrechas los actions se comen casi todo el ancho:
+        // el badge "En línea" se escala (FittedBox) o se oculta para JAMÁS
+        // desbordar; antes desbordaba 50px a 320px (bug confirmado).
+        final w = c.maxWidth;
+        final badge = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
+            const SizedBox(width: 5),
+            Text('En línea', style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF10B981))),
+          ]),
+        );
+        final titulo = Flexible(
+          child: Text(
+            'Chat IA',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+            style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: p.textPrimary),
           ),
-        ],
-      ),
+        );
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            titulo,
+            if (w >= 130) ...[
+              const SizedBox(width: 8),
+              Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: badge)),
+            ],
+          ]),
+          if (w >= 150)
+            Text('Groq • openai/gpt-oss-20b • Portal Pilot',
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 11, color: p.textMuted)),
+        ]);
+      }),
       actions: [
         // Acceso a los reportes guardados en el historial local.
         Tooltip(
@@ -396,23 +426,45 @@ class _ChatIAHomeState extends State<ChatIAHome> with TickerProviderStateMixin {
             onPressed: _goToModulesPanel,
           ),
         ),
-        Tooltip(
-          message: 'Nueva conversación',
-          child: IconButton(
-            icon: Icon(Icons.add_comment_rounded, color: p.brandOnSurface, size: 20),
-            onPressed: _newChat,
+        if (!actionsCompacto) ...[
+          Tooltip(
+            message: 'Nueva conversación',
+            child: IconButton(
+              icon: Icon(Icons.add_comment_rounded, color: p.brandOnSurface, size: 20),
+              onPressed: _newChat,
+            ),
           ),
-        ),
-        Tooltip(
-          message: 'Limpiar chat actual',
-          child: IconButton(
-            icon: Icon(Icons.cleaning_services_rounded, color: p.textMuted, size: 18),
-            onPressed: _current.messages.isEmpty ? null : _clearCurrent,
+          Tooltip(
+            message: 'Limpiar chat actual',
+            child: IconButton(
+              icon: Icon(Icons.cleaning_services_rounded, color: p.textMuted, size: 18),
+              onPressed: _current.messages.isEmpty ? null : _clearCurrent,
+            ),
           ),
-        ),
-        const SizedBox(width: 4),
-        Container(width: 1, height: 22, color: p.borderLight),
-        const SizedBox(width: 4),
+          const SizedBox(width: 4),
+          Container(width: 1, height: 22, color: p.borderLight),
+          const SizedBox(width: 4),
+        ],
+        if (actionsCompacto)
+          PopupMenuButton<String>(
+            tooltip: 'Más acciones',
+            icon: Icon(Icons.more_vert_rounded, color: p.brandOnSurface, size: 20),
+            onSelected: (v) {
+              if (v == 'new') _newChat();
+              if (v == 'clear' && _current.messages.isNotEmpty) _clearCurrent();
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'new',
+                child: Row(children: [Icon(Icons.add_comment_rounded, size: 16, color: p.textPrimary), const SizedBox(width: 10), Text('Nueva conversación', style: GoogleFonts.dmSans(fontSize: 12.5))]),
+              ),
+              PopupMenuItem(
+                value: 'clear',
+                enabled: _current.messages.isNotEmpty,
+                child: Row(children: [Icon(Icons.cleaning_services_rounded, size: 16, color: p.textMuted), const SizedBox(width: 10), Text('Limpiar chat actual', style: GoogleFonts.dmSans(fontSize: 12.5))]),
+              ),
+            ],
+          ),
         const SizedBox(width: 8),
       ],
       bottom: PreferredSize(
