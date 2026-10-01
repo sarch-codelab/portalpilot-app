@@ -294,7 +294,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
           const SizedBox(height: 10),
           if (_empresaNombre.isNotEmpty) ...[
             Text(
-              '$_empresaNombre  â€¢  RTN: $_rtn',
+              '$_empresaNombre  •  RTN: $_rtn',
               style: GoogleFonts.dmSans(
                 fontSize: 11,
                 color: appPalette.textMuted,
@@ -312,7 +312,7 @@ class _FacturacionHomeState extends State<FacturacionHome> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Rango: $_rangoInicio  â†’  $_rangoFin',
+            'Rango: $_rangoInicio  →  $_rangoFin',
             style: GoogleFonts.dmMono(
               fontSize: 12,
               color: appPalette.textMuted,

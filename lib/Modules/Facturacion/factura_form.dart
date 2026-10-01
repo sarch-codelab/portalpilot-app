@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_detalle.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/sar_config_screen.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/utils/fiscal_compliance.dart';
+import 'package:portal_pilot_app/Shared/utils/logger.dart';
 import 'package:portal_pilot_app/Shared/services/canal_tradicional_service.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/factura_pdf_service.dart';
@@ -83,14 +85,22 @@ class _FacturaFormState extends State<FacturaForm> {
     final clientesJson = prefs.getString('clientes_facturacion') ?? '[]';
     final regimenSimplificado = config?.regimen == 'simplificado';
 
+    // Configuración Fiscal general (Settings → Fiscal) como respaldo: así el
+    // RTN/CAI que el usuario guardó ahí SI alimenta la facturación.
+    final fiscalGeneral = FiscalCompliance();
+    await fiscalGeneral.loadConfig();
+    final cfgGeneral = fiscalGeneral.config;
+
     setState(() {
       _empresaNombre =
           config?.razonSocial ??
           config?.nombreComercial ??
           prefs.getString('empresa_nombre') ??
-          '';
-      _rtn = config?.rtn ?? prefs.getString('empresa_rtn') ?? '';
-      _cai = row.cai ?? '';
+          (cfgGeneral.nombreEmpresa.isNotEmpty ? cfgGeneral.nombreEmpresa : '');
+      _rtn = config?.rtn ??
+          prefs.getString('empresa_rtn') ??
+          (cfgGeneral.rtnEmpresa.isNotEmpty ? cfgGeneral.rtnEmpresa : '');
+      _cai = row.cai ?? cfgGeneral.cai ?? '';
       _rangoInicio = row.rangoInicio ?? '001-001-01-00000001';
       _rangoFin = row.rangoFin ?? '';
       _resolucion = row.numeroResolucion ?? '';
@@ -639,6 +649,22 @@ class _FacturaFormState extends State<FacturaForm> {
         notas: factura['notas'],
       );
     } catch (_) {}
+
+    // Auditoría: emisión de documento fiscal.
+    if (!esEdicion) {
+      Logger().audit(
+        'crear',
+        'factura',
+        correlativo,
+        userId: AuthController.instance.email,
+        module: 'facturacion',
+        changes: {
+          'tipo': _tipoDocumento,
+          'cliente': _clienteNombreController.text,
+          'total': _total.toStringAsFixed(2),
+        },
+      );
+    }
 
     // Ventas al crédito: actualizar la cuenta por cobrar del cliente.
     if (esCredito && !esEdicion && clienteIdFiado != null) {

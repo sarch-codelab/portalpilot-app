@@ -27,6 +27,35 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- -------------------------------------------------------------
+-- Movimientos de inventario (Kardex de la app móvil)
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS kardex (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_codigo TEXT NOT NULL,
+  empresa_id UUID,
+  producto_id TEXT NOT NULL,
+  tipo_movimiento TEXT NOT NULL CHECK (tipo_movimiento IN ('entrada', 'salida')),
+  cantidad INTEGER NOT NULL CHECK (cantidad > 0),
+  referencia TEXT,
+  notas TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_kardex_empresa_fecha ON kardex(empresa_codigo, created_at DESC);
+
+-- Auditoría centralizada de las acciones registradas en la app.
+CREATE TABLE IF NOT EXISTS system_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_codigo TEXT NOT NULL,
+  usuario_id TEXT,
+  nivel TEXT NOT NULL DEFAULT 'INFO',
+  mensaje TEXT NOT NULL,
+  modulo TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_system_logs_empresa_fecha ON system_logs(empresa_codigo, created_at DESC);
+
+-- -------------------------------------------------------------
 -- 1. FACTURAS (módulo Facturación electrónica + POS)
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS facturas (

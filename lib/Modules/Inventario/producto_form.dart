@@ -15,6 +15,7 @@ import 'package:portal_pilot_app/Shared/services/image_service.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/services/connectivity_service.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
@@ -1016,6 +1017,40 @@ Future<void> _identificarProductoConIA() async {
     final prefs = await SharedPreferences.getInstance();
     final empresaCodigo = prefs.getString('empresa_codigo') ?? 'ROOT';
     final localDb = LocalDatabaseService.instance;
+
+    final barcode = _barcodeController.text.trim();
+    if (barcode.isNotEmpty) {
+      final idActual = widget.productoExistente?['id']?.toString();
+      final codigoActual = widget.productoExistente?['codigo']?.toString();
+      final localProductos = JsonGuard.safeListOfMaps(prefs.getString('productos'), source: 'Inventario/barcode/duplicados');
+      final dbProducts = await localDb.getProductos(empresaCodigo);
+      final localDuplicado = localProductos.any((p) =>
+              (p['barcode'] ?? '').toString().trim().toLowerCase() == barcode.toLowerCase() &&
+              p['id']?.toString() != idActual &&
+              (codigoActual == null || p['codigo']?.toString() != codigoActual)) ||
+          dbProducts.any((p) =>
+              (p.barcode ?? '').trim().toLowerCase() == barcode.toLowerCase() &&
+              p.id != idActual &&
+              (codigoActual == null || p.codigo != codigoActual));
+      if (localDuplicado) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ya existe un producto con ese codigo de barras.', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFEF4444)));
+        return;
+      }
+      if (ConnectivityService.instance.isOnline) {
+        final api = ApiService.instance;
+        final remoto = await api.get('/api/productos');
+        if (api.isSuccess(remoto)) {
+          final rows = remoto['productos'] ?? remoto['data'];
+          if (rows is List && rows.any((p) =>
+              p is Map &&
+              (p['barcode'] ?? '').toString().trim().toLowerCase() == barcode.toLowerCase() &&
+              (codigoActual == null || p['codigo']?.toString() != codigoActual))) {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ese código de barras ya está registrado en la empresa.', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFEF4444)));
+            return;
+          }
+        }
+      }
+    }
     
     // Generar ID si es nuevo producto
     final id = widget.productoExistente != null 
@@ -1124,58 +1159,7 @@ Future<void> _identificarProductoConIA() async {
 
     // La sincronización ya se maneja automáticamente por LocalDatabaseService
 
-    // Sincronizar con backend (Supabase) — no bloquea UI
-    try {
-      final api = ApiService.instance;
-      await api.initialize();
-      final backendBody = {
-        'codigo': codigo,
-        'nombre': producto['nombre'],
-        'descripcion': producto['descripcion'],
-        'categoria': producto['categoria'],
-        'unidad_medida': producto['unidad_medida'],
-        'precio_compra': producto['precio_compra'],
-        'precio_venta': producto['precio_venta'],
-        'stock_actual': producto['stock_actual'],
-        'stock_minimo': producto['stock_minimo'],
-        'bodega': producto['bodega'],
-        'isv_rate': producto['isv_rate'],
-        'exento': producto['exento'],
-        'barcode': producto['barcode'],
-        'marca': producto['marca'],
-        'presentacion': producto['presentacion'],
-        'imagen_url': _imagenUrl ??
-            (_imagenBase64 != null && _imagenBase64!.isNotEmpty
-                ? 'data:image/jpeg;base64,$_imagenBase64'
-                : null),
-      };
-      // En edición se usa el batch upsert (idempotente por codigo/barcode en el
-      // servidor): así la edición persiste aunque el id local no sea el UUID
-      // remoto. En creación el POST individual devuelve 409 si el codigo de
-      // barras ya existe, y ese error se muestra para no crear duplicados.
-      final result = esEdicion
-          ? await api.post('/api/productos', body: {
-              'empresa_codigo': empresaCodigo,
-              'productos': [backendBody],
-            })
-          : await api.post('/api/productos', body: backendBody);
-      if (api.isSuccess(result)) {
-        debugPrint('[ProductoForm] Synced to backend: $codigo');
-      } else {
-        final error = api.getError(result);
-        debugPrint('[ProductoForm] Backend sync failed: $error');
-        if (!esEdicion && mounted && error != null && error.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('El servidor rechazó el producto: $error', style: GoogleFonts.dmSans()),
-              backgroundColor: const Color(0xFFEF4444),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('[ProductoForm] Backend sync error: $e');
-    }
+    // La cola offline-first es el ?nico canal de escritura remota.
 
     if (mounted) {
       await _limpiarBorrador();

@@ -37,6 +37,7 @@ class PosService {
     CanalTradicionalService.instance.setContext(
       empresaId: empresaId,
       usuarioId: usuarioId,
+      terminalId: terminalId,
     );
   }
 
@@ -47,7 +48,13 @@ class PosService {
   /// Obtiene correlativo siguiente para venta
   Future<String> getNextCorrelativo() async {
     final ahora = DateTime.now();
-    final prefijo = 'POS-${ahora.year}${ahora.month.toString().padLeft(2, '0')}';
+    // El correlativo anterior era secuencial y común a todos los dispositivos:
+    // dos terminales offline podían crear POS-...-000001 y una venta se
+    // descartaba al sincronizar por idempotencia. El componente aleatorio
+    // identifica el ticket; el sufijo mantiene una lectura humana simple.
+    final fecha = '${ahora.year}${ahora.month.toString().padLeft(2, '0')}'
+        '${ahora.day.toString().padLeft(2, '0')}';
+    final prefijo = 'POS-$fecha-${const Uuid().v4().substring(0, 8).toUpperCase()}';
     
     final ultimaVenta = await (_db.select(_db.posVentas)
           ..where((v) => v.empresaId.equals(_currentEmpresaId!) & v.correlativo.like('$prefijo%'))
@@ -63,7 +70,7 @@ class PosService {
       }
     }
 
-    return '$prefijo-${siguiente.toString().padLeft(6, '0')}';
+    return '$prefijo-${siguiente.toString().padLeft(4, '0')}';
   }
 
   /// Registra una venta completa (cabecera + items + descuento stock)
@@ -80,28 +87,45 @@ class PosService {
     if (_currentEmpresaId == null || _currentUsuarioId == null) {
       throw StateError('Contexto POS no inicializado');
     }
+    if (items.isEmpty) throw ArgumentError('Agrega al menos un producto antes de cobrar.');
+    if (!descuentoGlobal.isFinite || descuentoGlobal < 0) {
+      throw ArgumentError('El descuento debe ser un monto válido y no negativo.');
+    }
+    for (final item in items) {
+      if (item.cantidad <= 0 ||
+          !item.precioUnitario.isFinite ||
+          item.precioUnitario < 0 ||
+          !item.descuento.isFinite ||
+          item.descuento < 0 ||
+          item.descuento > item.precioUnitario * item.cantidad ||
+          ![0.0, 15.0, 18.0].any((rate) => (rate - item.isvRate).abs() < 0.001)) {
+        throw ArgumentError('Revisa la cantidad, el precio y el descuento de ${item.nombre}.');
+      }
+    }
 
     final correlativo = await getNextCorrelativo();
-    final ventaId = DateTime.now().microsecondsSinceEpoch.toString();
+    final ventaId = const Uuid().v4();
     final ahora = DateTime.now();
 
     // Calcular totales
     double subtotal = 0;
+    double descuentoItems = 0;
     double isv15 = 0;
     double isv18 = 0;
 
     for (final item in items) {
-      final itemSubtotal = item.precioUnitario * item.cantidad - item.descuento;
-      subtotal += itemSubtotal;
-      
-      if (item.isvRate >= 18) {
-        isv18 += itemSubtotal * 0.18;
-      } else {
-        isv15 += itemSubtotal * 0.15;
-      }
+      final bruto = item.precioUnitario * item.cantidad;
+      final baseImponible = bruto - item.descuento;
+      subtotal += bruto;
+      descuentoItems += item.descuento;
+      if ((item.isvRate - 18).abs() < 0.001) isv18 += baseImponible * 0.18;
+      if ((item.isvRate - 15).abs() < 0.001) isv15 += baseImponible * 0.15;
     }
 
-    final total = subtotal - descuentoGlobal + isv15 + isv18;
+    final total = subtotal - descuentoItems - descuentoGlobal + isv15 + isv18;
+    if (descuentoGlobal > subtotal - descuentoItems) {
+      throw ArgumentError('El descuento supera el subtotal de la venta.');
+    }
 
     // Insertar cabecera
     final venta = PosVentasCompanion.insert(
@@ -114,7 +138,7 @@ class PosService {
       clienteNombre: Value(clienteNombre),
       clienteRtn: Value(clienteRtn),
       subtotal: Value(subtotal),
-      descuento: Value(descuentoGlobal),
+      descuento: Value(descuentoItems + descuentoGlobal),
       isv15: Value(isv15),
       isv18: Value(isv18),
       total: Value(total),
@@ -126,80 +150,92 @@ class PosService {
       synced: const Value(false),
     );
 
-    await _db.into(_db.posVentas).insertOnConflictUpdate(venta);
-
-    // Insertar items y descontar stock
-    for (var i = 0; i < items.length; i++) {
-      final item = items[i];
-      final itemId = const Uuid().v4();
-      final itemSubtotal = item.precioUnitario * item.cantidad - item.descuento;
-
-      final ventaItem = PosVentaItemsCompanion.insert(
-        id: itemId,
-        ventaId: ventaId,
-        productoId: Value(item.productoId),
-        productoCodigo: Value(item.codigo),
-        productoNombre: item.nombre,
-        precioUnitario: item.precioUnitario,
-        cantidad: item.cantidad,
-        descuento: Value(item.descuento),
-        isvRate: Value(item.isvRate),
-        subtotal: itemSubtotal,
-        promocionAplicada: Value(item.promocionAplicada),
-        createdAt: Value(ahora),
-      );
-
-      await _db.into(_db.posVentaItems).insertOnConflictUpdate(ventaItem);
-
-      // Descontar stock local
-      if (item.productoId.isNotEmpty) {
-        await _descontarStockLocal(item.productoId, item.cantidad);
+    // Una venta nunca debe quedar a medias en el dispositivo. Validamos todo
+    // el stock y escribimos cabecera, líneas, existencias, crédito y cola sync
+    // dentro de una sola transacción SQLite.
+    await _db.transaction(() async {
+      final cantidadesPorProducto = <String, int>{};
+      for (final item in items.where((item) => item.productoId.isNotEmpty)) {
+        cantidadesPorProducto.update(
+          item.productoId,
+          (actual) => actual + item.cantidad,
+          ifAbsent: () => item.cantidad,
+        );
       }
-    }
+      for (final entry in cantidadesPorProducto.entries) {
+        final producto = await (_db.select(_db.productos)
+              ..where((p) => p.id.equals(entry.key) & p.empresaId.equals(_currentEmpresaId!)))
+            .getSingleOrNull();
+        if (producto == null) {
+          throw StateError('El producto ${entry.key} ya no está disponible en este negocio.');
+        }
+        if (producto.stockActual < entry.value) {
+          throw StateError(
+            'Stock insuficiente para ${producto.nombre}: quedan ${producto.stockActual} y solicitas ${entry.value}.',
+          );
+        }
+      }
 
-    // Si es crédito, actualizar cuenta cliente
-    if (esCredito && clienteId != null) {
-      await _actualizarCreditoCliente(
-        clienteId,
-        total,
-        clienteNombre: clienteNombre,
-      );
-    }
-
-    // Encolar sync
-    await _syncService.enqueueSync(
-      tabla: 'pos_ventas',
-      operacion: SyncOperation.insert,
-      datos: {
-        'empresa_codigo': _currentEmpresaId!,
-        'venta': {
-          'id': ventaId,
-          'correlativo': correlativo,
-          'cliente_id': clienteId,
-          'cliente_nombre': clienteNombre,
-          'cliente_rtn': clienteRtn,
-          'items': items.map((i) => {
-            'producto_id': i.productoId,
-            'codigo': i.codigo,
-            'nombre': i.nombre,
-            'cantidad': i.cantidad,
-            'precio_unitario': i.precioUnitario,
-            'descuento': i.descuento,
-            'isv_rate': i.isvRate,
-            'promocion': i.promocionAplicada,
-          }).toList(),
-          'subtotal': subtotal,
-          'descuento': descuentoGlobal,
-          'isv_15': isv15,
-          'isv_18': isv18,
-          'total': total,
-          'metodo_pago': metodoPago,
-          'estado': esCredito ? 'pendiente_pago' : 'completada',
-          'notas': notas,
+      await _db.into(_db.posVentas).insert(venta);
+      for (final item in items) {
+        final itemSubtotal = item.precioUnitario * item.cantidad - item.descuento;
+        await _db.into(_db.posVentaItems).insert(PosVentaItemsCompanion.insert(
+          id: const Uuid().v4(),
+          ventaId: ventaId,
+          productoId: Value(item.productoId),
+          productoCodigo: Value(item.codigo),
+          productoNombre: item.nombre,
+          precioUnitario: item.precioUnitario,
+          cantidad: item.cantidad,
+          descuento: Value(item.descuento),
+          isvRate: Value(item.isvRate),
+          subtotal: itemSubtotal,
+          promocionAplicada: Value(item.promocionAplicada),
+          createdAt: Value(ahora),
+        ));
+      }
+      for (final entry in cantidadesPorProducto.entries) {
+        await _descontarStockLocal(entry.key, entry.value);
+      }
+      if (esCredito && clienteId != null) {
+        await _actualizarCreditoCliente(clienteId, total, clienteNombre: clienteNombre);
+      }
+      await _syncService.enqueueSync(
+        tabla: 'pos_ventas',
+        operacion: SyncOperation.insert,
+        datos: {
+          'empresa_codigo': _currentEmpresaId!,
+          'venta': {
+            'id': ventaId,
+            'correlativo': correlativo,
+            'cliente_id': clienteId,
+            'cliente_nombre': clienteNombre,
+            'cliente_rtn': clienteRtn,
+            'items': items.map((i) => {
+              'producto_id': i.productoId,
+              'codigo': i.codigo,
+              'nombre': i.nombre,
+              'cantidad': i.cantidad,
+              'precio_unitario': i.precioUnitario,
+              'descuento': i.descuento,
+              'isv_rate': i.isvRate,
+              'promocion': i.promocionAplicada,
+            }).toList(),
+            'subtotal': subtotal,
+            'descuento': descuentoItems + descuentoGlobal,
+            'isv_15': isv15,
+            'isv_18': isv18,
+            'total': total,
+            'metodo_pago': metodoPago,
+            'estado': esCredito ? 'pendiente_pago' : 'completada',
+            'notas': notas,
+          },
         },
-      },
-      empresaId: _currentEmpresaId!,
-    );
+        empresaId: _currentEmpresaId!,
+        triggerSync: false,
+      );
+    });
+    _syncService.syncNowIfOnline();
 
     // Retornar venta creada
     return await getVentaById(ventaId);
@@ -207,12 +243,12 @@ class PosService {
 
   Future<void> _descontarStockLocal(String productoId, int cantidad) async {
     final producto = await (_db.select(_db.productos)
-          ..where((p) => p.id.equals(productoId)))
+          ..where((p) => p.id.equals(productoId) & p.empresaId.equals(_currentEmpresaId!)))
         .getSingleOrNull();
     
     if (producto != null) {
-      final nuevoStock = (producto.stockActual - cantidad).clamp(0, 999999);
-      await (_db.update(_db.productos)..where((p) => p.id.equals(productoId))).write(
+      final nuevoStock = producto.stockActual - cantidad;
+      await (_db.update(_db.productos)..where((p) => p.id.equals(productoId) & p.empresaId.equals(_currentEmpresaId!))).write(
         ProductosCompanion(
           stockActual: Value(nuevoStock),
           updatedAt: Value(DateTime.now()),
@@ -246,7 +282,7 @@ class PosService {
       // Si el cliente no tiene cuenta de fiado, se crea automáticamente.
       await _db.into(_db.posClienteCredito).insert(
         PosClienteCreditoCompanion.insert(
-          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          id: const Uuid().v4(),
           empresaId: _currentEmpresaId!,
           clienteId: clienteId,
           clienteNombre: Value(clienteNombre),
@@ -265,7 +301,7 @@ class PosService {
 
   Future<PosVenta?> getVentaById(String id) async {
     return await (_db.select(_db.posVentas)
-          ..where((v) => v.id.equals(id)))
+          ..where((v) => v.id.equals(id) & v.empresaId.equals(_currentEmpresaId!)))
         .getSingleOrNull();
   }
 
@@ -528,7 +564,7 @@ class PosService {
     required double fondoInicial,
     Map<int, int>? denominacionesIniciales,
   }) async {
-    final arqueoId = DateTime.now().microsecondsSinceEpoch.toString();
+    final arqueoId = const Uuid().v4();
     final ahora = DateTime.now();
 
     final arqueo = PosArqueoCajaCompanion(
@@ -547,10 +583,24 @@ class PosService {
       synced: const Value(false),
     );
 
-    await _db.into(_db.posArqueoCaja).insertOnConflictUpdate(arqueo);
-    
-    // Registrar entrada de fondo inicial
-    await _registrarMovimientoCaja('entrada', 'Fondo inicial', fondoInicial, 'efectivo');
+    if (await getArqueoAbierto() != null) {
+      throw StateError('Ya hay una caja abierta en esta terminal. Ciérrala antes de abrir otra.');
+    }
+    await _db.transaction(() async {
+      await _db.into(_db.posArqueoCaja).insert(arqueo);
+      await _registrarMovimientoCaja('ingreso', 'Fondo inicial', fondoInicial, 'efectivo', triggerSync: false);
+      await _enqueueArqueo(arqueoId, {
+        'usuario_id': _currentUsuarioId,
+        'terminal_id': _currentTerminalId,
+        'fecha_apertura': ahora.toIso8601String(),
+        'fondo_inicial': fondoInicial,
+        'estado': 'abierto',
+        'detalle_denominaciones': denominacionesIniciales,
+        'created_at': ahora.toIso8601String(),
+        'updated_at': ahora.toIso8601String(),
+      }, triggerSync: false);
+    });
+    _syncService.syncNowIfOnline();
     
     return await getArqueoAbierto() as PosArqueoCajaData;
   }
@@ -560,6 +610,9 @@ class PosService {
     Map<int, int>? denominacionesFinales,
     String? observaciones,
   }) async {
+    if (!conteoFisico.isFinite || conteoFisico < 0) {
+      throw ArgumentError('El conteo físico debe ser un monto válido y no negativo.');
+    }
     final arqueo = await getArqueoAbierto();
     if (arqueo == null) throw StateError('No hay caja abierta');
 
@@ -595,26 +648,28 @@ class PosService {
     // Obtener gastos/entradas/salidas
     final transacciones = await (_db.select(_db.transacciones)
           ..where((t) => t.empresaId.equals(_currentEmpresaId!) 
-            & t.fecha.isBiggerOrEqualValue(arqueo.fechaApertura)))
+            & t.fecha.isBiggerOrEqualValue(arqueo.fechaApertura)
+            & t.referencia.like('POS_TERMINAL:${_currentTerminalId!}%')))
         .get();
 
     double totalGastos = 0;
+    double gastosEfectivo = 0;
     double totalEntradas = 0;
     double totalSalidas = 0;
 
     for (final t in transacciones) {
       if (t.tipo == 'gasto') {
         totalGastos += t.monto;
-      } else if (t.tipo == 'ingreso' && t.categoria != 'Venta POS') {
+        if ((t.metodoPago ?? 'efectivo') == 'efectivo') gastosEfectivo += t.monto;
+      } else if (t.tipo == 'ingreso' && t.categoria != 'Fondo inicial' && (t.metodoPago ?? 'efectivo') == 'efectivo') {
         totalEntradas += t.monto;
       }
     }
 
-    final sistemaTotal = arqueo.fondoInicial + totalEfectivo + totalEntradas - totalGastos - totalSalidas;
+    final sistemaTotal = arqueo.fondoInicial + totalEfectivo + totalEntradas - gastosEfectivo - totalSalidas;
     final diferencia = conteoFisico - sistemaTotal;
 
-    await (_db.update(_db.posArqueoCaja)..where((a) => a.id.equals(arqueo.id))).write(
-      PosArqueoCajaCompanion(
+    final cerrado = PosArqueoCajaCompanion(
         fechaCierre: Value(DateTime.now()),
         totalVentasEfectivo: Value(totalEfectivo),
         totalVentasTarjeta: Value(totalTarjeta),
@@ -633,13 +688,42 @@ class PosService {
             : const Value.absent(),
         updatedAt: Value(DateTime.now()),
         synced: const Value(false),
-      ),
-    );
+      );
+    await _db.transaction(() async {
+      await (_db.update(_db.posArqueoCaja)..where((a) => a.id.equals(arqueo.id))).write(cerrado);
+      await _enqueueArqueo(arqueo.id, {
+        'fecha_cierre': DateTime.now().toIso8601String(),
+        'total_ventas_efectivo': totalEfectivo,
+        'total_ventas_tarjeta': totalTarjeta,
+        'total_ventas_transferencia': totalTransferencia,
+        'total_ventas_mixto': totalMixto,
+        'total_gastos': totalGastos,
+        'total_entradas': totalEntradas,
+        'total_salidas': totalSalidas,
+        'sistema_total': sistemaTotal,
+        'conteo_fisico': conteoFisico,
+        'diferencia': diferencia,
+        'observaciones': observaciones,
+        'estado': 'cerrado',
+        'detalle_denominaciones': denominacionesFinales,
+        'updated_at': DateTime.now().toIso8601String(),
+      }, operation: SyncOperation.update, triggerSync: false);
+    });
+    _syncService.syncNowIfOnline();
   }
 
-  Future<void> _registrarMovimientoCaja(String tipo, String descripcion, double monto, String metodoPago) async {
+  Future<void> _registrarMovimientoCaja(String tipo, String descripcion, double monto, String metodoPago, {bool triggerSync = true}) async {
+    if (!monto.isFinite || monto <= 0) {
+      throw ArgumentError('El monto del movimiento debe ser mayor que cero.');
+    }
+    if (descripcion.trim().isEmpty) {
+      throw ArgumentError('Describe el movimiento de caja.');
+    }
+    if (descripcion != 'Fondo inicial' && await getArqueoAbierto() == null) {
+      throw StateError('Abre la caja antes de registrar movimientos.');
+    }
     await _localDb.insertTransaccionLocal(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      id: const Uuid().v4(),
       empresaId: _currentEmpresaId!,
       tipo: tipo,
       categoria: descripcion,
@@ -647,6 +731,18 @@ class PosService {
       monto: monto,
       metodoPago: metodoPago,
       fecha: DateTime.now(),
+      referencia: 'POS_TERMINAL:${_currentTerminalId!}',
+      triggerSync: triggerSync,
+    );
+  }
+
+  Future<void> _enqueueArqueo(String id, Map<String, dynamic> campos, {SyncOperation operation = SyncOperation.insert, bool triggerSync = true}) async {
+    await _syncService.enqueueSync(
+      tabla: 'pos_arqueo_caja',
+      operacion: operation,
+      datos: {'empresa_codigo': _currentEmpresaId, 'pos_arqueo_caja': {'id': id, ...campos}},
+      empresaId: _currentEmpresaId,
+      triggerSync: triggerSync,
     );
   }
 
@@ -662,7 +758,7 @@ class PosService {
     required String descripcion,
     required double monto,
   }) async {
-    await _registrarMovimientoCaja('entrada', descripcion, monto, 'efectivo');
+    await _registrarMovimientoCaja('ingreso', descripcion, monto, 'efectivo');
   }
 
   // ═══════════════════════════════════════════════════════════════

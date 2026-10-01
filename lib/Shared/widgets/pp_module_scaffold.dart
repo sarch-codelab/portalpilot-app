@@ -158,15 +158,19 @@ class PPModuleScaffold extends StatelessWidget {
   }
 
   Widget _buildLoading(BuildContext context, ThemePalette palette) {
-    return Padding(
-      padding: MobileUtils.getPagePadding(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          PPSkeletonHeader(),
-          SizedBox(height: 20),
-          PPSkeleton(card: true, cards: 4),
-        ],
+    // Scrollable: en pantallas bajas (o ventanas pequeñas) la Column fija del
+    // skeleton medía más que el viewport y desbordaba durante la carga.
+    return SingleChildScrollView(
+      child: Padding(
+        padding: MobileUtils.getPagePadding(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            PPSkeletonHeader(),
+            SizedBox(height: 20),
+            PPSkeleton(card: true, cards: 4),
+          ],
+        ),
       ),
     );
   }

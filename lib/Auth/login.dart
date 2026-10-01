@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:portal_pilot_app/Home/home_screen.dart';
 import 'package:portal_pilot_app/onboarding/onboarding_screen.dart';
+import 'package:portal_pilot_app/Shared/widgets/portal_pilot_logo.dart';
 import 'unico.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -870,16 +871,8 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildMobileHeader() {
     return Column(
       children: [
-        Text(
-          'Portal Pilot',
-          style: GoogleFonts.syne(
-            fontSize: 32,
-            fontWeight: FontWeight.w900,
-            color: textPrimary,
-            letterSpacing: -1.0,
-            height: 1.1,
-          ),
-        ),
+        // Marca real: imagen Portal Pilot.png (blanca sobre fondo oscuro).
+        const PortalPilotLogo(height: 36, forceWhite: true),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),

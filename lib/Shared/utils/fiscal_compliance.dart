@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 
 /// Configuración de compliance fiscal para Honduras (SAR)
 class FiscalCompliance {
@@ -13,12 +14,23 @@ class FiscalCompliance {
   /// Configuración fiscal
   FiscalConfig? _config;
 
+  /// Clave POR EMPRESA: dos empresas en el mismo dispositivo no comparten
+  /// RTN/CAI/tasas. Si no hay empresa logueada cae a la clave global (que
+  /// además sirve de migración de instalaciones antiguas).
+  String get _key {
+    final empresa = AuthController.instance.empresaCodigo.trim();
+    if (empresa.isEmpty || empresa.toUpperCase() == 'ROOT') return _configKey;
+    return '${_configKey}_$empresa';
+  }
+
   /// Cargar configuración
   Future<void> loadConfig() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final configJson = prefs.getString(_configKey);
-      
+      var configJson = prefs.getString(_key);
+      // Migración: instalaciones antiguas guardaban sin sufijo de empresa.
+      configJson ??= prefs.getString(_configKey);
+
       if (configJson != null) {
         _config = FiscalConfig.fromJson(jsonDecode(configJson));
       } else {
@@ -36,7 +48,7 @@ class FiscalCompliance {
       final prefs = await SharedPreferences.getInstance();
       final configJson = jsonEncode(config.toJson());
       _config = config;
-      return await prefs.setString(_configKey, configJson);
+      return await prefs.setString(_key, configJson);
     } catch (e) {
       debugPrint('Error al guardar configuración fiscal: $e');
       return false;

@@ -24,6 +24,7 @@ import 'package:portal_pilot_app/Shared/services/nfc_card_service.dart';
 import 'package:portal_pilot_app/Shared/widgets/sync_status_indicator.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
+import 'package:portal_pilot_app/Shared/utils/fiscal_compliance.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:lottie/lottie.dart';
 
@@ -61,10 +62,55 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   bool _torchOn = false;
   StreamSubscription<SyncStatus>? _syncSubscription;
 
+  // ── Lector de códigos de barras USB/Bluetooth (keyboard wedge) ──
+  // Mientras el foco NO esté en un campo de texto, una ráfaga de caracteres
+  // que termina en Enter (típico de un lector conectado) se interpreta como
+  // un código escaneado y el producto entra solo al carrito.
+  final List<String> _wedgeBuffer = [];
+  DateTime _wedgeLastKeyAt = DateTime.now();
+
+  bool _handleWedgeKey(KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+    final focus = FocusManager.instance.primaryFocus;
+    final focusCtx = focus?.context;
+    if (focusCtx != null && focusCtx.findAncestorStateOfType<EditableTextState>() != null) {
+      return false; // el usuario está escribiendo en un campo: no interferir
+    }
+    final now = DateTime.now();
+    if (now.difference(_wedgeLastKeyAt) > const Duration(milliseconds: 150)) {
+      _wedgeBuffer.clear();
+    }
+    _wedgeLastKeyAt = now;
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      if (_wedgeBuffer.isNotEmpty) {
+        final code = _wedgeBuffer.join().trim();
+        _wedgeBuffer.clear();
+        if (code.length >= 3) {
+          // Fuera del dispatch del evento de teclado: mutar el carrito
+          // (setState) dentro del dispatch puede dejar el árbol a medio
+          // reconstruir entre build y layout y congelar la pantalla.
+          Future<void>.microtask(() {
+            if (mounted) _agregarPorCodigo(code);
+          });
+          return true;
+        }
+      }
+      return false;
+    }
+    final ch = event.character?.trim() ?? '';
+    if (ch.length == 1 && RegExp(r'[0-9A-Za-z\-_.]').hasMatch(ch)) {
+      _wedgeBuffer.add(ch);
+      return true;
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    HardwareKeyboard.instance.addHandler(_handleWedgeKey);
     _initializePos();
     _listenSyncStatus();
   }
@@ -72,6 +118,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    HardwareKeyboard.instance.removeHandler(_handleWedgeKey);
     _searchController.dispose();
     _syncSubscription?.cancel();
     _scannerController?.dispose();
@@ -87,19 +134,56 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
 
   Future<void> _initializePos() async {
     final empresaCodigo = _auth.empresaCodigo;
-    final userQuery = _localDb.database.select(_localDb.database.usuarios)
-      ..where((u) => u.email.equals(_auth.email));
-    final user = await userQuery.getSingleOrNull();
-    
-    _posService.setContext(
-      empresaId: empresaCodigo,
-      terminalId: 'TERM-$empresaCodigo-01',
-      usuarioId: user?.id ?? 'unknown',
-    );
 
-    await _hardwareService.initialize();
-    await _hardwareService.loadConfig(empresaCodigo, 'TERM-$empresaCodigo-01');
-    await _cargarProductos();
+    // 1) Contexto de usuario. Si la base local falla, el POS debe seguir
+    //    funcionando (antes un error de drift dejaba la pantalla muerta).
+    try {
+      final userQuery = _localDb.database.select(_localDb.database.usuarios)
+        ..where((u) => u.email.equals(_auth.email));
+      // Timeout: si la base local cuelga (isolate de drift muerto), el POS
+      // debe arrancar igual y no quedarse en la pantalla congelada.
+      final user = await userQuery.getSingleOrNull().timeout(const Duration(seconds: 4));
+      _posService.setContext(
+        empresaId: empresaCodigo,
+        terminalId: 'TERM-$empresaCodigo-01',
+        usuarioId: user?.id ?? 'unknown',
+      );
+    } catch (e) {
+      debugPrint('[POS] Sin usuario local, se continúa: $e');
+      _posService.setContext(
+        empresaId: empresaCodigo,
+        terminalId: 'TERM-$empresaCodigo-01',
+        usuarioId: 'unknown',
+      );
+    }
+
+    // 2) Hardware (impresora, cajón, NFC). Nunca debe bloquear la pantalla.
+    try {
+      await _hardwareService.initialize().timeout(const Duration(seconds: 4));
+      await _hardwareService.loadConfig(empresaCodigo, 'TERM-$empresaCodigo-01').timeout(const Duration(seconds: 4));
+    } catch (e) {
+      debugPrint('[POS] Hardware no disponible: $e');
+    }
+
+    // 3) Catálogo. Cualquier error cae al fallback de SharedPreferences.
+    try {
+      await _cargarProductos();
+    } catch (e) {
+      debugPrint('[POS] Error cargando catálogo: $e');
+      await _cargarProductosFromSharedPreferences();
+      if (mounted) setState(() => _isLoading = false);
+    }
+
+    // 4) Configuración fiscal: la tasa ISV del POS sale de la config real
+    //    (Configuración → Fiscal). Con el default (15%) nada cambia.
+    try {
+      await FiscalCompliance().loadConfig();
+    } catch (_) {}
+
+    // Catálogo en vivo: no hay botón de sincronizar porque la pestaña ya
+    // está conectada a la base de datos; al entrar se pide la lista fresca
+    // al backend en segundo plano (pull-to-refresh también disponible).
+    unawaited(_cargarProductosFromSupabase(silencioso: true));
   }
 
   void _listenSyncStatus() {
@@ -110,8 +194,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     setState(() => _isLoading = true);
     
     try {
-      await _localDb.initialize();
-      final productos = await _localDb.getProductos(_auth.empresaCodigo);
+      await _localDb.initialize().timeout(const Duration(seconds: 4));
+      final productos = await _localDb
+          .getProductos(_auth.empresaCodigo)
+          .timeout(const Duration(seconds: 4));
       
       if (mounted) {
         setState(() {
@@ -124,7 +210,9 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           await _cargarProductosFromSupabase();
           
           // Si aún no hay, usar SharedPreferences como último fallback
-          final productosAfterSync = await _localDb.getProductos(_auth.empresaCodigo);
+          final productosAfterSync = await _localDb
+              .getProductos(_auth.empresaCodigo)
+              .timeout(const Duration(seconds: 4));
           if (productosAfterSync.isEmpty) {
             await _cargarProductosFromSharedPreferences();
           }
@@ -140,7 +228,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     }
   }
   
-  Future<void> _cargarProductosFromSupabase() async {
+  Future<void> _cargarProductosFromSupabase({bool silencioso = false}) async {
     try {
       final empresaCodigo = _auth.empresaCodigo;
       debugPrint('📡 Intentando descargar productos de Supabase para empresa: $empresaCodigo');
@@ -153,38 +241,43 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         debugPrint('📦 Productos recibidos: ${(productosData as List).length}');
         
         if (productosData.isNotEmpty) {
-          await _localDb.upsertProductosLocal(
-            empresaId: empresaCodigo,
-            productos: productosData.cast<Map<String, dynamic>>(),
-            enqueueSync: false,
-          );
+          await _localDb
+              .upsertProductosLocal(
+                empresaId: empresaCodigo,
+                productos: productosData.cast<Map<String, dynamic>>(),
+                enqueueSync: false,
+              )
+              .timeout(const Duration(seconds: 4));
           debugPrint('✅ Productos guardados en base local');
           
-          final productos = await _localDb.getProductos(empresaCodigo);
+          final productos = await _localDb
+              .getProductos(empresaCodigo)
+              .timeout(const Duration(seconds: 4));
           debugPrint('📊 Productos en base local después de guardar: ${productos.length}');
           
           if (mounted) {
             setState(() {
               _productos = productos;
             });
-            _mostrarSnackBar('Sincronizados ${productos.length} productos', isError: false);
+            if (!silencioso) {
+              _mostrarSnackBar('Sincronizados ${productos.length} productos', isError: false);
+            }
           }
         } else {
           debugPrint('⚠️ La API devolvió una lista vacía');
-          if (mounted) {
+          if (mounted && !silencioso) {
             _mostrarSnackBar('No hay productos en la base de datos', isError: true);
           }
         }
       } else {
-        final error = api.getError(result);
-        debugPrint('❌ Error en API: $error');
-        if (mounted) {
-          _mostrarSnackBar('Error de API: $error', isError: true);
-        }
+        final error = api.getError(result);          debugPrint('❌ Error en API: $error');
+          if (mounted && !silencioso) {
+            _mostrarSnackBar('Error de API: $error', isError: true);
+          }
       }
     } catch (e) {
       debugPrint('❌ Error descargando productos de Supabase: $e');
-      if (mounted) {
+      if (mounted && !silencioso) {
         _mostrarSnackBar('Error de conexión: $e', isError: true);
       }
     }
@@ -270,6 +363,25 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     });
     HapticFeedback.lightImpact();
     _solicitarUpsell();
+  }
+
+  /// Enter en la buscadora: si el texto es exactamente un código de barras /
+  /// código interno (típico de un lector USB con foco en el buscador),
+  /// agrega el producto directo al carrito y limpia la búsqueda.
+  void _buscarOCapturarCodigo(String texto) {
+    final q = texto.trim().toLowerCase();
+    if (q.isEmpty) return;
+    final exactos = _productos
+        .where((p) =>
+            (p.codigo ?? '').toLowerCase() == q ||
+            (p.barcode ?? '').toLowerCase() == q)
+        .toList();
+    if (exactos.length == 1) {
+      _agregarAlCarrito(exactos.first);
+      _searchController.clear();
+      setState(() => _searchQuery = '');
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
   }
 
   void _agregarPorCodigo(String codigo) {
@@ -409,9 +521,9 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     return null;
   }
 
-  Future<void> _cobrar() async {
+  Future<void> _cobrar({String? notasExtra, double? vuelto}) async {
     if (_carrito.isEmpty || _isProcessing) return;
-    
+
     setState(() => _isProcessing = true);
 
     try {
@@ -419,13 +531,18 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       final subtotal = carritoConPromos.fold<double>(0, (s, i) => s + i.precioUnitario * i.cantidad);
       final descuentoItems = carritoConPromos.fold<double>(0, (s, i) => s + i.descuento);
       double isv15 = 0, isv18 = 0;
-      
+
+      // La tasa estándar sale de la Configuración Fiscal (default 15%); los
+      // productos con tasa especial (>=15) conservan su propio porcentaje.
+      final tasaEstandar = FiscalCompliance().config.tasaISV / 100;
       for (final item in carritoConPromos) {
         final base = item.precioUnitario * item.cantidad - item.descuento;
-        if (item.isvRate >= 18) {
+        if (item.isvRate >= 17.99) {
           isv18 += base * 0.18;
-        } else {
-          isv15 += base * 0.15;
+        } else if (item.isvRate >= 14.99) {
+          isv15 += base * (item.isvRate > 0.01 && (item.isvRate - 15).abs() > 0.01
+              ? item.isvRate / 100
+              : tasaEstandar);
         }
       }
       
@@ -436,6 +553,9 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         final t = _tarjetaDetectada!;
         final tail4 = t.ultimos4 ?? t.uid.substring(t.uid.length - 4);
         notasTarjeta = 'Pago: tarjeta · ${t.marca} ····$tail4 (chip NFC, sin cobro electrónico)';
+      }
+      if (notasExtra != null && notasExtra.isNotEmpty) {
+        notasTarjeta = notasTarjeta == null ? notasExtra : '$notasTarjeta · $notasExtra';
       }
 
       final venta = await _posService.registrarVenta(
@@ -469,30 +589,9 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         },
       );
 
-      // Enviar venta al backend
-      try {
-        final api = ApiService.instance;
-        await api.post('/api/pos/ventas', body: {
-          'items': carritoConPromos.map((i) => {
-            'producto_id': i.productoId,
-            'nombre': i.nombre,
-            'cantidad': i.cantidad,
-            'precio_unitario': i.precioUnitario,
-            'descuento': i.descuento,
-            'isv_rate': i.isvRate,
-          }).toList(),
-          'subtotal': subtotal,
-          'isv_15': isv15,
-          'isv_18': isv18,
-          'descuento': descuentoItems,
-          'total': total,
-          'metodo_pago': _metodoPago,
-          'numero_venta': venta.correlativo ?? '',
-          'notas': notasTarjeta,
-        });
-      } catch (e) {
-        debugPrint('⚠️ No se pudo sincronizar venta con backend: $e');
-      }
+      // La venta viaja a la nube por la cola de sincronización (SyncService
+      // → /api/pos/ventas, ruta soportada por el backend desplegado). No se
+      // duplica el envío aquí para no registrar la venta dos veces.
 
       if (_hardwareService.isPrinterConnected) {
         await _imprimirTicket(venta, carritoConPromos, subtotal, descuentoItems, isv15, isv18, total);
@@ -502,7 +601,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       _limpiarCarrito();
       
       if (mounted) {
-        await _mostrarDialogoVentaExitosa(venta, total);
+        await _mostrarDialogoVentaExitosa(venta, total, vuelto: vuelto);
       }
     } catch (e) {
       _mostrarSnackBar('Error al procesar venta: $e', isError: true);
@@ -533,7 +632,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     debugPrint('Imprimiendo ticket...');
   }
 
-  Future<void> _mostrarDialogoVentaExitosa(dynamic venta, double total) async {
+  Future<void> _mostrarDialogoVentaExitosa(dynamic venta, double total, {double? vuelto}) async {
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -561,6 +660,23 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
               _posService.formatCurrency(total),
               style: GoogleFonts.syne(fontSize: 28, fontWeight: FontWeight.w900, color: const Color(0xFF10B981)),
             ),
+            if (vuelto != null && vuelto > 0) ...[
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  'Vuelto a entregar: ${_posService.formatCurrency(vuelto)}',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -576,6 +692,403 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // COBRO POR MÉTODO DE PAGO: efectivo (recibido → vuelto), mixto,
+  // tarjeta sin NFC (referencia manual) y transferencia (banco).
+  // ═════════════════════════════════════════════════════════════
+
+  /// Orquesta el cobro según el método seleccionado.
+  Future<void> _confirmarCobro() async {
+    if (_carrito.isEmpty || _isProcessing) return;
+    switch (_metodoPago) {
+      case 'efectivo':
+        final pago = await _mostrarCobroEfectivo();
+        if (pago == null) return;
+        await _cobrar(
+          notasExtra: 'Efectivo recibido: ${_posService.formatCurrency(pago.recibido)} · Vuelto: ${_posService.formatCurrency(pago.vuelto)}',
+          vuelto: pago.vuelto,
+        );
+      case 'tarjeta':
+        String? refManual;
+        if (_tarjetaDetectada == null) {
+          refManual = await _pedirReferenciaTarjeta();
+          if (refManual == null) return; // canceló el cobro
+        }
+        await _cobrar(
+          notasExtra: refManual == null
+              ? null
+              : (refManual.isEmpty ? 'Pago con tarjeta (sin referencia)' : 'Pago con tarjeta (ref: $refManual)'),
+        );
+      case 'transferencia':
+        await _procesarPagoConBanco(_total);
+        await _cobrar(notasExtra: 'Pago por transferencia bancaria');
+      case 'mixto':
+        final m = await _mostrarCobroMixto();
+        if (m == null) return;
+        await _cobrar(
+          notasExtra: 'Mixto: efectivo ${_posService.formatCurrency(m.efectivo)} + tarjeta/transferencia ${_posService.formatCurrency(m.tarjeta)}',
+        );
+    }
+  }
+
+  /// Pide el monto recibido en efectivo y calcula el vuelto en vivo.
+  /// Devuelve (recibido, vuelto) o null si el usuario canceló.
+  Future<({double recibido, double vuelto})?> _mostrarCobroEfectivo() async {
+    final total = _total;
+    final ctrl = TextEditingController(
+      text: total == total.roundToDouble() ? total.toStringAsFixed(0) : total.toStringAsFixed(2),
+    );
+    double recibido = total;
+    return showDialog<({double recibido, double vuelto})>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) {
+          final vuelto = recibido - total;
+          final haySuficiente = recibido + 0.009 >= total;
+          final colorOk = haySuficiente ? const Color(0xFF10B981) : const Color(0xFFDC2626);
+          return AlertDialog(
+            backgroundColor: const Color(0xFF141414),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.payments_rounded, color: Colors.white, size: 16),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Cobro en efectivo',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              // Scrollable: con fuentes grandes (accesibilidad) o ventanas
+              // angostas el contenido del diálogo nunca se desborda.
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Total a cobrar', style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF737373))),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _posService.formatCurrency(total),
+                      style: GoogleFonts.syne(fontSize: 30, fontWeight: FontWeight.w900, color: Colors.white),
+                    ),
+                  ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
+                  style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: '¿Cuánto recibió?',
+                    labelStyle: GoogleFonts.dmSans(color: const Color(0xFF737373)),
+                    prefixText: 'L ',
+                    prefixStyle: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                    filled: true,
+                    fillColor: const Color(0xFF0F0F0F),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316))),
+                  ),
+                  onChanged: (v) => setS(() => recibido = double.tryParse(v.replaceAll(',', '')) ?? 0),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final m in const [20.0, 50.0, 100.0, 200.0, 500.0, 1000.0])
+                      _botonMontoRapido('L ${m.toStringAsFixed(0)}', onTap: () {
+                        ctrl.text = m.toStringAsFixed(0);
+                        setS(() => recibido = m);
+                      }),
+                    _botonMontoRapido('Exacto', onTap: () {
+                      ctrl.text = total.toStringAsFixed(2);
+                      setS(() => recibido = total);
+                    }),
+                  ],
+                ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: colorOk.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colorOk.withValues(alpha: 0.45)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(haySuficiente ? Icons.savings_rounded : Icons.error_outline_rounded, color: colorOk, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            haySuficiente
+                                ? 'Vuelto: ${_posService.formatCurrency(vuelto)}'
+                                : 'Faltan: ${_posService.formatCurrency(total - recibido)}',
+                            style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w900, color: colorOk),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: Text('Cancelar', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFFA1A1AA))),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: haySuficiente ? () => Navigator.of(ctx).pop((recibido: recibido, vuelto: vuelto)) : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF97316),
+                          disabledBackgroundColor: const Color(0xFF404040),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          'CONFIRMAR COBRO',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _botonMontoRapido(String label, {required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F0F0F),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: const Color(0xFF262626)),
+        ),
+        child: Text(label, style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFFE4E4E7))),
+      ),
+    );
+  }
+
+  /// Cobro mixto: reparte el total entre efectivo y tarjeta/transferencia.
+  Future<({double efectivo, double tarjeta})?> _mostrarCobroMixto() async {
+    final total = _total;
+    final ctrlEfectivo = TextEditingController();
+    final ctrlTarjeta = TextEditingController(text: total.toStringAsFixed(2));
+    return showDialog<({double efectivo, double tarjeta})>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) {
+          final efectivo = double.tryParse(ctrlEfectivo.text.replaceAll(',', '')) ?? 0;
+          final tarjeta = double.tryParse(ctrlTarjeta.text.replaceAll(',', '')) ?? 0;
+          final suma = efectivo + tarjeta;
+          final ok = suma + 0.009 >= total;
+          final colorOk = ok ? const Color(0xFF10B981) : const Color(0xFFDC2626);
+          InputDecoration deco(String label) => InputDecoration(
+                labelText: label,
+                labelStyle: GoogleFonts.dmSans(color: const Color(0xFF737373)),
+                prefixText: 'L ',
+                prefixStyle: GoogleFonts.dmSans(color: Colors.white),
+                filled: true,
+                fillColor: const Color(0xFF0F0F0F),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316))),
+              );
+          return AlertDialog(
+            backgroundColor: const Color(0xFF141414),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFF97316), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Cobro mixto',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Total a cobrar: ${_posService.formatCurrency(total)}', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: ctrlEfectivo,
+                  autofocus: true,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
+                  style: GoogleFonts.dmSans(color: Colors.white),
+                  decoration: deco('Monto en efectivo'),
+                  onChanged: (_) => setS(() {}),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: ctrlTarjeta,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
+                  style: GoogleFonts.dmSans(color: Colors.white),
+                  decoration: deco('Monto con tarjeta/transferencia'),
+                  onChanged: (_) => setS(() {}),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  ok ? 'Cubierto: ${_posService.formatCurrency(suma)}' : 'Faltan: ${_posService.formatCurrency(total - suma)}',
+                  style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: colorOk),
+                ),
+              ],
+            ),
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: Text('Cancelar', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFFA1A1AA))),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: ok ? () => Navigator.of(ctx).pop((efectivo: efectivo, tarjeta: tarjeta)) : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF97316),
+                          disabledBackgroundColor: const Color(0xFF404040),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          'CONFIRMAR',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// En PC (sin NFC) pide una referencia opcional del pago con tarjeta.
+  /// Devuelve null si canceló; string (posiblemente vacío) si continúa.
+  Future<String?> _pedirReferenciaTarjeta() async {
+    final ctrl = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141414),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.credit_card_rounded, color: Color(0xFF8B5CF6), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Pago con tarjeta',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Este dispositivo no tiene NFC. Si quieres, anota los últimos 4 dígitos o la referencia del voucher.',
+              style: GoogleFonts.dmSans(fontSize: 12.5, color: const Color(0xFFA1A1AA)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              style: GoogleFonts.dmSans(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Ej: 4321 o REF-0092',
+                hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
+                filled: true,
+                fillColor: const Color(0xFF0F0F0F),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF8B5CF6))),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: Row(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text('Cancelar', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFFA1A1AA))),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8B5CF6),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      'CONFIRMAR',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -614,6 +1127,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         _mostrarDialogoCodigoManual();
       }
     } else {
+      // En PC (Windows/Linux) mobile_scanner no expone la cámara: se ofrece
+      // entrada manual y el lector USB/Bluetooth funciona en vivo (wedge).
       _mostrarDialogoCodigoManual();
     }
   }
@@ -692,35 +1207,59 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             Text('Ingresar Código', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
           ],
         ),
-        content: TextField(
-          controller: codigoController,
-          autofocus: true,
-          style: GoogleFonts.dmSans(color: Colors.white, fontSize: 16),
-          decoration: InputDecoration(
-            hintText: 'Ej: 7501234567890',
-            hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
-            filled: true,
-            fillColor: const Color(0xFF0F0F0F),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316))),
-            prefixIcon: const Icon(Icons.qr_code_rounded, color: Color(0xFF525252)),
-          ),
-          onSubmitted: (v) {
-            if (v.trim().isNotEmpty) {
-              _agregarPorCodigo(v.trim());
-              Navigator.of(ctx).pop();
-            }
-          },
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: codigoController,
+              autofocus: true,
+              style: GoogleFonts.dmSans(color: Colors.white, fontSize: 16),
+              decoration: InputDecoration(
+                hintText: 'Ej: 7501234567890',
+                hintStyle: GoogleFonts.dmSans(color: const Color(0xFF404040)),
+                filled: true,
+                fillColor: const Color(0xFF0F0F0F),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316))),
+                prefixIcon: const Icon(Icons.qr_code_rounded, color: Color(0xFF525252)),
+              ),
+              onSubmitted: (v) {
+                if (v.trim().isNotEmpty) {
+                  _agregarPorCodigo(v.trim());
+                  Navigator.of(ctx).pop();
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.usb_rounded, color: Color(0xFF8B5CF6), size: 14),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Con un lector USB/Bluetooth conectado no necesitas esto: estando en el POS, escanea y el producto entra al carrito automáticamente.',
+                    style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373)),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
   void _ocultarToastPos() {
-    _toastPos?.remove();
+    final entry = _toastPos;
     _toastPos = null;
     _toastPosSticky = false;
+    try {
+      entry?.remove();
+    } catch (_) {
+      // El overlay ya no existe (pantalla destruida): nada que hacer.
+    }
   }
 
   void _autodescartarToastPos() {
@@ -736,64 +1275,79 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }) {
     _ocultarToastPos();
     _toastPosSticky = duracion == Duration.zero;
+    // El toast vive en el overlay raíz. Debe ser NO interactivo (IgnorePointer)
+    // y con constraints ACOTADAS (Positioned.fill + Align): una entrada del
+    // overlay sin altura definida puede quedar a medio layout y romper el
+    // hit-test de todo lo que esté debajo (freeze del POS).
     final entry = OverlayEntry(
-      builder: (ctx) => Positioned(
-        top: 0,
-        left: 0,
-        right: 0,
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: -1.2, end: 0),
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOutCubic,
-              builder: (ctx, t, child) =>
-                  Transform.translate(offset: Offset(0, 36 * t), child: child),
-              child: Material(
-                elevation: 16,
-                shadowColor: color.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(16),
-                color: color,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.22),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(child: icono),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (ctx) => Positioned.fill(
+        child: IgnorePointer(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: -1.2, end: 0),
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeOutCubic,
+                  builder: (ctx, t, child) =>
+                      Transform.translate(offset: Offset(0, 36 * t), child: child),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Material(
+                      elevation: 16,
+                      shadowColor: color.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(16),
+                      color: color,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              titulo,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(child: icono),
+                            ),
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    titulo,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  if (subtitulo != null)
+                                    Text(
+                                      subtitulo,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                            if (subtitulo != null)
-                              Text(
-                                subtitulo,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                              ),
                           ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -1009,14 +1563,25 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     );
   }
 
+  /// Productos visibles según la búsqueda (sin búsqueda: todo el catálogo).
+  List<Producto> get _productosFiltrados {
+    if (_searchQuery.isEmpty) return _productos;
+    return _productos
+        .where((p) =>
+            p.nombre.toLowerCase().contains(_searchQuery) ||
+            (p.codigo?.toLowerCase().contains(_searchQuery) ?? false) ||
+            (p.barcode?.toLowerCase().contains(_searchQuery) ?? false))
+        .toList();
+  }
+
   double get _subtotal => _carrito.fold<double>(0, (s, i) => s + i.precioUnitario * i.cantidad);
   double get _descuentoItems => _carrito.fold<double>(0, (s, i) => s + i.descuento);
   double get _isv15 => _carrito.fold<double>(0, (s, i) {
-    if (i.isvRate < 18) return s + (i.precioUnitario * i.cantidad - i.descuento) * 0.15;
+    if (i.isvRate >= 14.99 && i.isvRate < 17.99) return s + (i.precioUnitario * i.cantidad - i.descuento) * 0.15;
     return s;
   });
   double get _isv18 => _carrito.fold<double>(0, (s, i) {
-    if (i.isvRate >= 18) return s + (i.precioUnitario * i.cantidad - i.descuento) * 0.18;
+    if (i.isvRate >= 17.99) return s + (i.precioUnitario * i.cantidad - i.descuento) * 0.18;
     return s;
   });
   double get _total => _subtotal - _descuentoItems + _isv15 + _isv18;
@@ -1024,14 +1589,19 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       appBar: _buildAppBar(),
-      body: _showScanner
-          ? _buildScannerView()
-          : (size.width > size.height ? _buildWideLayout() : _buildMobileLayout(size)),
+      // Keep the terminal body bounded to the viewport. If an outer route
+      // provides loose height constraints, the mobile Column can otherwise
+      // receive infinite height and lose hit-test/layout sizes.
+      body: SizedBox.expand(
+        child: _showScanner
+            ? _buildScannerView()
+            : (MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height
+                ? _buildWideLayout()
+                : _buildMobileLayout()),
+      ),
     );
   }
 
@@ -1043,42 +1613,40 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFF97316), size: 18),
         onPressed: () => Navigator.pop(context),
       ),
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 16),
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              'POS Terminal',
-              style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
+      title: LayoutBuilder(
+        builder: (context, c) {
+          // En ventanas muy angostas el espacio del título se agota: se oculta
+          // el ícono decorativo para que el texto nunca desborde.
+          final compacto = c.maxWidth < 150;
+          return Row(
+            children: [
+              if (!compacto) ...[
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 16),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Flexible(
+                child: Text(
+                  'POS Terminal',
+                  style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          );
+        },
       ),
       actions: [
         SyncStatusIndicator(
           showDetails: false,
           onTap: () => showDialog(context: context, builder: (_) => const SyncStatusDialog()),
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          icon: const Icon(Icons.refresh_rounded, color: Color(0xFF10B981), size: 20),
-          onPressed: () async {
-            setState(() => _isLoading = true);
-            await _cargarProductosFromSupabase();
-            setState(() => _isLoading = false);
-          },
-          tooltip: 'Sincronizar productos',
         ),
         const SizedBox(width: 4),
         IconButton(
@@ -1122,9 +1690,13 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
               child: CircularProgressIndicator(color: Color(0xFF8B5CF6), strokeWidth: 2),
             ),
             const SizedBox(width: 10),
-            Text(
-              'Buscando sugerencias IA...',
-              style: GoogleFonts.dmSans(color: const Color(0xFFA1A1AA), fontSize: 12),
+            Flexible(
+              child: Text(
+                'Buscando sugerencias IA...',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.dmSans(color: const Color(0xFFA1A1AA), fontSize: 12),
+              ),
             ),
           ],
         ),
@@ -1315,6 +1887,11 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             children: [
               if (_buildUpsellStrip() != null) _buildUpsellStrip()!,
               Expanded(child: _buildCarritoView()),
+              if (_carrito.isNotEmpty && _metodoPago == 'tarjeta')
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  child: _buildTarjetaNfcPanel(),
+                ),
               if (_carrito.isNotEmpty) _buildCobrarBar(),
             ],
           ),
@@ -1323,23 +1900,117 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     );
   }
 
-  Widget _buildMobileLayout(Size size) {
+  /// Layout móvil: sugerencias IA + carrito + productos viven en UN solo
+  /// CustomScrollView. Antes el carrito tenía altura fija (34% de la
+  /// pantalla) y con la barra de cobro causaba "BOTTOM OVERFLOWED BY 68 PX"
+  /// al elegir un producto. Ahora solo quedan fijos la buscadora arriba y
+  /// la barra de cobro abajo; el resto hace scroll sin límite de altura.
+  Widget _buildMobileLayout() {
     return Column(
       children: [
         _buildSearchBar(),
-        if (_buildUpsellStrip() != null) _buildUpsellStrip()!,
         Expanded(
-          flex: 3,
-          child: _buildProductList(),
-        ),
-        if (_carrito.isNotEmpty) ...[
-          SizedBox(
-            height: size.height * 0.34,
-            child: _buildCarritoView(),
+          child: RefreshIndicator(
+            color: const Color(0xFFF97316),
+            onRefresh: () async {
+              await _cargarProductosFromSupabase(silencioso: true);
+              await _cargarProductos();
+            },
+            child: CustomScrollView(
+              slivers: [
+                if (_buildUpsellStrip() != null)
+                  SliverToBoxAdapter(child: _buildUpsellStrip()!),
+                if (_carrito.isNotEmpty) ...[
+                  SliverToBoxAdapter(child: _buildCarritoHeader()),
+                  SliverList.builder(
+                    itemCount: _carrito.length,
+                    itemBuilder: (context, index) => _buildCarritoItem(_carrito[index], index),
+                  ),
+                  if (_metodoPago == 'tarjeta')
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: _buildTarjetaNfcPanel(),
+                      ),
+                    ),
+                ],
+                SliverToBoxAdapter(child: _buildTituloProductos()),
+                _buildSliverProductos(),
+              ],
+            ),
           ),
-        ],
+        ),
         if (_carrito.isNotEmpty) _buildCobrarBar(),
       ],
+    );
+  }
+
+  Widget _buildTituloProductos() {
+    final n = _productosFiltrados.length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+      child: Row(
+        children: [
+          Text(
+            'Productos',
+            style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF97316).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$n',
+              style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFF97316)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSliverProductos() {
+    if (_isLoading) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: Center(child: CircularProgressIndicator(color: Color(0xFFF97316))),
+        ),
+      );
+    }
+    if (_productos.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: _ProductoVacio(
+          mensaje: 'No hay productos',
+          detalle: 'Agrega productos desde Inventario',
+        ),
+      );
+    }
+    final filtrados = _productosFiltrados;
+    if (filtrados.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: _ProductoVacio(mensaje: 'No se encontraron productos', icono: Icons.search_off),
+      );
+    }
+    final ancho = MediaQuery.sizeOf(context).width;
+    final cols = ancho >= 1200 ? 5 : ancho >= 900 ? 4 : ancho >= 600 ? 3 : 2;
+    return SliverPadding(
+      padding: const EdgeInsets.all(14),
+      sliver: SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: cols,
+          childAspectRatio: 0.72,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _buildProductCard(filtrados[index]),
+          childCount: filtrados.length,
+        ),
+      ),
     );
   }
 
@@ -1355,6 +2026,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         controller: _searchController,
         style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
         onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+        textInputAction: TextInputAction.done,
+        onSubmitted: _buscarOCapturarCodigo,
         decoration: InputDecoration(
           hintText: 'Buscar producto por nombre, código...',
           hintStyle: GoogleFonts.dmSans(color: const Color(0xFF525252)),
@@ -1392,30 +2065,9 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       );
     }
 
-    if (_searchQuery.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF404040), size: 64),
-            const SizedBox(height: 16),
-            Text(
-              'Escanee un código de barras\no escriba el nombre / código del producto',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 15),
-            ),
-          ],
-        ),
-      );
-    }
+    final productosFiltrados = _productosFiltrados;
 
-    final productosFiltrados = _productos.where((p) =>
-        (p.nombre.toLowerCase().contains(_searchQuery.toLowerCase())) ||
-                (p.codigo?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-                (p.barcode?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
-      ).toList();
-
-    if (productosFiltrados.isEmpty) {
+    if (productosFiltrados.isEmpty && _searchQuery.isNotEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1432,7 +2084,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     }
 
     return RefreshIndicator(
-      onRefresh: _cargarProductos,
+      onRefresh: () async {
+        await _cargarProductosFromSupabase(silencioso: true);
+        await _cargarProductos();
+      },
       color: const Color(0xFFF97316),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -1823,8 +2478,8 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             ),
           ),
           GestureDetector(
-            onTap: () => setState(() => _carrito.isEmpty ? null : _carrito.clear()),
-            child: Icon(Icons.close, color: const Color(0xFF737373)),
+            onTap: _carrito.isEmpty ? null : _limpiarCarrito,
+            child: const Icon(Icons.close, color: Color(0xFF737373)),
           ),
         ],
       ),
@@ -1833,7 +2488,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
 
   Widget _buildCarritoItems() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(top: 8, bottom: 12),
       itemCount: _carrito.length,
       itemBuilder: (context, index) {
         final item = _carrito[index];
@@ -1843,9 +2498,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   Widget _buildCarritoItem(PosCarritoItem item, int index) {
+    final totalLinea = item.precioUnitario * item.cantidad - item.descuento;
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
       decoration: BoxDecoration(
         color: const Color(0xFF141414),
         borderRadius: BorderRadius.circular(12),
@@ -1867,171 +2523,171 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
-                  item.codigo,
+                  '${item.codigo.isEmpty ? 'S/C' : item.codigo} · ${_posService.formatCurrency(item.precioUnitario)} c/u',
                   style: GoogleFonts.dmSans(
-                    fontSize: 12,
+                    fontSize: 10.5,
                     color: const Color(0xFF737373),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
-                  _posService.formatCurrency(item.precioUnitario),
+                  _posService.formatCurrency(totalLinea),
                   style: GoogleFonts.syne(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFFF97316),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => _actualizarCantidad(index, item.cantidad - 1),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF262626),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.remove, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F0F0F),
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: const Color(0xFF262626)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _botonPaso(
+                  Icons.remove,
+                  color: const Color(0xFF262626),
+                  onTap: () => _actualizarCantidad(index, item.cantidad - 1),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${item.cantidad}',
-                style: GoogleFonts.dmSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                _CantidadEditable(
+                  valor: item.cantidad,
+                  onCambiada: (n) => _actualizarCantidad(index, n),
                 ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () => _actualizarCantidad(index, item.cantidad + 1),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF97316),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 18),
+                _botonPaso(
+                  Icons.add,
+                  color: const Color(0xFFF97316),
+                  onTap: () => _actualizarCantidad(index, item.cantidad + 1),
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _eliminarDelCarrito(index),
+            tooltip: 'Eliminar producto',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
           ),
         ],
       ),
     );
   }
 
+  Widget _botonPaso(IconData icono, {required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(7)),
+        child: Icon(icono, color: Colors.white, size: 16),
+      ),
+    );
+  }
+
+  /// Barra de cobro compacta (métodos + total + COBRAR). Igual en móvil y
+  /// escritorio; los chips hacen scroll horizontal para no desbordar a 320px.
   Widget _buildCobrarBar() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A0A0A),
+      key: const ValueKey('pos-cobrar-bar'),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F0F0F),
         border: Border(
-          top: BorderSide(color: const Color(0xFF262626)),
+          top: BorderSide(color: Color(0xFF262626)),
         ),
       ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Subtotal',
-                style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 12),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              child: Row(
+                children: [
+                  _buildMetodoChip('efectivo', 'Efectivo', Icons.payments_rounded),
+                  const SizedBox(width: 8),
+                  _buildMetodoChip('tarjeta', 'Tarjeta', Icons.credit_card_rounded),
+                  const SizedBox(width: 8),
+                  _buildMetodoChip('transferencia', 'Transferencia', Icons.account_balance_rounded),
+                  const SizedBox(width: 8),
+                  _buildMetodoChip('mixto', 'Mixto', Icons.account_balance_wallet_rounded),
+                ],
               ),
-              Text(
-                _posService.formatCurrency(_subtotal),
-                style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'ISV',
-                style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 12),
-              ),
-              Text(
-                _posService.formatCurrency(_isv15 + _isv18),
-                style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total',
-                style: GoogleFonts.syne(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFFF97316),
-                ),
-              ),
-              Text(
-                _posService.formatCurrency(_total),
-                style: GoogleFonts.syne(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFFF97316),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildMetodoChip('efectivo', 'Efectivo', Icons.payments_rounded),
-              _buildMetodoChip('tarjeta', 'Tarjeta', Icons.credit_card_rounded),
-              _buildMetodoChip('transferencia', 'Transferencia', Icons.account_balance_rounded),
-              _buildMetodoChip('mixto', 'Mixto', Icons.account_balance_wallet_rounded),
-            ],
-          ),
-          if (_metodoPago == 'tarjeta') ...[
-            const SizedBox(height: 10),
-            _buildTarjetaNfcPanel(),
-          ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _isProcessing ? null : _cobrar,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF97316),
-                disabledBackgroundColor: const Color(0xFF404040),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: _isProcessing
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : Text(
-                      'COBRAR',
-                      style: GoogleFonts.syne(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Subtotal ${_posService.formatCurrency(_subtotal - _descuentoItems)} · ISV ${_posService.formatCurrency(_isv15 + _isv18)}',
+                        style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      // FittedBox: el total NUNCA se corta ni desborda;
+                      // se encoge levemente si la ventana es angosta.
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Total ${_posService.formatCurrency(_total)}',
+                          style: GoogleFonts.syne(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFFF97316),
+                          ),
+                        ),
+                      ),
+
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _isProcessing ? null : _confirmarCobro,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF97316),
+                    disabledBackgroundColor: const Color(0xFF404040),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _isProcessing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(
+                          'COBRAR',
+                          style: GoogleFonts.syne(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2277,6 +2933,121 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 }
 
+/// Campo de cantidad editable del carrito: se escribe la cantidad y se
+/// confirma con Enter (o al tocar fuera). Convive con los botones +/-.
+class _CantidadEditable extends StatefulWidget {
+  final int valor;
+  final ValueChanged<int> onCambiada;
+
+  const _CantidadEditable({required this.valor, required this.onCambiada});
+
+  @override
+  State<_CantidadEditable> createState() => _CantidadEditableState();
+}
+
+class _CantidadEditableState extends State<_CantidadEditable> {
+  late final TextEditingController _ctrl = TextEditingController(text: '${widget.valor}');
+  late final FocusNode _focus = FocusNode();
+
+  @override
+  void didUpdateWidget(covariant _CantidadEditable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_focus.hasFocus && '${widget.valor}' != _ctrl.text) {
+      _ctrl.text = '${widget.valor}';
+    }
+  }
+
+  void _commit() {
+    final n = (int.tryParse(_ctrl.text.trim()) ?? widget.valor).clamp(1, 99999);
+    _ctrl.text = '$n';
+    if (n != widget.valor) widget.onCambiada(n);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Altura 32: deja aire al InputDecorator (fuente + padding + bordes);
+    // con 28 el decorador desbordaba 1px vertical.
+    return SizedBox(
+      width: 44,
+      height: 32,
+      child: TextField(
+        controller: _ctrl,
+        focusNode: _focus,
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(5),
+        ],
+        style: GoogleFonts.dmSans(fontSize: 13.5, fontWeight: FontWeight.w700, color: Colors.white),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: const Color(0xFF0F0F0F),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: Color(0xFF262626))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: Color(0xFFF97316))),
+        ),
+        onSubmitted: (_) => _commit(),
+        onTapOutside: (_) {
+          if (_focus.hasFocus) {
+            _focus.unfocus();
+            // El commit toca el carrito (setState del padre). Fuera del
+            // dispatch del pointer event para no reconstruir el árbol en
+            // medio de un frame.
+            Future<void>.microtask(_commit);
+          }
+        },
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+}
+
+/// Estado vacío del catálogo de productos del POS.
+class _ProductoVacio extends StatelessWidget {
+  final String mensaje;
+  final String detalle;
+  final IconData icono;
+
+  const _ProductoVacio({
+    required this.mensaje,
+    this.detalle = '',
+    this.icono = Icons.inventory_2_outlined,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      child: Column(
+        children: [
+          Icon(icono, color: const Color(0xFF404040), size: 56),
+          const SizedBox(height: 14),
+          Text(
+            mensaje,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 15),
+          ),
+          if (detalle.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              detalle,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(color: const Color(0xFF525252), fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _DialogoCargandoAnalisis extends StatelessWidget {
   const _DialogoCargandoAnalisis();
 
@@ -2437,4 +3208,3 @@ class _DialogoLeyendoTarjetaState extends State<_DialogoLeyendoTarjeta>
     );
   }
 }
-

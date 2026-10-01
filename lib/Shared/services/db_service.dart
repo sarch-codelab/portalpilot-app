@@ -13,9 +13,9 @@ class PortalPilotDB {
 
   static final LocalDatabaseService _localDb = LocalDatabaseService.instance;
 
-  /// Inicializa la capa de backend para producciÃ³n.
+  /// Inicializa la capa de backend para producción.
   static Future<void> initialize() async {
-    debugPrint('ðŸ”„ Backend listo para producciÃ³n mediante Vercel.');
+    debugPrint('🔄 Backend listo para producción mediante Vercel.');
   }
 
   /// Obtiene la empresa actual desde el token/usuario logueado
@@ -23,9 +23,9 @@ class PortalPilotDB {
   static void setEmpresaCodigo(String codigo) => _currentEmpresaCodigo = codigo;
   static String? get empresaCodigo => _currentEmpresaCodigo;
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════
   // READ METHODS (offline-first - read from local DB)
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════
 
   static Future<List<Map<String, dynamic>>> getFacturas(String empresaCodigo) async {
     final facturas = await _localDb.getFacturas(empresaCodigo);
@@ -118,9 +118,9 @@ class PortalPilotDB {
       'updated_at': t.updatedAt.toIso8601String(),
     }).toList();
   }
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════
   // SYNC METHODS (used by SyncService)
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════
 
   static Uri _uri(String path, [Map<String, String>? query]) {
     final base = Uri.parse('$apiRoot$path');
@@ -142,19 +142,29 @@ class PortalPilotDB {
         .post(_uri(path), headers: _headers, body: jsonEncode(body))
         .timeout(_timeout);
     if (response.statusCode >= 400) {
-      debugPrint('âš ï¸ POST $path -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
+      debugPrint('⚠️ POST $path -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
       return null;
     }
     return jsonDecode(utf8.decode(response.bodyBytes));
+  }
+
+  /// No borra el elemento de la cola cuando un endpoint responde 2xx con
+  /// errores parciales; el lote debe quedar pendiente para reintento.
+  static bool _responseAccepted(dynamic result) {
+    if (result == null) return false;
+    if (result is! Map) return true;
+    if (result['error'] != null || result['success'] == false) return false;
+    final errors = result['errores'];
+    return errors is! List || errors.isEmpty;
   }
 
   /// Facturas - sync to backend
   static Future<bool> insertFactura({required Map<String, dynamic> factura, required String empresaCodigo}) async {
     try {
       final result = await _postJson('/api/facturas', {'empresa_codigo': empresaCodigo, 'factura': factura});
-      return result != null;
+      return _responseAccepted(result);
     } catch (e) {
-      debugPrint('âŒ insertFactura sync: $e');
+      debugPrint('❌ insertFactura sync: $e');
       return false;
     }
   }
@@ -163,21 +173,22 @@ class PortalPilotDB {
     try {
       final response = await http
           .patch(
-            _uri('/api/facturas/$id'),
+            _uri('/api/facturas', {'id': id}),
             headers: _headers,
             body: jsonEncode({
+              'empresa_codigo': empresaCodigo,
               'estado': 'anulada',
               'fecha_anulacion': DateTime.now().toIso8601String(),
             }),
           )
           .timeout(_timeout);
       if (response.statusCode >= 400) {
-        debugPrint('âš ï¸ anularFactura sync -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
+        debugPrint('⚠️ anularFactura sync -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
         return false;
       }
       return true;
     } catch (e) {
-      debugPrint('âŒ anularFactura sync: $e');
+      debugPrint('❌ anularFactura sync: $e');
       return false;
     }
   }
@@ -189,9 +200,9 @@ class PortalPilotDB {
         'empresa_codigo': empresaCodigo,
         'transaccion': transaccion,
       });
-      return result != null;
+      return _responseAccepted(result);
     } catch (e) {
-      debugPrint('âŒ insertTransaccion sync: $e');
+      debugPrint('❌ insertTransaccion sync: $e');
       return false;
     }
   }
@@ -200,9 +211,9 @@ class PortalPilotDB {
   static Future<bool> insertCliente({required Map<String, dynamic> cliente, required String empresaCodigo}) async {
     try {
       final result = await _postJson('/api/clientes', {'empresa_codigo': empresaCodigo, 'cliente': cliente});
-      return result != null;
+      return _responseAccepted(result);
     } catch (e) {
-      debugPrint('âŒ insertCliente sync: $e');
+      debugPrint('❌ insertCliente sync: $e');
       return false;
     }
   }
@@ -211,36 +222,31 @@ class PortalPilotDB {
   static Future<bool> syncProductos({required List<Map<String, dynamic>> productos, required String empresaCodigo}) async {
     try {
       final result = await _postJson('/api/productos', {'empresa_codigo': empresaCodigo, 'productos': productos});
-      return result != null;
+      return _responseAccepted(result);
     } catch (e) {
-      debugPrint('âŒ syncProductos sync: $e');
+      debugPrint('❌ syncProductos sync: $e');
       return false;
     }
   }
 
-  /// Productos - borrar en backend (por id en la WEB; si el id local no es un
-  /// UUID, el backend interpreta el segmento como codigo de producto).
+  /// Productos - borrar por código y empresa en la API.
   static Future<bool> deleteProducto({required String id, required String codigo, required String empresaCodigo}) async {
     try {
-      // El backend borra por `id` cuando el segmento es un UUID (36 chars);
-      // cualquier otro valor lo trata como codigo de producto. Así un id local
-      // tipo epoch, o un borrado con solo codigo, llega correcto al servidor.
-      final esUuid = id.length == 36;
-      final clave = esUuid ? id : (codigo.isNotEmpty ? codigo : id);
-      if (clave.isEmpty) return false;
+      if (empresaCodigo.trim().isEmpty || codigo.trim().isEmpty) return false;
       final response = await http
           .delete(
-            _uri('/api/productos/$clave'),
+            _uri('/api/productos'),
             headers: _headers,
+            body: jsonEncode({'empresa_codigo': empresaCodigo, 'codigo': codigo}),
           )
           .timeout(_timeout);
       if (response.statusCode >= 400) {
-        debugPrint('âš ï¸ DELETE /api/productos -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
+        debugPrint('⚠️ DELETE /api/productos -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
         return false;
       }
       return true;
     } catch (e) {
-      debugPrint('âŒ deleteProducto sync: $e');
+      debugPrint('❌ deleteProducto sync: $e');
       return false;
     }
   }
@@ -249,9 +255,9 @@ class PortalPilotDB {
   static Future<bool> insertProveedor({required Map<String, dynamic> proveedor, required String empresaCodigo}) async {
     try {
       final result = await _postJson('/api/proveedores', {'empresa_codigo': empresaCodigo, 'proveedor': proveedor});
-      return result != null;
+      return _responseAccepted(result);
     } catch (e) {
-      debugPrint('âŒ insertProveedor sync: $e');
+      debugPrint('❌ insertProveedor sync: $e');
       return false;
     }
   }
@@ -260,9 +266,9 @@ class PortalPilotDB {
   static Future<bool> insertCotizacion({required Map<String, dynamic> cotizacion, required String empresaCodigo}) async {
     try {
       final result = await _postJson('/api/cotizaciones', {'empresa_codigo': empresaCodigo, 'cotizacion': cotizacion});
-      return result != null;
+      return _responseAccepted(result);
     } catch (e) {
-      debugPrint('âŒ insertCotizacion sync: $e');
+      debugPrint('❌ insertCotizacion sync: $e');
       return false;
     }
   }
@@ -271,25 +277,38 @@ class PortalPilotDB {
   static Future<bool> insertOrdenCompra({required Map<String, dynamic> orden, required String empresaCodigo}) async {
     try {
       final result = await _postJson('/api/ordenes-compra', {'empresa_codigo': empresaCodigo, 'orden_compra': orden});
-      return result != null;
+      return _responseAccepted(result);
     } catch (e) {
-      debugPrint('âŒ insertOrdenCompra sync: $e');
+      debugPrint('❌ insertOrdenCompra sync: $e');
       return false;
     }
   }
 
-  /// Compras (recepciÃ³n) - sync to backend
+  /// Compras (recepción) - sync to backend
   static Future<bool> insertCompra({required Map<String, dynamic> compra, required String empresaCodigo}) async {
     try {
       final result = await _postJson('/api/compras', {'empresa_codigo': empresaCodigo, 'compra': compra});
-      return result != null;
+      return _responseAccepted(result);
     } catch (e) {
-      debugPrint('âŒ insertCompra sync: $e');
+      debugPrint('❌ insertCompra sync: $e');
       return false;
     }
   }
 
-  /// Sync genÃ©rico por tabla (ruta /api/sync) para cualquier entidad.
+  /// POS - registra la venta directamente en /api/pos/ventas. Es la ruta que
+  /// el backend desplegado soporta (la /api/sync genérica del despliegue
+  /// actual no conoce pos_ventas y responde "Tabla no soportada").
+  static Future<bool> insertPosVenta({required Map<String, dynamic> ventaPayload}) async {
+    try {
+      final result = await _postJson('/api/pos/ventas', ventaPayload);
+      return _responseAccepted(result);
+    } catch (e) {
+      debugPrint('❌ insertPosVenta sync: $e');
+      return false;
+    }
+  }
+
+  /// Sync genérico por tabla (ruta /api/sync) para cualquier entidad.
   /// El backend hace upsert idempotente fila por fila y reporta errores
   /// individuales para que la cola siga procesando el resto.
   static Future<bool> syncRows({
@@ -305,9 +324,11 @@ class PortalPilotDB {
         'operacion': operacion,
         'rows': rows,
       });
-      return result != null;
+      if (!_responseAccepted(result) || result is! Map) return false;
+      final confirmed = result['ok'];
+      return confirmed is num && confirmed.toInt() == rows.length;
     } catch (e) {
-      debugPrint('âŒ syncRows ($tabla) sync: $e');
+      debugPrint('❌ syncRows ($tabla) sync: $e');
       return false;
     }
   }
@@ -324,9 +345,9 @@ class PortalPilotDB {
         'clave': clave,
         'datos': datos,
       });
-      return result != null;
+      return _responseAccepted(result);
     } catch (e) {
-      debugPrint('âŒ saveNotas sync: $e');
+      debugPrint('❌ saveNotas sync: $e');
       return false;
     }
   }
@@ -357,7 +378,7 @@ class PortalPilotDB {
       return data ?? {};
     }
 
-    String errorMessage = 'Error al iniciar sesiÃ³n.';
+    String errorMessage = 'Error al iniciar sesión.';
     if (data != null) {
       if (data['error'] != null) {
         errorMessage = data['error'].toString();
@@ -365,17 +386,17 @@ class PortalPilotDB {
         errorMessage = data['message'].toString();
       } else if (data['protection'] != null) {
         errorMessage =
-            'La API estÃ¡ protegida por Vercel. Desactiva la protecciÃ³n de despliegue o usa un dominio pÃºblico vÃ¡lido.';
+            'La API está protegida por Vercel. Desactiva la protección de despliegue o usa un dominio público válido.';
       }
     } else if (response.statusCode == 401) {
       errorMessage =
-          'No autorizado. El despliegue estÃ¡ protegido o la API requiere autenticaciÃ³n.';
+          'No autorizado. El despliegue está protegido o la API requiere autenticación.';
     } else if (response.statusCode == 404) {
       errorMessage =
-          'No se encontrÃ³ el endpoint de login. Revisa la URL de la API y la configuraciÃ³n de Vercel.';
+          'No se encontró el endpoint de login. Revisa la URL de la API y la configuración de Vercel.';
     }
 
-    throw Exception('$errorMessage (CÃ³digo ${response.statusCode})');
+    throw Exception('$errorMessage (Código ${response.statusCode})');
   }
 }
 

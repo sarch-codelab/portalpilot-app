@@ -10,6 +10,7 @@ import 'package:portal_pilot_app/Modules/Membresias/membresia_home.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_stats_card.dart';
 import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 
 class PosHome extends StatefulWidget {
@@ -202,102 +203,36 @@ class _PosHomeState extends State<PosHome> {
   }
 
   Widget _buildStatsGrid() {
-    // El ratio fijo 6.5 aplasta las tarjetas en pantallas angostas y el
-    // contenido (icono + 2 líneas) desborda ~35px por abajo; con un ancho
-    // menor a ~380px usamos tarjetas más altas.
-    return LayoutBuilder(builder: (ctx, c) {
-      final ratio = c.maxWidth < 380 ? 4.6 : 6.5;
-      return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: ratio,
-      children: [
-        _buildStatCard(
-          'Ventas Hoy',
-          '$_totalVentas',
-          Icons.receipt_rounded,
-          const Color(0xFFF97316),
+    // Mismo estilo de KPIs que Inventario: tarjetas verticales grandes
+    // (PPStatsGrid) con icono arriba y valor grande; 2 columnas en móvil,
+    // 4 en escritorio.
+    return PPStatsGrid(
+      cards: [
+        PPStatsCard(
+          label: 'Ventas Hoy',
+          value: '$_totalVentas',
+          icon: Icons.receipt_rounded,
+          color: const Color(0xFFF97316),
         ),
-        _buildStatCard(
-          'Ingresos',
-          'L.${_formatNumber(_ventasHoy)}',
-          Icons.attach_money_rounded,
-          const Color(0xFF10B981),
+        PPStatsCard(
+          label: 'Ingresos',
+          value: 'L.${_formatNumber(_ventasHoy)}',
+          icon: Icons.attach_money_rounded,
+          color: const Color(0xFF10B981),
         ),
-        _buildStatCard(
-          'Artículos',
-          '$_totalItems',
-          Icons.inventory_rounded,
-          const Color(0xFF3B82F6),
+        PPStatsCard(
+          label: 'Artículos',
+          value: '$_totalItems',
+          icon: Icons.inventory_rounded,
+          color: const Color(0xFF3B82F6),
         ),
-        _buildStatCard(
-          'Ticket Prom.',
-          'L.${_formatNumber(_ticketPromedio)}',
-          Icons.analytics_rounded,
-          const Color(0xFF8B5CF6),
+        PPStatsCard(
+          label: 'Ticket Prom.',
+          value: 'L.${_formatNumber(_ticketPromedio)}',
+          icon: Icons.analytics_rounded,
+          color: const Color(0xFF8B5CF6),
         ),
       ],
-      );
-    });
-  }
-
-  Widget _buildStatCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  value,
-                  style: GoogleFonts.syne(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: appPalette.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  label,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 10,
-                    color: appPalette.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 

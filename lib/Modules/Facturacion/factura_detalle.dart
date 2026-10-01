@@ -91,33 +91,37 @@ class FacturaDetalle extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'DOCUMENTO FISCAL',
-                      style: GoogleFonts.syne(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 1.5,
+                    Expanded(
+                      child: Text(
+                        'DOCUMENTO FISCAL',
+                        style: GoogleFonts.syne(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 1.5,
+                        ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: estadoColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        estado.toUpperCase(),
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: estadoColor,
-                          letterSpacing: 0.8,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: estadoColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          estado.toUpperCase(),
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: estadoColor,
+                            letterSpacing: 0.8,
+                          ),
                         ),
                       ),
                     ),
@@ -297,22 +301,28 @@ class FacturaDetalle extends StatelessWidget {
                 ],
                 const Divider(color: Color(0xFF262626), height: 16),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'TOTAL',
-                      style: GoogleFonts.syne(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
+                    Expanded(
+                      child: Text(
+                        'TOTAL',
+                        style: GoogleFonts.syne(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                    Text(
-                      'L.${total.toStringAsFixed(2)}',
-                      style: GoogleFonts.dmMono(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF10B981),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'L.${total.toStringAsFixed(2)}',
+                          style: GoogleFonts.dmMono(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF10B981),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -406,6 +416,8 @@ class FacturaDetalle extends StatelessWidget {
                 fontSize: 12,
                 color: const Color(0xFF737373),
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
@@ -421,16 +433,22 @@ class FacturaDetalle extends StatelessWidget {
 
   Widget _buildSummaryRow(String label, String value, Color color) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.dmSans(
-            fontSize: 13,
-            color: const Color(0xFFA3A3A3),
+        Expanded(
+          child: Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              color: const Color(0xFFA3A3A3),
+            ),
           ),
         ),
-        Text(value, style: GoogleFonts.dmMono(fontSize: 13, color: color)),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value, style: GoogleFonts.dmMono(fontSize: 13, color: color)),
+          ),
+        ),
       ],
     );
   }

@@ -1,8 +1,11 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Niveles de log
 enum LogLevel {
@@ -46,7 +49,7 @@ class Logger {
       await _writeToFile(logLine);
       
       // En producción, también enviar a servidor
-      if (level == LogLevel.error || level == LogLevel.critical) {
+      if (level == LogLevel.error || level == LogLevel.critical || message.startsWith('AUDIT:')) {
         await _sendToServer(logEntry);
       }
     } catch (e) {
@@ -148,14 +151,18 @@ class Logger {
 
   /// Enviar log a servidor (para producción)
   Future<void> _sendToServer(Map<String, dynamic> logEntry) async {
-    // Implementar envío a servidor de logs
-    // Esto es un placeholder para producción
     try {
-      // Aquí se implementaría el envío a un servicio de logs centralizado
-      // como Sentry, Loggly, o un servidor propio
-      print('LOG PARA SERVIDOR: ${jsonEncode(logEntry)}');
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token') ?? '';
+      if (token.isEmpty) return;
+      final empresa = prefs.getString('company_code') ?? prefs.getString('empresa_codigo') ?? '';
+      await http.post(
+        Uri.parse('https://portal-pilot.vercel.app/api/audit'),
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        body: jsonEncode({...logEntry, 'empresa_codigo': empresa}),
+      ).timeout(const Duration(seconds: 8));
     } catch (e) {
-      print('Error al enviar log a servidor: $e');
+      debugPrint('[Logger] No se pudo sincronizar auditoria: $e');
     }
   }
 

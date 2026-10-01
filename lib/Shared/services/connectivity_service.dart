@@ -51,12 +51,16 @@ class ConnectivityService {
 
   Future<void> _performRealConnectivityCheck() async {
     try {
-      final result = await InternetAddress.lookup('google.com').timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => throw TimeoutException('Timeout'),
-      );
-      
-      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+      // No dependas de un único DNS público: si Google está bloqueado pero
+      // el backend de Portal Pilot sí responde, la cola debe poder reanudarse.
+      final checks = await Future.wait([
+        for (final host in ['portal-pilot.vercel.app', 'example.com', 'google.com'])
+          InternetAddress.lookup(host)
+              .then((addresses) => addresses.any((a) => a.rawAddress.isNotEmpty))
+              .catchError((_) => false),
+      ]).timeout(const Duration(seconds: 5), onTimeout: () => <bool>[]);
+
+      if (checks.any((reachable) => reachable)) {
         if (!_isOnline) {
           _isOnline = true;
           debugPrint('🌐 Real connectivity confirmed');

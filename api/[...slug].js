@@ -3,6 +3,7 @@
 
 const routes = {
   'login': loginHandler,
+  'me': meHandler,
   'ai/groq': aiGroqHandler,
   'ai/chat': aiChatHandler,
   'ai/vision': aiVisionHandler,
@@ -17,6 +18,8 @@ const routes = {
   'cotizaciones': cotizacionesHandler,
   'facturas': facturasHandler,
   'facturas/resumen': facturasResumenHandler,
+  'kardex': kardexHandler,
+  'audit': auditHandler,
   'matriculas': matriculasHandler,
   'matriculas/stats': matriculasStatsHandler,
   'notas': notasHandler,
@@ -69,7 +72,7 @@ module.exports = async function handler(req, res) {
 
 function loginHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
 
   if (req.method === 'OPTIONS') {
@@ -201,6 +204,90 @@ function loginHandler(req, res) {
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // ComparaciÃ³n de contraseÃ±as: soporta bcrypt y texto plano
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ============================================================
+// GET /api/me - datos vivos del usuario autenticado (incluida la foto de
+// perfil) para refrescar la sesion del app sin volver a hacer login.
+// ============================================================
+async function meHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Metodo no permitido' });
+  const authHeader = (req.headers.authorization || '').toString();
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token) {
+    return res.status(401).json({ error: 'Token requerido.' });
+  }
+
+  const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || '';
+  const jwtSecret = process.env.JWT_SECRET || '';
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(503).json({ error: 'Supabase no esta configurado en el servidor.' });
+  }
+
+  let payload;
+  try {
+    payload = require('jsonwebtoken').verify(token, jwtSecret);
+  } catch (e) {
+    return res.status(401).json({ error: 'Token invalido o expirado.' });
+  }
+
+  const userId = payload.sub || payload.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Token sin usuario.' });
+  }
+
+  const restBase = `${supabaseUrl}/rest/v1`;
+  const headers = {
+    apikey: supabaseKey,
+    Authorization: `Bearer ${supabaseKey}`,
+    'Content-Type': 'application/json'
+  };
+
+  try {
+    const r = await fetch(`${restBase}/usuarios?id=eq.${encodeURIComponent(userId)}&select=*`, { headers });
+    if (!r.ok) return res.status(502).json({ error: 'No se pudo consultar el perfil.' });
+    const rows = await r.json();
+    const user = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    let tenantData = null;
+    if (user.empresa_codigo) {
+      try {
+        const tRes = await fetch(
+          `${restBase}/tenants?codigo=eq.${encodeURIComponent(user.empresa_codigo)}&select=*`,
+          { headers }
+        );
+        const tRows = await tRes.json();
+        if (Array.isArray(tRows) && tRows.length > 0) tenantData = tRows[0];
+      } catch (_) {}
+    }
+
+    return res.status(200).json({
+      user: {
+        id: user.id,
+        nombre: user.nombre || '',
+        apellido: user.apellido || '',
+        email: user.email,
+        rol: user.rol || 'admin',
+        empresa_codigo: user.empresa_codigo || 'ROOT',
+        tenant: user.empresa_codigo || 'ROOT',
+        area: tenantData?.area || user.area || '',
+        plan: tenantData?.plan || 'pro',
+        status: user.estado || 'activo',
+        foto_perfil_url: user.avatar_url || user.foto_perfil_url || null
+      }
+    });
+  } catch (err) {
+    console.error('[me] Error consultando Supabase:', err.message);
+    return res.status(500).json({ error: 'Error al conectar con la base de datos Supabase.' });
+  }
+}
+
 async function comparePassword(inputPassword, storedPassword) {
   if (!storedPassword) return false;
   
@@ -730,14 +817,24 @@ function aiSupportHandler(req, res) { return aiChatHandler(req, res); }
 async function clientesHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
 
   try {
     if (req.method === 'GET') {
-      const empresaCodigo = req.query?.empresaCodigo || empresaFromAuth(req);
-      if (!empresaCodigo) return ok(res, []);
+      const authHeader = String(req.headers?.authorization || '');
+      let claims;
+      try {
+        const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+        if (!bearer || !process.env.JWT_SECRET) throw new Error('missing token');
+        claims = require('jsonwebtoken').verify(bearer, process.env.JWT_SECRET);
+      } catch (_) { return fail(res, { message: 'Sesión inválida o expirada.', status: 401 }); }
+      const empresaCodigo = String(claims.empresa_codigo || claims.tenant || '').trim();
+      if (!empresaCodigo) return fail(res, { message: 'La sesión no tiene empresa asignada.', status: 403 });
+      if (req.query?.empresaCodigo && String(req.query.empresaCodigo).toUpperCase() !== empresaCodigo.toUpperCase()) {
+        return fail(res, { message: 'La sesión no pertenece a esa empresa.', status: 403 });
+      }
 
       const result = await supabaseRequest(
         `/clientes?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=200`
@@ -759,9 +856,8 @@ async function clientesHandler(req, res) {
 
     if (req.method === 'POST') {
       const body = parseBody(req);
-      const empresaCodigo = body.empresa_codigo || '';
+      const empresaCodigo = verifiedTenantCode(req, body.empresa_codigo || '');
       const c = body.cliente || body;
-      if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
       const empresaId = await resolverEmpresaId(empresaCodigo);
 
       const payload = {
@@ -788,8 +884,9 @@ async function clientesHandler(req, res) {
 
     if (req.method === 'DELETE') {
       const id = req.query?.id || '';
+      const empresaCodigo = verifiedTenantCode(req, req.query?.empresaCodigo || req.query?.empresa_codigo);
       if (!id) return fail(res, { message: 'Falta id.', status: 400 });
-      const result = await supabaseRequest(`/clientes?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const result = await supabaseRequest(`/clientes?id=eq.${encodeURIComponent(id)}&empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}`, { method: 'DELETE' });
       if (result.status >= 400) return fail(res, { message: result.body });
       return ok(res, { success: true });
     }
@@ -800,61 +897,107 @@ async function clientesHandler(req, res) {
   }
 }
 
-function comprasHandler(req, res) {
+function verifiedTenantCode(req, requestedCode) {
+  const auth = String(req.headers?.authorization || '');
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!token || !process.env.JWT_SECRET) {
+    const error = new Error('Se requiere una sesión autenticada.');
+    error.status = 401;
+    throw error;
+  }
+  let claims;
+  try {
+    claims = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
+  } catch (_) {
+    const error = new Error('La sesión es inválida o expiró.');
+    error.status = 401;
+    throw error;
+  }
+  const tenantCode = String(claims.empresa_codigo || claims.tenant || '').trim();
+  if (!tenantCode) {
+    const error = new Error('La sesión no tiene una empresa asignada.');
+    error.status = 403;
+    throw error;
+  }
+  if (requestedCode && String(requestedCode).trim().toUpperCase() !== tenantCode.toUpperCase()) {
+    const error = new Error('La sesión no pertenece a la empresa solicitada.');
+    error.status = 403;
+    throw error;
+  }
+  return tenantCode;
+}
+
+async function comercialListHandler(req, res, { table, responseKey, childTable, childForeignKey }) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
-  
-  res.status(501).json({ error: 'Endpoint en desarrollo' });
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido.' });
+  try {
+    const empresaCodigo = verifiedTenantCode(req, req.query?.empresaCodigo || req.query?.empresa_codigo);
+    const limit = Math.min(1000, Math.max(1, Number.parseInt(req.query?.limit, 10) || 500));
+    const result = await supabaseRequest(
+      `/${table}?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=${limit}`
+    );
+    if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
+    const rows = JSON.parse(result.body || '[]');
+    if (childTable && rows.length) {
+      const ids = rows.map((row) => row.id).filter(Boolean);
+      if (ids.length) {
+        const filter = ids.map((id) => encodeURIComponent(String(id))).join(',');
+        const children = await supabaseRequest(
+          `/${childTable}?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&${childForeignKey}=in.(${filter})&order=created_at.asc&limit=5000`
+        );
+        if (children.status >= 400) return fail(res, { message: children.body, status: 502 });
+        const grouped = new Map(ids.map((id) => [String(id), []]));
+        for (const item of JSON.parse(children.body || '[]')) {
+          const parentId = String(item[childForeignKey] || '');
+          if (grouped.has(parentId)) grouped.get(parentId).push(item);
+        }
+        for (const row of rows) row.items = grouped.get(String(row.id)) || [];
+      }
+    }
+    return ok(res, { [responseKey]: rows });
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+function comprasHandler(req, res) {
+  return comercialListHandler(req, res, {
+    table: 'compras', responseKey: 'compras', childTable: 'compra_items', childForeignKey: 'compra_id',
+  });
 }
 
 function cotizacionesHandler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
-  
-  res.status(501).json({ error: 'Endpoint en desarrollo' });
+  return comercialListHandler(req, res, {
+    table: 'cotizaciones', responseKey: 'cotizaciones', childTable: 'cotizacion_items', childForeignKey: 'cotizacion_id',
+  });
 }
 
 async function facturasHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
 
   try {
     if (req.method === 'GET') {
-      const empresaCodigo = req.query?.empresaCodigo || empresaFromAuth(req);
-      if (!empresaCodigo) return ok(res, []);
+      const empresaCodigo = verifiedTenantCode(req, req.query?.empresaCodigo || req.query?.empresa_codigo);
 
       const result = await supabaseRequest(
         `/facturas?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=200`
       );
-      if (result.status >= 400) {
-        const all = await supabaseRequest('/facturas?select=id,empresa_id,correlativo,tipo_documento,cliente_nombre,cliente_rtn,cliente_direccion,condicion_pago,tipo_venta,items,subtotal,isv_15,isv_18,descuento,total,estado,cai,created_at&limit=500');
-        if (all.status >= 400) return fail(res, { message: all.body });
-        const rows = JSON.parse(all.body || '[]');
-        const empresas = await supabaseRequest('/empresas?select=id,codigo');
-        let mapa = {};
-        try {
-          const empRows = JSON.parse(empresas.body || '[]');
-          empRows.forEach((e) => (mapa[e.id] = e.codigo));
-        } catch {}
-        return ok(res, rows.filter((r) => mapa[r.empresa_id] === empresaCodigo));
-      }
+      if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
       return ok(res, JSON.parse(result.body || '[]'));
     }
 
     if (req.method === 'POST') {
       const body = parseBody(req);
-      const empresaCodigo = body.empresa_codigo || '';
+      const empresaCodigo = verifiedTenantCode(req, body.empresa_codigo || '');
       const f = body.factura || body;
-      if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
       const empresaId = await resolverEmpresaId(empresaCodigo);
 
       const payload = {
@@ -886,12 +1029,14 @@ async function facturasHandler(req, res) {
     if (req.method === 'PATCH') {
       const id = (req.query?.id || req.params?.id || '').toString();
       const body = parseBody(req);
+      const empresaCodigo = verifiedTenantCode(req, body.empresa_codigo || '');
+      if (!id) return fail(res, { message: 'Falta el identificador de la factura.', status: 400 });
       const update = { updated_at: new Date().toISOString() };
       if (body.estado !== undefined) update.estado = body.estado;
       if (body.motivo_anulacion !== undefined) update.motivo_anulacion = body.motivo_anulacion;
       if (body.fecha_anulacion !== undefined) update.fecha_anulacion = body.fecha_anulacion;
 
-      const result = await supabaseRequest(`/facturas?id=eq.${encodeURIComponent(id)}`, {
+      const result = await supabaseRequest(`/facturas?id=eq.${encodeURIComponent(id)}&empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}`, {
         method: 'PATCH',
         body: JSON.stringify(update),
       });
@@ -905,22 +1050,6 @@ async function facturasHandler(req, res) {
   }
 }
 
-// Extrae empresa_codigo del JWT (Authorization: Bearer <token>), con respaldo
-// al query param ?empresaCodigo= que usa el portal web.
-function empresaFromAuth(req) {
-  try {
-    const h = req.headers?.authorization || '';
-    const tk = h.startsWith('Bearer ') ? h.slice(7) : h;
-    if (!tk) return '';
-    const parts = tk.split('.');
-    if (parts.length !== 3) return '';
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'));
-    return payload.empresa_codigo || payload.tenant || '';
-  } catch {
-    return '';
-  }
-}
-
 // Resumen de facturas para el home de Facturación (períodos hoy/mes + acumulado).
 async function facturasResumenHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -931,32 +1060,26 @@ async function facturasResumenHandler(req, res) {
 
   if (req.method !== 'GET') return res.status(405).json({ error: 'Metodo no permitido' });
 
-  const vacio = { resumen: { total_facturas: 0, total_facturado: 0, facturas_hoy: 0, facturado_hoy: 0, facturas_mes: 0, facturado_mes: 0 } };
   try {
-    const empresaCodigo = req.query?.empresaCodigo || empresaFromAuth(req);
-    if (!empresaCodigo) return ok(res, vacio);
+    const empresaCodigo = verifiedTenantCode(req, req.query?.empresaCodigo || req.query?.empresa_codigo);
 
     const select = 'select=total,estado,created_at';
     let result = await supabaseRequest(
       `/facturas?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&${select}&order=created_at.desc&limit=10000`
     );
     let rows = [];
-    if (result.status >= 400) {
-      const all = await supabaseRequest(`/facturas?${select}&limit=5000`);
-      if (all.status >= 400) return fail(res, { message: all.body });
-      const allRows = JSON.parse(all.body || '[]');
-      const empresas = await supabaseRequest('/empresas?select=id,codigo');
-      let mapa = {};
-      try {
-        const empRows = JSON.parse(empresas.body || '[]');
-        empRows.forEach((e) => (mapa[e.id] = e.codigo));
-      } catch {}
-      rows = allRows.filter((r) => mapa[r.empresa_id] === empresaCodigo);
-    } else {
-      rows = JSON.parse(result.body || '[]');
-    }
+    if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
+    rows = JSON.parse(result.body || '[]');
 
-    const ahora = new Date();
+    const fechaHonduras = (date) => {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Tegucigalpa', year: 'numeric', month: '2-digit', day: '2-digit',
+      }).formatToParts(date);
+      const part = (type) => parts.find((item) => item.type === type)?.value || '';
+      return `${part('year')}-${part('month')}-${part('day')}`;
+    };
+    const hoyKey = fechaHonduras(new Date());
+    const mesKey = hoyKey.slice(0, 7);
     let totalFacturas = 0, totalFacturado = 0;
     let hoy = 0, hoyTotal = 0;
     let mes = 0, mesTotal = 0;
@@ -968,11 +1091,12 @@ async function facturasResumenHandler(req, res) {
       totalFacturado += t;
       const d = f.created_at ? new Date(f.created_at) : null;
       if (d && !isNaN(d.getTime())) {
-        if (d.getFullYear() === ahora.getFullYear() && d.getMonth() === ahora.getMonth() && d.getDate() === ahora.getDate()) {
+        const fechaKey = fechaHonduras(d);
+        if (fechaKey === hoyKey) {
           hoy++;
           hoyTotal += t;
         }
-        if (d.getFullYear() === ahora.getFullYear() && d.getMonth() === ahora.getMonth()) {
+        if (fechaKey.startsWith(mesKey)) {
           mes++;
           mesTotal += t;
         }
@@ -988,6 +1112,114 @@ async function facturasResumenHandler(req, res) {
         facturado_mes: mesTotal,
       },
     });
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+// Movimientos de inventario usados por la vista Kardex.
+async function kardexHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  try {
+    if (req.method === 'GET') {
+      const authHeader = String(req.headers?.authorization || '');
+      let claims;
+      try {
+        const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+        if (!bearer || !process.env.JWT_SECRET) throw new Error('missing token');
+        claims = require('jsonwebtoken').verify(bearer, process.env.JWT_SECRET);
+      } catch (_) { return fail(res, { message: 'Sesi?n inv?lida o expirada.', status: 401 }); }
+      const empresaCodigo = String(claims.empresa_codigo || claims.tenant || '').trim();
+      if (!empresaCodigo) return fail(res, { message: 'La sesi?n no tiene empresa asignada.', status: 403 });
+      if (req.query?.empresaCodigo && String(req.query.empresaCodigo).toUpperCase() !== empresaCodigo.toUpperCase()) {
+        return fail(res, { message: 'La sesi?n no pertenece a esa empresa.', status: 403 });
+      }
+      const limit = Math.min(Math.max(parseInt(req.query?.limit || '200', 10) || 200, 1), 1000);
+      const result = await supabaseRequest('/kardex?empresa_codigo=eq.' + encodeURIComponent(empresaCodigo) + '&order=created_at.desc&limit=' + limit);
+      if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
+      return ok(res, { movimientos: JSON.parse(result.body || '[]') });
+    }
+    if (req.method === 'POST') {
+      const body = parseBody(req);
+      const authHeader = String(req.headers?.authorization || '');
+      let claims;
+      try {
+        const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+        if (!bearer || !process.env.JWT_SECRET) throw new Error('missing token');
+        claims = require('jsonwebtoken').verify(bearer, process.env.JWT_SECRET);
+      } catch (_) { return fail(res, { message: 'Sesi?n inv?lida o expirada.', status: 401 }); }
+      const empresaCodigo = String(claims.empresa_codigo || claims.tenant || '').trim();
+      if (!empresaCodigo || (body.empresa_codigo && String(body.empresa_codigo).toUpperCase() !== empresaCodigo.toUpperCase())) {
+        return fail(res, { message: 'La sesi?n no pertenece a esa empresa.', status: 403 });
+      }
+      const cantidad = Number.parseInt(body.cantidad, 10);
+      if (!body.producto_codigo || !['entrada', 'salida'].includes(String(body.tipo_movimiento)) || !Number.isInteger(cantidad) || cantidad <= 0) {
+        return fail(res, { message: 'Faltan datos v?lidos para registrar el movimiento.', status: 400 });
+      }
+      const empresaId = await resolverEmpresaId(empresaCodigo);
+      const movimiento = {
+        id: require('crypto').randomUUID(),
+        producto_codigo: String(body.producto_codigo),
+        tipo_movimiento: String(body.tipo_movimiento),
+        cantidad,
+        referencia: body.referencia || null,
+        notas: body.notas || null,
+        created_at: new Date().toISOString(),
+      };
+      const result = await supabaseRequest('/rpc/pos_registrar_movimiento_stock', {
+        method: 'POST',
+        body: JSON.stringify({ p_empresa_codigo: empresaCodigo, p_empresa_id: empresaId, p_movimiento: movimiento }),
+      });
+      if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
+      const saved = JSON.parse(result.body || '{}');
+      if (saved.success !== true) return fail(res, { message: 'Supabase no confirm? el movimiento.', status: 502 });
+      return ok(res, { success: true, movimiento: saved }, 201);
+    }
+    return res.status(405).json({ error: 'Metodo no permitido' });
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+async function auditHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ error: 'Metodo no permitido' });
+  if (!configured()) return fail(res, { message: 'Faltan credenciales de Supabase.' });
+  try {
+    const header = String(req.headers.authorization || '');
+    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    if (!token) return res.status(401).json({ error: 'Token requerido.' });
+    let user;
+    try { user = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || ''); }
+    catch { return res.status(401).json({ error: 'Token invalido o expirado.' }); }
+    const body = parseBody(req);
+    const empresaCodigo = user.empresa_codigo || user.tenant;
+    if (!empresaCodigo) return res.status(400).json({ error: 'Empresa no asociada a la sesión.' });
+    if (req.method === 'GET') {
+      const limit = Math.min(Math.max(parseInt(req.query?.limit || '100', 10) || 100, 1), 500);
+      const result = await supabaseRequest(`/system_logs?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=${limit}`);
+      if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
+      return ok(res, { logs: JSON.parse(result.body || '[]') });
+    }
+    const row = {
+      empresa_codigo: empresaCodigo,
+      usuario_id: user.sub || user.id || null,
+      nivel: String(body.level || 'INFO').slice(0, 16),
+      mensaje: String(body.message || '').slice(0, 500),
+      modulo: body.module ? String(body.module).slice(0, 80) : null,
+      metadata: body.metadata && typeof body.metadata === 'object' ? body.metadata : {},
+      created_at: body.timestamp || new Date().toISOString(),
+    };
+    const result = await supabaseRequest('/system_logs', { method: 'POST', body: JSON.stringify(row) });
+    if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
+    return ok(res, { success: true }, 201);
   } catch (err) {
     return fail(res, err);
   }
@@ -1024,42 +1256,26 @@ function notasHandler(req, res) {
 }
 
 function ordenesCompraHandler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
-  
-  res.status(501).json({ error: 'Endpoint en desarrollo' });
+  return comercialListHandler(req, res, {
+    table: 'ordenes_compra', responseKey: 'ordenes', childTable: 'orden_compra_items', childForeignKey: 'orden_compra_id',
+  });
 }
 
 async function productosHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
 
   try {
     if (req.method === 'GET') {
-      const empresaCodigo = req.query?.empresaCodigo || empresaFromAuth(req);
-      if (!empresaCodigo) return ok(res, []);
+      const empresaCodigo = verifiedTenantCode(req, req.query?.empresaCodigo || req.query?.empresa_codigo);
 
       const result = await supabaseRequest(
         `/productos?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=created_at.desc&limit=500&select=*`
       );
-      if (result.status >= 400) {
-        const all = await supabaseRequest('/productos?select=*&limit=500');
-        if (all.status >= 400) return fail(res, { message: all.body });
-        const rows = JSON.parse(all.body || '[]');
-        const empresas = await supabaseRequest('/empresas?select=id,codigo');
-        let mapa = {};
-        try {
-          const empRows = JSON.parse(empresas.body || '[]');
-          empRows.forEach((e) => (mapa[e.id] = e.codigo));
-        } catch {}
-        return ok(res, rows.filter((r) => mapa[r.empresa_id] === empresaCodigo));
-      }
+      if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
       return ok(res, JSON.parse(result.body || '[]'));
     }
 
@@ -1070,6 +1286,17 @@ async function productosHandler(req, res) {
       let productos = Array.isArray(body.productos) ? body.productos : [];
       if (productos.length === 0 && body.nombre) productos = [body];
       if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
+      const authHeader = String(req.headers?.authorization || '');
+      let claims;
+      try {
+        const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+        if (!bearer || !process.env.JWT_SECRET) throw new Error('missing token');
+        claims = require('jsonwebtoken').verify(bearer, process.env.JWT_SECRET);
+      } catch (_) { return fail(res, { message: 'Sesión inválida o expirada.', status: 401 }); }
+      const tenantClaim = String(claims.empresa_codigo || claims.tenant || '').trim().toUpperCase();
+      if (!tenantClaim || tenantClaim !== String(empresaCodigo).trim().toUpperCase()) {
+        return fail(res, { message: 'La sesión no pertenece a la empresa de estos productos.', status: 403 });
+      }
       const empresaId = await resolverEmpresaId(empresaCodigo);
 
       const payloads = productos.map((p) => {
@@ -1120,6 +1347,15 @@ async function productosHandler(req, res) {
         let rows = [];
         try { rows = JSON.parse(existing.body || '[]'); } catch {}
 
+        if (payload.barcode) {
+          const duplicate = await supabaseRequest(`/productos?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&barcode=eq.${encodeURIComponent(payload.barcode)}&select=id,codigo`);
+          if (duplicate.status < 400) {
+            const matches = JSON.parse(duplicate.body || '[]');
+            const ownId = rows[0]?.id;
+            if (matches.some((item) => item.id !== ownId)) { errores.push(`C?digo de barras duplicado: ${payload.barcode}`); continue; }
+          }
+        }
+
         if (existing.status < 400 && rows.length > 0) {
           const { id: _ignored, ...update } = payload;
           const r = await supabaseRequest(`/productos?id=eq.${encodeURIComponent(rows[0].id)}`, {
@@ -1149,24 +1385,22 @@ async function productosHandler(req, res) {
       if (!empresaCodigo || !codigo) {
         return fail(res, { message: 'Faltan empresa_codigo y codigo.', status: 400 });
       }
-      
-      // Primero intentar buscar por empresa_codigo y codigo
-      let result = await supabaseRequest(
+      const authHeader = String(req.headers?.authorization || '');
+      let claims;
+      try {
+        const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+        if (!bearer || !process.env.JWT_SECRET) throw new Error('missing token');
+        claims = require('jsonwebtoken').verify(bearer, process.env.JWT_SECRET);
+      } catch (_) { return fail(res, { message: 'Sesión inválida o expirada.', status: 401 }); }
+      const tenantClaim = String(claims.empresa_codigo || claims.tenant || '').trim().toUpperCase();
+      if (!tenantClaim || tenantClaim !== String(empresaCodigo).trim().toUpperCase()) {
+        return fail(res, { message: 'La sesión no pertenece a la empresa de este producto.', status: 403 });
+      }
+      const result = await supabaseRequest(
         `/productos?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&codigo=eq.${encodeURIComponent(codigo)}`,
         { method: 'DELETE' }
       );
-      
-      // Si falla, intentar por empresa_id
-      if (result.status >= 400) {
-        const empresaId = await resolverEmpresaId(empresaCodigo);
-        if (empresaId) {
-          result = await supabaseRequest(
-            `/productos?empresa_id=eq.${empresaId}&codigo=eq.${encodeURIComponent(codigo)}`,
-            { method: 'DELETE' }
-          );
-        }
-      }
-      
+
       if (result.status >= 400) return fail(res, { message: result.body });
       return ok(res, { success: true }, 200);
     }
@@ -1178,13 +1412,7 @@ async function productosHandler(req, res) {
 }
 
 function proveedoresHandler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
-  
-  res.status(501).json({ error: 'Endpoint en desarrollo' });
+  return comercialListHandler(req, res, { table: 'proveedores', responseKey: 'proveedores' });
 }
 
 function transaccionesHandler(req, res) {
@@ -1200,16 +1428,15 @@ function transaccionesHandler(req, res) {
 async function ventasHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'MÃ©todo no permitido' });
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
 
   try {
     const body = parseBody(req);
-    const empresaCodigo = body.empresa_codigo || '';
+    const empresaCodigo = verifiedTenantCode(req, body.empresa_codigo || '');
     const venta = body.venta || {};
-    if (!empresaCodigo) return fail(res, { message: 'Falta empresa_codigo.', status: 400 });
 
     const empresaId = await resolverEmpresaId(empresaCodigo);
     const resultado = await procesarVentaSync(empresaCodigo, empresaId, [venta]);
@@ -1237,83 +1464,23 @@ async function procesarVentaSync(empresaCodigo, empresaId, ventas) {
   const correlativos = [];
   let ok = 0;
 
-  const filtroTenant = empresaId
-    ? `empresa_id=eq.${empresaId}`
-    : `empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}`;
-
   for (const venta of ventas) {
     try {
       if (typeof venta !== 'object' || venta === null) continue;
-      const items = Array.isArray(venta.items) ? venta.items : [];
-      const correlativo = String(venta.correlativo || '');
-
-      // Idempotencia: si la venta ya fue registrada, se omite.
-      if (correlativo) {
-        const ex = await supabaseRequest(
-          `/facturas?correlativo=eq.${encodeURIComponent(correlativo)}&select=id`
-        );
-        if (ex.status < 400) {
-          let found = [];
-          try { found = JSON.parse(ex.body || '[]'); } catch {}
-          if (found.length > 0) { ok++; correlativos.push(correlativo); continue; }
-        }
-      }
-
-      // 1. Descuento de stock por item
-      for (const item of items) {
-        const codigo = (item.codigo || '').toString();
-        const nombre = (item.nombre || '').toString();
-        const cantidad = Number(item.cantidad) || 1;
-
-        const match = await supabaseRequest(
-          `/productos?${filtroTenant}&or=(codigo.eq.${encodeURIComponent(codigo)},nombre.eq.${encodeURIComponent(nombre)})&select=id,stock_actual,codigo,nombre`
-        );
-        if (match.status >= 400) { errores.push(nombre); continue; }
-        let rows = [];
-        try { rows = JSON.parse(match.body || '[]'); } catch {}
-        const prod = rows[0];
-        if (!prod) { errores.push(nombre); continue; }
-
-        const nuevoStock = Math.max(0, (Number(prod.stock_actual) || 0) - cantidad);
-        await supabaseRequest(`/productos?id=eq.${prod.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ stock_actual: nuevoStock, updated_at: new Date().toISOString() }),
-        });
-        decrementados.push({ id: prod.id, codigo: prod.codigo, nombre: prod.nombre, nuevoStock });
-      }
-
-      // 2. Registrar factura de venta
-      const ahora = new Date();
-      const correlativoFinal = correlativo ||
-        `POS-${ahora.getFullYear()}${String(ahora.getMonth() + 1).padStart(2, '0')}${String(ahora.getDate()).padStart(2, '0')}-${String(ahora.getHours()).padStart(2, '0')}${String(ahora.getMinutes()).padStart(2, '0')}${String(ahora.getSeconds()).padStart(2, '0')}`;
-
-      const facturaPayload = {
-        empresa_codigo: empresaCodigo,
-        correlativo: correlativoFinal,
-        tipo_documento: 'Factura',
-        cai: 'POS-DIRECTO',
-        cliente_nombre: venta.cliente_nombre || 'Consumidor Final',
-        cliente_rtn: venta.cliente_rtn || 'CF',
-        condicion_pago: 'Contado',
-        tipo_venta: 'Gravada',
-        items,
-        subtotal: Number(venta.subtotal) || 0,
-        isv_15: Number(venta.isv_15) || 0,
-        isv_18: Number(venta.isv_18) || 0,
-        descuento: Number(venta.descuento) || 0,
-        total: Number(venta.total) || items.reduce((s, i) => s + (Number(i.precio) || 0) * (Number(i.cantidad) || 1), 0),
-        estado: 'pagada',
-        notas: (venta.notas && String(venta.notas).trim())
-          ? String(venta.notas).trim()
-          : `Pago: ${venta.metodo_pago || 'efectivo'}`,
-      };
-      if (empresaId) facturaPayload.empresa_id = empresaId;
-
-      const facturaRes = await supabaseRequest('/facturas', { method: 'POST', body: JSON.stringify(facturaPayload) });
-      if (facturaRes.status >= 400) throw new Error(facturaRes.body);
-
+      const result = await supabaseRequest('/rpc/pos_registrar_venta', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_empresa_codigo: empresaCodigo,
+          p_empresa_id: empresaId,
+          p_venta: venta,
+        }),
+      });
+      if (result.status >= 400) throw new Error(result.body);
+      const saved = JSON.parse(result.body || '{}');
+      if (saved.success !== true) throw new Error('Supabase no confirmó el registro de la venta.');
       ok++;
-      correlativos.push(correlativoFinal);
+      if (saved.correlativo) correlativos.push(saved.correlativo);
+      if (Array.isArray(saved.decrementados)) decrementados.push(...saved.decrementados);
     } catch (e) {
       errores.push((e && e.message) || String(e));
     }
@@ -1329,6 +1496,8 @@ async function procesarVentaSync(empresaCodigo, empresaId, ventas) {
 // Tablas sincronizables desde la app (nombres de tabla locales = Supabase).
 const TABLAS_SYNC = new Set([
   'proveedores',
+  'empresas',
+  'kardex',
   'cotizaciones',
   'cotizacion_items',
   'ordenes_compra',
@@ -1376,7 +1545,7 @@ function sanitizeValue(v) {
 async function syncHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'MÃ©todo no permitido' });
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
@@ -1396,6 +1565,54 @@ async function syncHandler(req, res) {
 
     const empresaId = await resolverEmpresaId(empresaCodigo);
 
+    // Actualizaciones del tenant autenticado; el onboarding de bienvenida no crea empresas.
+    if (tabla === 'empresas') {
+      const authHeader = String(req.headers?.authorization || '');
+      const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+      let claims;
+      try {
+        if (!bearer || !process.env.JWT_SECRET) throw new Error('missing token');
+        claims = require('jsonwebtoken').verify(bearer, process.env.JWT_SECRET);
+      } catch (_) {
+        return fail(res, { message: 'Sesión inválida o expirada para sincronizar la empresa.', status: 401 });
+      }
+      const tenantClaim = String(claims.empresa_codigo || claims.tenant || '').trim().toUpperCase();
+      if (!tenantClaim || tenantClaim !== String(empresaCodigo).trim().toUpperCase()) {
+        return fail(res, { message: 'La sesión no pertenece a la empresa de estos cambios.', status: 403 });
+      }
+      const results = [];
+      const errores = [];
+      for (const raw of rows) {
+        const codigo = String(raw?.codigo || raw?.empresa_codigo || empresaCodigo);
+        const tenant = { codigo, nombre: String(raw?.nombre || 'Portal Pilot Empresa'), area: raw?.area || raw?.area_negocio || null, plan: raw?.plan || 'Prueba' };
+        const current = await supabaseRequest(`/tenants?codigo=eq.${encodeURIComponent(codigo)}&select=codigo`);
+        let found = [];
+        try { found = JSON.parse(current.body || '[]'); } catch {}
+        const saved = found.length
+          ? await supabaseRequest(`/tenants?codigo=eq.${encodeURIComponent(codigo)}`, { method: 'PATCH', body: JSON.stringify(tenant) })
+          : await supabaseRequest('/tenants', { method: 'POST', body: JSON.stringify(tenant) });
+        if (saved.status >= 400) errores.push(saved.body); else results.push({ codigo });
+      }
+      if (!results.length && errores.length) return fail(res, { message: errores.join(' | '), status: 502 });
+      return ok(res, { success: true, ok: results.length, errores }, 201);
+    }
+
+    // El resto de la cola se ejecuta con la clave privilegiada del servidor:
+    // nunca aceptes el tenant del body como prueba de identidad.
+    const authHeader = String(req.headers?.authorization || '');
+    const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    let claims;
+    try {
+      if (!bearer || !process.env.JWT_SECRET) throw new Error('missing token');
+      claims = require('jsonwebtoken').verify(bearer, process.env.JWT_SECRET);
+    } catch (_) {
+      return fail(res, { message: 'Sesión inválida o expirada para sincronizar.', status: 401 });
+    }
+    const tenantClaim = String(claims.empresa_codigo || claims.tenant || '').trim().toUpperCase();
+    if (!tenantClaim || tenantClaim !== String(empresaCodigo).trim().toUpperCase()) {
+      return fail(res, { message: 'La sesión no pertenece a la empresa de estos cambios.', status: 403 });
+    }
+
     // Ventas POS: flujo especial con decremento de stock y factura idempotente.
     if (tabla === 'pos_ventas') {
       const resultado = await procesarVentaSync(empresaCodigo, empresaId, rows);
@@ -1408,6 +1625,95 @@ async function syncHandler(req, res) {
         decrementados: resultado.decrementados,
         errores: resultado.errores,
       }, 201);
+    }
+
+    // Ajustes manuales de Kardex también modifican existencias; ambos efectos
+    // se confirman juntos mediante la función SQL transaccional.
+    if (tabla === 'kardex') {
+      let procesados = 0;
+      const errores = [];
+      for (const movimiento of rows) {
+        const result = await supabaseRequest('/rpc/pos_registrar_movimiento_stock', {
+          method: 'POST',
+          body: JSON.stringify({
+            p_empresa_codigo: empresaCodigo,
+            p_empresa_id: empresaId,
+            p_movimiento: movimiento,
+          }),
+        });
+        if (result.status >= 400) {
+          errores.push({ error: result.body });
+          continue;
+        }
+        let saved = {};
+        try { saved = JSON.parse(result.body || '{}'); } catch {}
+        if (saved.success === true) procesados++;
+        else errores.push({ error: 'Supabase no confirmó el movimiento de inventario.' });
+      }
+      if (procesados === 0 && errores.length) return fail(res, { message: errores.map((e) => e.error).join(' | '), status: 502 });
+      return ok(res, { success: true, ok: procesados, errores }, 201);
+    }
+
+    // El pago de fiado es idempotente: aplica el abono, actualiza el saldo,
+    // registra la entrada contable y deja el historial en una sola transacción.
+    if (tabla === 'fiado_abonos' && operacion === 'insert') {
+      const errores = [];
+      let procesados = 0;
+      for (const abono of rows) {
+        const result = await supabaseRequest('/rpc/pos_registrar_abono_fiado', {
+          method: 'POST',
+          body: JSON.stringify({ p_empresa_codigo: empresaCodigo, p_empresa_id: empresaId, p_abono: abono }),
+        });
+        if (result.status >= 400) { errores.push({ error: result.body }); continue; }
+        let saved = {};
+        try { saved = JSON.parse(result.body || '{}'); } catch {}
+        if (saved.success === true) procesados++;
+        else errores.push({ error: 'Supabase no confirmó el abono.' });
+      }
+      if (procesados === 0 && errores.length) return fail(res, { message: errores.map((e) => e.error).join(' | '), status: 502 });
+      return ok(res, { success: true, ok: procesados, errores }, 201);
+    }
+
+    // Recepción de compra: registra documento, líneas, stock y Kardex como
+    // una sola transacción en PostgreSQL.
+    if (tabla === 'compras' && operacion === 'update' && rows.length > 0 && rows.every((compra) => compra?.estado === 'anulada')) {
+      const errores = [];
+      let procesados = 0;
+      for (const compra of rows) {
+        const result = await supabaseRequest('/rpc/pos_anular_compra', {
+          method: 'POST',
+          body: JSON.stringify({
+            p_empresa_codigo: empresaCodigo,
+            p_empresa_id: empresaId,
+            p_compra_id: String(compra.id || ''),
+          }),
+        });
+        if (result.status >= 400) { errores.push({ error: result.body }); continue; }
+        let saved = {};
+        try { saved = JSON.parse(result.body || '{}'); } catch {}
+        if (saved.success === true) procesados++;
+        else errores.push({ error: 'Supabase no confirmó la anulación de compra.' });
+      }
+      if (procesados === 0 && errores.length) return fail(res, { message: errores.map((e) => e.error).join(' | '), status: 502 });
+      return ok(res, { success: true, ok: procesados, errores }, 200);
+    }
+
+    if (tabla === 'compras' && operacion === 'insert') {
+      const errores = [];
+      let procesados = 0;
+      for (const compra of rows) {
+        const result = await supabaseRequest('/rpc/pos_registrar_compra', {
+          method: 'POST',
+          body: JSON.stringify({ p_empresa_codigo: empresaCodigo, p_empresa_id: empresaId, p_compra: compra }),
+        });
+        if (result.status >= 400) { errores.push({ error: result.body }); continue; }
+        let saved = {};
+        try { saved = JSON.parse(result.body || '{}'); } catch {}
+        if (saved.success === true) procesados++;
+        else errores.push({ error: 'Supabase no confirmó la recepción.' });
+      }
+      if (procesados === 0 && errores.length) return fail(res, { message: errores.map((e) => e.error).join(' | '), status: 502 });
+      return ok(res, { success: true, ok: procesados, errores }, 201);
     }
 
     const procesados = [];
@@ -1427,9 +1733,12 @@ async function syncHandler(req, res) {
         if (empresaId) payload.empresa_id = empresaId;
 
         const id = payload.id ? String(payload.id) : null;
+        // Nunca actualices ni borres una fila solo por su id: todo cambio se
+        // limita al tenant dueño de la cola que envió la operación.
+        const tenantScope = `empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}`;
 
         if (operacion === 'delete' && id) {
-          const del = await supabaseRequest(`/${tabla}?id=eq.${encodeURIComponent(id)}`, {
+          const del = await supabaseRequest(`/${tabla}?id=eq.${encodeURIComponent(id)}&${tenantScope}`, {
             method: 'DELETE',
           });
           if (del.status >= 400) throw new Error(del.body);
@@ -1438,11 +1747,11 @@ async function syncHandler(req, res) {
         }
 
         if (id) {
-          const existing = await supabaseRequest(`/${tabla}?id=eq.${encodeURIComponent(id)}&select=id`);
+          const existing = await supabaseRequest(`/${tabla}?id=eq.${encodeURIComponent(id)}&${tenantScope}&select=id`);
           let rowsFound = [];
           try { rowsFound = JSON.parse(existing.body || '[]'); } catch {}
           if (existing.status < 400 && rowsFound.length > 0) {
-            const patch = await supabaseRequest(`/${tabla}?id=eq.${encodeURIComponent(id)}`, {
+            const patch = await supabaseRequest(`/${tabla}?id=eq.${encodeURIComponent(id)}&${tenantScope}`, {
               method: 'PATCH',
               body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() }),
             });

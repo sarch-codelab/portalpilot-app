@@ -85,7 +85,9 @@ class _PPSkeletonState extends State<PPSkeleton> with SingleTickerProviderStateM
             crossAxisCount: cols,
             crossAxisSpacing: 14,
             mainAxisSpacing: 14,
-            childAspectRatio: MobileUtils.isMobile(context) ? 1.6 : 2.0,
+            // Altura fija (no ratio): con aspectRatio 2.0 la tarjeta quedaba
+            // demasiado baja en desktop y el contenido desbordaba ~12px.
+            mainAxisExtent: MobileUtils.isMobile(context) ? 128 : 132,
           ),
           itemCount: widget.cards,
           itemBuilder: (context, i) {

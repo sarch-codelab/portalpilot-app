@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 import 'package:portal_pilot_app/Shared/services/connectivity_service.dart';
+import 'package:uuid/uuid.dart';
 
 class LocalDatabaseService {
   LocalDatabaseService._();
@@ -370,7 +371,7 @@ class LocalDatabaseService {
         isPerishable: Value(p['is_perishable'] as bool? ?? false),
         imagenUrl: Value(p['imagen_url'] as String?),
         activo: const Value(true),
-        synced: const Value(false),
+        synced: Value(!enqueueSync),
         updatedAt: Value(DateTime.now()),
       );
 
@@ -388,6 +389,97 @@ class LocalDatabaseService {
         empresaId: empresaId,
       );
     }
+  }
+
+  /// Cambia existencias y registra el movimiento en la misma transacción local.
+  /// La fila de la cola queda confirmada junto al cambio de stock antes de
+  /// intentar cualquier envío de red.
+  Future<void> registrarMovimientoInventario({
+    required String empresaCodigo,
+    required String productoId,
+    required String productoCodigo,
+    required String tipo,
+    required int cantidad,
+    String? referencia,
+    String? notas,
+  }) async {
+    if (!['entrada', 'salida'].contains(tipo)) {
+      throw ArgumentError('El tipo de movimiento no es válido.');
+    }
+    if (cantidad <= 0 || productoCodigo.trim().isEmpty) {
+      throw ArgumentError('Selecciona un producto y una cantidad válida.');
+    }
+
+    final movimientoId = const Uuid().v4();
+    late int stockResultante;
+    late String nombreProducto;
+    await _db.transaction(() async {
+      final producto = await (_db.select(_db.productos)
+            ..where((p) => p.empresaId.equals(empresaCodigo) & p.id.equals(productoId)))
+          .getSingleOrNull();
+      if (producto == null) throw StateError('El producto ya no existe en este negocio.');
+      final nuevoStock = tipo == 'entrada'
+          ? producto.stockActual + cantidad
+          : producto.stockActual - cantidad;
+      stockResultante = nuevoStock;
+      nombreProducto = producto.nombre;
+      if (nuevoStock < 0) {
+        throw StateError('No hay existencias suficientes de ${producto.nombre}.');
+      }
+      await (_db.update(_db.productos)
+            ..where((p) => p.empresaId.equals(empresaCodigo) & p.id.equals(productoId)))
+      .write(ProductosCompanion(
+        stockActual: Value(nuevoStock),
+        synced: const Value(false),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      await _syncService.enqueueSync(
+        tabla: 'kardex',
+        operacion: SyncOperation.insert,
+        datos: {
+          'id': movimientoId,
+          'empresa_codigo': empresaCodigo,
+          'producto_id': productoId,
+          'producto_codigo': productoCodigo.trim(),
+          'producto_nombre': producto.nombre,
+          'tipo_movimiento': tipo,
+          'cantidad': cantidad,
+          'referencia': referencia,
+          'notas': notas,
+          'stock_despues': nuevoStock,
+          'created_at': DateTime.now().toIso8601String(),
+        },
+        empresaId: empresaCodigo,
+        triggerSync: false,
+      );
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in ['productos', 'productos_pos']) {
+      final cached = JsonGuard.safeListOfMaps(prefs.getString(key), source: 'Inventario/kardex/$key');
+      for (final row in cached) {
+        if (row['id']?.toString() == productoId ||
+            row['codigo']?.toString() == productoCodigo.trim()) {
+          row['stock_actual'] = stockResultante;
+        }
+      }
+      await prefs.setString(key, jsonEncode(cached));
+    }
+    final kardex = JsonGuard.safeListOfMaps(prefs.getString('kardex'), source: 'Inventario/kardex/local');
+    kardex.insert(0, {
+      'id': movimientoId,
+      'producto_id': productoId,
+      'producto_codigo': productoCodigo.trim(),
+      'producto_nombre': nombreProducto,
+      'tipo_movimiento': tipo,
+      'cantidad': cantidad,
+      'referencia': referencia,
+      'notas': notas,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    await prefs.setString('kardex', jsonEncode(kardex));
+    _syncService.syncNowIfOnline();
   }
 
   Future<void> updateProductoStock(String id, int nuevoStock) async {
@@ -477,6 +569,7 @@ class LocalDatabaseService {
     String? metodoPago,
     String? referencia,
     required DateTime fecha,
+    bool triggerSync = true,
   }) async {
     final transaccion = TransaccionesCompanion.insert(
       id: id,
@@ -513,6 +606,7 @@ class LocalDatabaseService {
         },
       },
       empresaId: empresaId,
+      triggerSync: triggerSync,
     );
   }
 

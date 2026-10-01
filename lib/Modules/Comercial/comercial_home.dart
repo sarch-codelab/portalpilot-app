@@ -40,6 +40,8 @@ class _ComercialHomeState extends State<ComercialHome> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _buildDashboardHeader(),
+          const SizedBox(height: 18),
           _buildActionCard(
             Icons.people_outline,
             'Proveedores',
@@ -62,7 +64,7 @@ class _ComercialHomeState extends State<ComercialHome> {
           const SizedBox(height: 12),
           _buildActionCard(
             Icons.inventory_2_outlined,
-            'Ã“rdenes de Compra',
+            'Órdenes de Compra',
             'Gestión de órdenes de compra',
             const Color(0xFF3B82F6),
             () => Navigator.of(
@@ -81,6 +83,41 @@ class _ComercialHomeState extends State<ComercialHome> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDashboardHeader() {
+    // Icono de marca PNG centrado sobre el título (mismo patrón que
+    // Inventario/POS: primero la portada visual, luego el dashboard).
+    final logoSize =
+        (MediaQuery.sizeOf(context).shortestSide * 0.2).clamp(92.0, 128.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Image.asset(
+            'img/Iconos/Comercial.png',
+            width: logoSize,
+            height: logoSize,
+            fit: BoxFit.contain,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Comercial',
+          style: GoogleFonts.syne(
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            color: appPalette.textPrimary,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Compras, proveedores, cotizaciones y órdenes',
+          style: GoogleFonts.dmSans(fontSize: 13, color: appPalette.textMuted),
+        ),
+      ],
     );
   }
 

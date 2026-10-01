@@ -309,7 +309,16 @@ class _NominaHomeState extends State<NominaHome> {
           ),
         ),
         const SizedBox(width: 8),
-        Text(detail, style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373))),
+        // Flexible: a 320px el detalle ("2.5% (tope L.15,631.78)") no cabe
+        // junto al título y desbordaba ~39px a la derecha.
+        Flexible(
+          child: Text(
+            detail,
+            style: GoogleFonts.dmMono(fontSize: 11, color: const Color(0xFF737373)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }

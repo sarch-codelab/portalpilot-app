@@ -5,6 +5,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
 
 class AuthController extends ChangeNotifier {
@@ -106,6 +107,44 @@ class AuthController extends ChangeNotifier {
     _soloLectura = prefs.getBool('empresa_solo_lectura') ?? false;
     _isLoggedIn = _token.isNotEmpty;
     notifyListeners();
+
+    // Al restaurar sesión, la foto y el plan pueden haber cambiado en el
+    // servidor desde el último login (antes solo se cargaban al loguearse,
+    // por eso la foto desaparecía tras reiniciar la app). Se refresca en
+    // segundo plano: si falla (offline), se conserva lo guardado.
+    if (_isLoggedIn) {
+      // ignore: unawaited_futures
+      refrescarPerfilRemoto();
+    }
+  }
+
+  /// Consulta GET /api/me con el token vigente y actualiza foto/nombre/plan
+  /// de la sesión en memoria y en disco. Silencioso ante fallos de red.
+  Future<void> refrescarPerfilRemoto() async {
+    if (_token.isEmpty) return;
+    try {
+      final res = await ApiService.instance.get('/api/me');
+      if (res['error'] != null) return;
+      final user = res['user'];
+      if (user is! Map<String, dynamic>) return;
+
+      final foto = (user['foto_perfil_url'] ?? user['avatar_url'] ?? '') as String;
+      final nombre = (user['nombre'] ?? '') as String;
+      final apellido = (user['apellido'] ?? '') as String;
+      final plan = (user['plan'] ?? '') as String;
+
+      final prefs = await SharedPreferences.getInstance();
+      if (foto.trim().isNotEmpty && foto != _fotoPerfilUrl) {
+        _fotoPerfilUrl = foto.trim();
+        await prefs.setString('user_foto_perfil', _fotoPerfilUrl);
+      }
+      if (nombre.isNotEmpty) { _nombre = nombre; await prefs.setString('user_nombre', nombre); }
+      if (apellido.isNotEmpty) { _apellido = apellido; await prefs.setString('user_apellido', apellido); }
+      if (plan.isNotEmpty) _empresaPlan = normalizarPlan(plan);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[AuthController] refrescarPerfilRemoto falló (offline?): $e');
+    }
   }
 
   /// Persiste la sesión (llamado tras un login exitoso).

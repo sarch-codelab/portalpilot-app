@@ -4,10 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:portal_pilot_app/Auth/login.dart';
 import 'package:portal_pilot_app/Shared/services/multi_area_config.dart';
-import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 
 /// Onboarding — Apple Design Language, con diseño separado por plataforma.
 ///
@@ -586,10 +584,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       await prefs.setString('operacion', _selectedOperation!);
 
       String areaNegocio = _determineAreaNegocio(_selectedBusiness!);
-      final empresaCodigo = _selectedBusiness!.isNotEmpty ? _selectedBusiness!.substring(0, 5).toUpperCase() : 'PP';
       await prefs.setString('empresa_area_negocio', areaNegocio);
+      final modulos = AreasNegocio.modulosPorDefecto(areaNegocio);
+      await prefs.setString('onboarding_modulos', modulos.join(','));
       await prefs.setBool('onboarding_completed', true);
-      debugPrint('✅ prefs guardados area=$areaNegocio code=$empresaCodigo');
+      debugPrint('Onboarding preferences saved for $areaNegocio');
 
       // Momento de éxito estilo Apple: Navi confirma (overlay) y luego zoom al login.
       if (mounted) {
@@ -604,30 +603,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             .pushAndRemoveUntil(_appleLoginRoute(), (route) => false);
       }
 
-      // Preparar datos locales sin crear una sesión autenticada.
-      try {
-        final List<String> modulos = AreasNegocio.modulosPorDefecto(areaNegocio);
-        await prefs.setString('onboarding_modulos', modulos.join(','));
-        final db = LocalDatabaseService.instance;
-        final empresaCompanion = db.empresaFromOnboarding(areaNegocio, empresaCodigo);
-        await db.upsertEmpresa(empresaCompanion);
-        final empresaDatos = {
-          'codigo': empresaCodigo,
-          'nombre': 'Portal Pilot Empresa',
-          'area_negocio': areaNegocio,
-          'plan': 'Prueba',
-          'activa': true,
-        };
-        await SyncService.instance.enqueueSync(
-          tabla: 'empresas',
-          operacion: SyncOperation.insert,
-          datos: empresaDatos,
-          empresaId: empresaCodigo,
-        );
-        debugPrint('✅ DB y sync OK');
-      } catch (e) {
-        debugPrint('⚠️ Error DB post-navegación (no bloquea): $e');
-      }
     } catch (e, st) {
       debugPrint('❌ _finishOnboarding error: $e\n$st');
       if (mounted) {
@@ -1311,19 +1286,24 @@ class _PlanRecommendationSheet extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Comenzar Prueba Gratuita (15 días)',
-                        style: GoogleFonts.inter(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w600,
+                  // FittedBox: el texto largo se encoge levemente en ventanas
+                  // angostas en vez de desbordar 23px (RIGHT OVERFLOWED).
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Comenzar Prueba Gratuita (15 días)',
+                          style: GoogleFonts.inter(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward_rounded, size: 18),
-                    ],
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward_rounded, size: 18),
+                      ],
+                    ),
                   ),
                 ),
               ),

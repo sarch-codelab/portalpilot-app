@@ -296,21 +296,34 @@ class _PPAppShellState extends State<PPAppShell> {
             if (!collapsed) ...[
               Image.asset('assets/img/robot_logo.png', width: 34, height: 34, fit: BoxFit.contain),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Portal Pilot',
-                    style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w900, color: palette.textPrimary),
+              // Expanded+FittedBox: con sidebar angosto (o a mitad del colapso)
+              // el título no cabía y desbordaba ~30px a la derecha.
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'img/Iconos/Portal Pilot.png',
+                        width: 118,
+                        height: 24,
+                        alignment: Alignment.centerLeft,
+                        fit: BoxFit.contain,
+                        color: palette.isDark ? Colors.white : Colors.black,
+                        colorBlendMode: BlendMode.srcIn,
+                      ),
+                      Text(
+                        'WORKSPACE',
+                        style: GoogleFonts.spaceGrotesk(fontSize: 8, fontWeight: FontWeight.w800, color: palette.brand, letterSpacing: 1.2),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'WORKSPACE',
-                    style: GoogleFonts.spaceGrotesk(fontSize: 8, fontWeight: FontWeight.w800, color: palette.brand, letterSpacing: 1.2),
-                  ),
-                ],
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Icon(Icons.menu_open_rounded, color: palette.textMuted, size: 18),
             ] else
               Image.asset('assets/img/robot_logo.png', width: 34, height: 34, fit: BoxFit.contain),
@@ -441,6 +454,9 @@ class _PPAppShellState extends State<PPAppShell> {
 
   // ─────────────────────────── Top bar ──────────────────────────────────────
   Widget _buildTopBar(ThemePalette palette, PPController controller, bool isMobile) {
+    // En ventanas muy angostas se comprime el hueco del breadcrumb antes de
+    // dejar que la fila del encabezado desborde.
+    final titleSpacing = MobileUtils.isCompact(context) ? 2.0 : 6.0;
     return Material(
       color: palette.appBarColor,
       child: Container(
@@ -476,25 +492,19 @@ class _PPAppShellState extends State<PPAppShell> {
                         child: Icon(icon, color: color, size: 15),
                       );
                     }),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        widget.screenTitle ?? _currentModule.nombre,
-                        style: GoogleFonts.syne(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: palette.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+                    const SizedBox(width: 4),
+                    // Flexible: a 320px el texto + espaciadores fijos excedían
+                    // el ancho flexible y desbordaban ~9px (quita 8px al gap).
+                    Flexible(child: _buildModuleTitle(palette, widget.screenTitle ?? _currentModule.nombre)),
                   ],
                 ),
               ),
             ] else
-              _buildBreadcrumb(palette),
-            const Spacer(),
+              // Flexible: en ventanas desktop angostas el breadcrumb + buscador
+              // fijo (250px) + botones excedían el ancho y desbordaban ~79px.
+              Flexible(
+                child: _buildBreadcrumb(palette, titleSpacing: titleSpacing),
+              ),
             if (!isMobile && widget.onGlobalSearch != null)
               _buildGlobalSearch(palette),
             if (widget.actions != null) ...[
@@ -513,7 +523,7 @@ class _PPAppShellState extends State<PPAppShell> {
     );
   }
 
-  Widget _buildBreadcrumb(ThemePalette palette) {
+  Widget _buildBreadcrumb(ThemePalette palette, {double titleSpacing = 6.0}) {
     final module = _currentModule;
     final color = widget.moduleColor ?? module.color;
     final icon = widget.moduleIcon ?? module.icono;
@@ -535,9 +545,9 @@ class _PPAppShellState extends State<PPAppShell> {
             child: Icon(Icons.home_rounded, color: palette.textMuted, size: 17),
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 6),
-          child: Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFF5D5672)),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: titleSpacing),
+          child: const Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFF5D5672)),
         ),
         Container(
           padding: const EdgeInsets.all(7),
@@ -548,11 +558,25 @@ class _PPAppShellState extends State<PPAppShell> {
           child: Icon(icon, color: color, size: 16),
         ),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: palette.textPrimary),
-        ),
+        Flexible(child: _buildModuleTitle(palette, title)),
       ],
+    );
+  }
+
+  Widget _buildModuleTitle(ThemePalette palette, String fallback) {
+    final asset = _moduleWordmark(widget.moduleId);
+    if (asset == null) {
+      return Text(fallback, style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: palette.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis);
+    }
+    return Image.asset(
+      asset,
+      width: 104,
+      height: 22,
+      alignment: Alignment.centerLeft,
+      fit: BoxFit.contain,
+      color: palette.isDark ? Colors.white : Colors.black,
+      colorBlendMode: BlendMode.srcIn,
+      errorBuilder: (_, __, ___) => Text(fallback, style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: palette.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 
@@ -779,12 +803,17 @@ class _PPAppShellState extends State<PPAppShell> {
           children: [
             Icon(icon, color: color, size: 20),
             const SizedBox(height: 3),
-            Text(
-              label,
-              style: GoogleFonts.dmSans(
-                fontSize: 9,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: color,
+            // FittedBox: dentro del Expanded la celda puede quedar más angosta
+            // que el label y desbordaba 4px hacia abajo.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: GoogleFonts.dmSans(
+                  fontSize: 9,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: color,
+                ),
               ),
             ),
           ],
@@ -814,7 +843,10 @@ class _PPAppShellState extends State<PPAppShell> {
               BoxShadow(color: palette.brand.withValues(alpha: 0.5), blurRadius: 18, spreadRadius: 2),
             ],
           ),
-          child: const Icon(Icons.co_present_rounded, color: Colors.white, size: 26),
+          child: Padding(
+            padding: const EdgeInsets.all(11),
+            child: Image.asset('img/Iconos/robot_logo.png', fit: BoxFit.contain),
+          ),
         ),
       ),
     );
@@ -958,4 +990,18 @@ class _PPAppShellState extends State<PPAppShell> {
       },
     );
   }
+}
+
+String? _moduleWordmark(String moduleId) {
+  const assets = <String, String>{
+    'inventario': 'Inventario.webp',
+    'facturacion': 'Facturacion.webp',
+    'cotizaciones': 'Cotizaciones.webp',
+    'crm': 'CRM.webp',
+    'comercial': 'Comercial.webp',
+    'contabilidad': 'Contabilidad.webp',
+    'membresias': 'Membresias.webp',
+  };
+  final asset = assets[moduleId.toLowerCase()];
+  return asset == null ? null : 'img/texto/$asset';
 }

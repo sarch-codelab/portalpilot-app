@@ -178,11 +178,17 @@ class SyncStatusDialog extends StatelessWidget {
                 color: isOnline ? Colors.green : Colors.orange,
               ),
               const SizedBox(width: 8),
-              const Text('Estado de Sincronización'),
+              const Expanded(
+                child: Text(
+                  'Estado de Sincronización',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           content: SizedBox(
-            width: 400,
+            width: double.infinity,
             height: 300,
             child: Column(
               children: [
@@ -191,23 +197,24 @@ class SyncStatusDialog extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isOnline ? Colors.green[50] : Colors.orange[50],
                     borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isOnline ? Icons.wifi : Icons.wifi_off,
-                        color: isOnline ? Colors.green : Colors.orange,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        isOnline ? 'Conectado - Sincronización automática activa' : 'Sin conexión - Cambios guardados localmente',
-                        style: TextStyle(
-                          color: isOnline ? Colors.green[800] : Colors.orange[800],
-                          fontWeight: FontWeight.w500,
+                  ),                    child: Row(
+                      children: [
+                        Icon(
+                          isOnline ? Icons.wifi : Icons.wifi_off,
+                          color: isOnline ? Colors.green : Colors.orange,
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isOnline ? 'Conectado - Sincronización automática activa' : 'Sin conexión - Cambios guardados localmente',
+                            style: TextStyle(
+                              color: isOnline ? Colors.green[800] : Colors.orange[800],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                 ),
                 const SizedBox(height: 12),
                 Expanded(

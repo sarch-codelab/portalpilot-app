@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/utils/fiscal_compliance.dart';
+import 'package:portal_pilot_app/Shared/utils/logger.dart';
 import 'package:portal_pilot_app/Shared/utils/validation_helper.dart';
 
 class FiscalSettings extends StatefulWidget {
@@ -105,7 +107,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildSectionHeader('PUNTOS DE EMISIÃ“N'),
+                _buildSectionHeader('PUNTOS DE EMISIÓN'),
                 const SizedBox(height: 12),
                 _buildTextField(
                   'Establecimiento',
@@ -121,7 +123,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                   maxLength: 4,
                 ),
                 const SizedBox(height: 12),
-                _buildSectionHeader('CONFIGURACIÃ“N SAR'),
+                _buildSectionHeader('CONFIGURACIÓN SAR'),
                 const SizedBox(height: 12),
                 _buildTextField(
                   'CAI',
@@ -334,6 +336,21 @@ class _FiscalSettingsState extends State<FiscalSettings> {
 
     final saved = await FiscalCompliance().saveConfig(updatedConfig);
     if (!mounted) return;
+
+    // Auditoría: queda registro de quién cambió la configuración fiscal.
+    Logger().audit(
+      'editar',
+      'config',
+      'fiscal',
+      userId: AuthController.instance.email,
+      module: 'settings',
+      changes: {
+        'rtn': updatedConfig.rtnEmpresa,
+        'cai': updatedConfig.cai == null ? '(vacío)' : 'definido',
+        'tasa_isv': updatedConfig.tasaISV,
+        'factura_electronica': updatedConfig.emitirFacturaElectronica,
+      },
+    );
 
     if (saved) {
       ScaffoldMessenger.of(context).showSnackBar(

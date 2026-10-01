@@ -5,8 +5,10 @@ import 'dart:convert';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_form.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_detalle.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
+import 'package:portal_pilot_app/Shared/utils/logger.dart';
 
 class FacturaList extends StatefulWidget {
   const FacturaList({super.key});
@@ -153,6 +155,14 @@ class _FacturaListState extends State<FacturaList> {
       )['server_id'] ?? id;
       await api.patch('/api/facturas/$serverId', body: {'estado': 'anulada'});
     } catch (_) {}
+
+    Logger().audit(
+      'anular',
+      'factura',
+      id,
+      userId: AuthController.instance.email,
+      module: 'facturacion',
+    );
 
     _cargarFacturas();
   }

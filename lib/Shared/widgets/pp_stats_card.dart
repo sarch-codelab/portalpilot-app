@@ -120,8 +120,9 @@ class PPStatsCard extends StatelessWidget {
 }
 
 /// Grid de tarjetas KPI responsivo a cualquier ancho.
+/// Acepta cualquier Widget (p.ej. tarjetas animadas que alternan contenido).
 class PPStatsGrid extends StatelessWidget {
-  final List<PPStatsCard> cards;
+  final List<Widget> cards;
   final int? columnsMobile;
   final int? columnsDesktop;
 

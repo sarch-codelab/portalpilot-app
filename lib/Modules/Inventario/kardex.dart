@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 
 class KardexScreen extends StatefulWidget {
   const KardexScreen({super.key});
@@ -210,33 +212,26 @@ class _KardexScreenState extends State<KardexScreen> {
                           final cant = int.tryParse(cantidadController.text) ?? 0;
                           if (cant <= 0) return;
 
-                          // Registrar en backend
                           try {
-                            final api = ApiService.instance;
-                            await api.post('/api/kardex', body: {
-                              'producto_id': productoId,
-                              'tipo_movimiento': tipo,
-                              'cantidad': cant,
-                              'referencia': motivo,
-                              'notas': referenciaController.text,
-                            });
+                            final producto = _productos.firstWhere(
+                              (p) => p['id']?.toString() == productoId,
+                            );
+                            await LocalDatabaseService.instance.registrarMovimientoInventario(
+                              empresaCodigo: AuthController.instance.empresaCodigo,
+                              productoId: productoId!,
+                              productoCodigo: (producto['codigo'] ?? '').toString(),
+                              tipo: tipo,
+                              cantidad: cant,
+                              referencia: motivo,
+                              notas: referenciaController.text.trim(),
+                            );
                           } catch (e) {
-                            debugPrint('⚠️ Error guardando kardex en backend: $e');
-                            // Fallback a SharedPreferences
-                            try {
-                              final prefs = await SharedPreferences.getInstance();
-                              final kardex = JsonGuard.safeListOfMaps(prefs.getString('kardex'), source: 'Inventario/kardex/agregar');
-                              kardex.add({
-                                'id': DateTime.now().millisecondsSinceEpoch.toString(),
-                                'producto_id': productoId,
-                                'tipo_movimiento': tipo,
-                                'cantidad': cant,
-                                'referencia': motivo,
-                                'notas': referenciaController.text,
-                                'created_at': DateTime.now().toIso8601String(),
-                              });
-                              await prefs.setString('kardex', jsonEncode(kardex));
-                            } catch (_) {}
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
+                              );
+                            }
+                            return;
                           }
 
                           if (ctx.mounted) Navigator.pop(ctx);

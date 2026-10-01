@@ -37,6 +37,7 @@ import 'package:portal_pilot_app/Shared/services/offline_sync_service.dart';
 import 'package:portal_pilot_app/Shared/widgets/refresh_wrapper.dart';
 import 'package:portal_pilot_app/Shared/widgets/page_transitions.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
+import 'package:portal_pilot_app/Shared/widgets/portal_pilot_logo.dart';
 import 'package:portal_pilot_app/Home/multi_area_config_screen.dart';
 import 'package:portal_pilot_app/Shared/utils/modulo_icons.dart';
 
@@ -416,16 +417,7 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Portal Pilot',
-                      style: GoogleFonts.syne(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: palette.textPrimary,
-                        letterSpacing: -0.3,
-                      ),
-                      maxLines: 1,
-                    ),
+                    PortalPilotLogo(height: 16),
                     _headerPill(
                       palette: palette,
                       color: _isOnline ? palette.successGreen : palette.errorRed,
@@ -470,17 +462,7 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Portal Pilot',
-                      style: GoogleFonts.syne(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: palette.textPrimary,
-                        letterSpacing: -0.5,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    PortalPilotLogo(height: 22),
                     Text(
                       _empresaNombre.isNotEmpty ? _empresaNombre : _empresaCodigo,
                       style: GoogleFonts.dmSans(
@@ -1270,14 +1252,7 @@ class _HomeScreenState extends State<HomeScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Portal Pilot',
-                              style: GoogleFonts.syne(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                            ),
+                            const PortalPilotLogo(height: 18, forceWhite: true),
                             Text(
                               _empresaNombre.isNotEmpty ? _empresaNombre : _empresaCodigo,
                               style: GoogleFonts.dmSans(
@@ -1520,6 +1495,32 @@ class _ModuleCardState extends State<ModuleCard> {
     return Icon(widget.modulo.icono, color: Colors.white, size: 22);
   }
 
+  Widget _buildModuleWordmark(ThemePalette palette) {
+    const assets = <String, String>{
+      'inventario': 'Inventario.webp',
+      'facturacion': 'Facturacion.webp',
+      'cotizaciones': 'Cotizaciones.webp',
+      'crm': 'CRM.webp',
+      'comercial': 'Comercial.webp',
+      'contabilidad': 'Contabilidad.webp',
+      'membresias': 'Membresias.webp',
+    };
+    final file = assets[widget.modulo.id.toLowerCase()];
+    if (file == null) {
+      return Text(widget.modulo.nombre, style: _getTitleStyle(widget.isMobile ? 16 : 18, palette), maxLines: 1, overflow: TextOverflow.ellipsis);
+    }
+    return Image.asset(
+      'img/texto/$file',
+      width: widget.isMobile ? 112 : 136,
+      height: 25,
+      alignment: Alignment.centerLeft,
+      fit: BoxFit.contain,
+      color: palette.isDark ? Colors.white : Colors.black,
+      colorBlendMode: BlendMode.srcIn,
+      errorBuilder: (_, __, ___) => Text(widget.modulo.nombre, style: _getTitleStyle(widget.isMobile ? 16 : 18, palette), maxLines: 1, overflow: TextOverflow.ellipsis),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = ThemePalette(isDark: appThemeNotifier.isDark);
@@ -1629,12 +1630,7 @@ class _ModuleCardState extends State<ModuleCard> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.modulo.nombre,
-                          style: _getTitleStyle(widget.isMobile ? 16 : 18, palette),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        _buildModuleWordmark(palette),
                         const SizedBox(height: 4),
                         Text(
                           widget.modulo.descripcion,

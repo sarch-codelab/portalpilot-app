@@ -124,6 +124,17 @@ class SyncService {
     // iniciar permite enviar los cambios guardados durante un uso sin señal.
     await ConnectivityService.instance.initialize();
     _isOnline = ConnectivityService.instance.isOnline;
+    // Versiones anteriores del onboarding encolaban "Portal Pilot Empresa"
+    // bajo códigos derivados del tipo de negocio (p. ej. PULPE). No son
+    // empresas reales ni se pueden sincronizar con la sesión actual.
+    await (_db.delete(_db.syncQueue)..where((s) => s.tabla.equals('empresas'))).go();
+    // Si la app se cerró con una petición en curso, libera su lock para que
+    // la fila no quede excluida de todos los sincronizados siguientes.
+    await (_db.update(_db.syncQueue)..where((s) => s.procesando.equals(true)))
+        .write(const SyncQueueCompanion(procesando: Value(false)));
+    if (_isOnline) {
+      await _releaseExhaustedItems();
+    }
     await _connectivitySubscription?.cancel();
     _connectivitySubscription = ConnectivityService.instance.connectivityStream.listen(setOnlineStatus);
     await _processPendingSync();
@@ -149,6 +160,7 @@ class SyncService {
     required SyncOperation operacion,
     required Map<String, dynamic> datos,
     String? empresaId,
+    bool triggerSync = true,
   }) async {
     final id = DateTime.now().microsecondsSinceEpoch.toString();
 
@@ -172,18 +184,21 @@ class SyncService {
       message: 'Encolado: $tabla ${operacion.name}',
     ));
 
-    if (_isOnline) {
+    if (_isOnline && triggerSync) {
       unawaited(_processPendingSync());
     }
   }
 
+  /// Inicia el envío después de que una transacción de negocio local confirmó.
+  void syncNowIfOnline() {
+    if (_isOnline) unawaited(_processPendingSync());
+  }
+
   Future<int> _getPendingCount() async {
-    // Los ítems que alcanzaron maxIntentos se conservan como auditoría pero
-    // ya no cuentan como pendientes (cola que salta fallos).
+    // También cuenta filas con error terminal: siguen pendientes de corregir,
+    // no se consideran sincronizadas ni desaparecen del indicador.
     return (_db.select(_db.syncQueue)
-          ..where((s) =>
-              s.procesando.equals(false) &
-              s.intentos.isSmallerThanValue(maxIntentos)))
+          ..where((s) => s.procesando.equals(false)))
         .get()
         .then((list) => list.length);
   }
@@ -211,9 +226,13 @@ class SyncService {
         await _processSyncItem(row);
       }
 
+      final pending = await _getPendingCount();
       _emitStatus(SyncStatus(
-        pendingCount: await _getPendingCount(),
-        message: 'Sincronización completada',
+        pendingCount: pending,
+        message: pending == 0
+            ? 'Sincronización completada'
+            : 'Sincronización detenida: $pending cambios siguen pendientes',
+        isError: pending > 0,
       ));
     } catch (e) {
       _emitStatus(SyncStatus(
@@ -273,6 +292,12 @@ class SyncService {
         case 'posVentas':
           success = await _syncPosVenta(datos, operacion);
           break;
+        case 'proveedores':
+          success = await _syncProveedorDirecto(datos, operacion);
+          break;
+        case 'compras':
+          success = await _syncCompraDirecta(datos, operacion);
+          break;
         case 'empresas':
           success = await _syncEmpresa(datos, operacion);
           break;
@@ -301,19 +326,72 @@ class SyncService {
     final venta = datos['venta'] as Map<String, dynamic>?;
     if (empresaCodigo == null || venta == null) return false;
 
-    // Asegura el alias `precio` que espera el backend para los items.
+    // Conserva el nombre de precio para clientes previos durante la transici?n.
     final items = (venta['items'] as List<dynamic>? ?? []).map((i) {
       final m = Map<String, dynamic>.from(i as Map<String, dynamic>);
       m['precio'] = m['precio'] ?? m['precio_unitario'];
       return m;
     }).toList();
-    final payload = Map<String, dynamic>.from(venta)..['items'] = items;
-
-    // Ruta genérica /api/sync con flujo idempotente por correlativo.
+    final payload = <String, dynamic>{
+      'empresa_codigo': empresaCodigo,
+      'items': items,
+      'correlativo': (venta['correlativo'] ?? venta['id'] ?? '').toString(),
+      'subtotal': venta['subtotal'] ?? 0,
+      'descuento': venta['descuento'] ?? 0,
+      'isv_15': venta['isv_15'] ?? 0,
+      'isv_18': venta['isv_18'] ?? 0,
+      'total': venta['total'] ?? 0,
+      'metodo_pago': venta['metodo_pago'] ?? 'efectivo',
+      'estado': venta['estado'] ?? 'completada',
+      'cliente_nombre': venta['cliente_nombre'],
+      'notas': venta['notas'],
+    };
     return await PortalPilotDB.syncRows(
       tabla: 'pos_ventas',
       empresaCodigo: empresaCodigo,
       rows: [payload],
+      operacion: op.name,
+    );
+  }
+
+  /// Proveedores por /api/sync; el endpoint directo está sin implementar.
+  Future<bool> _syncProveedorDirecto(Map<String, dynamic> datos, SyncOperation op) async {
+    final empresaCodigo = datos['empresa_codigo'] as String?;
+    if (empresaCodigo == null) return false;
+
+    Map<String, dynamic> proveedor;
+    final nested = datos['proveedor'];
+    if (nested is Map<String, dynamic>) {
+      proveedor = Map<String, dynamic>.from(nested);
+    } else {
+      proveedor = Map<String, dynamic>.from(datos)..remove('empresa_codigo');
+    }
+
+    return await PortalPilotDB.syncRows(
+      tabla: 'proveedores',
+      empresaCodigo: empresaCodigo,
+      rows: [proveedor],
+      operacion: op.name,
+    );
+  }
+
+  /// Compras por /api/sync para aplicar recepciones transaccionalmente.
+  Future<bool> _syncCompraDirecta(Map<String, dynamic> datos, SyncOperation op) async {
+    final empresaCodigo = datos['empresa_codigo'] as String?;
+    if (empresaCodigo == null) return false;
+
+    Map<String, dynamic> compra;
+    final nested = datos['compra'];
+    if (nested is Map<String, dynamic>) {
+      compra = Map<String, dynamic>.from(nested);
+    } else {
+      compra = Map<String, dynamic>.from(datos)..remove('empresa_codigo');
+    }
+
+    return await PortalPilotDB.syncRows(
+      tabla: 'compras',
+      empresaCodigo: empresaCodigo,
+      rows: [compra],
       operacion: op.name,
     );
   }
@@ -331,6 +409,8 @@ class SyncService {
         datos['orden_compra'] ??
         datos['orden'] ??
         datos['compra'] ??
+        datos['fiado_abono'] ??
+        datos['pos_arqueo_caja'] ??
         datos['transaccion'];
     if (nested is Map<String, dynamic>) {
       row = Map<String, dynamic>.from(nested);
@@ -411,7 +491,8 @@ class SyncService {
   }
 
   Future<bool> _syncEmpresa(Map<String, dynamic> datos, SyncOperation op) async {
-    final empresaCodigo = datos['empresa_codigo'] as String?;
+    // Onboarding stores the new tenant under `codigo` (not empresa_codigo).
+    final empresaCodigo = (datos['empresa_codigo'] ?? datos['codigo'])?.toString();
     if (empresaCodigo == null) return false;
 
     // Usa la ruta genérica /api/sync con el codigo de empresa para idempotencia.
@@ -475,14 +556,23 @@ class SyncService {
   }
 
   void setOnlineStatus(bool online) {
+    final regainedConnection = online && !_isOnline;
     _isOnline = online;
-    if (online && !_isSyncing) {
+    if (regainedConnection) {
+      unawaited(_releaseExhaustedItems());
+    } else if (online && !_isSyncing) {
       unawaited(_processPendingSync());
     }
     _emitStatus(SyncStatus(
       pendingCount: 0,
       message: online ? '🟢 Online - Sincronizando...' : '🔴 Offline - Cambios en cola local',
     ));
+  }
+
+  Future<void> _releaseExhaustedItems() async {
+    await (_db.update(_db.syncQueue)..where((s) => s.intentos.isBiggerOrEqualValue(maxIntentos) & s.procesando.equals(false)))
+        .write(SyncQueueCompanion(intentos: const Value(0), proximoIntento: Value(DateTime.now()), ultimoError: const Value<String?>(null)));
+    if (_isOnline && !_isSyncing) unawaited(_processPendingSync());
   }
 
   Future<void> forceSyncNow() async {
@@ -494,6 +584,17 @@ class SyncService {
       ));
       return;
     }
+    // "Forzar" da otra oportunidad a los ítems agotados (5/5): reinicia sus
+    // intentos para reprocesarlos con las rutas actuales (p. ej. tras
+    // actualizar la app). Si vuelven a fallar, regresan a agotados.
+    await (_db.update(_db.syncQueue)
+          ..where((s) =>
+              s.intentos.isBiggerOrEqualValue(maxIntentos) & s.procesando.equals(false)))
+        .write(SyncQueueCompanion(
+      intentos: const Value(0),
+      proximoIntento: Value(DateTime.now()),
+      ultimoError: const Value<String?>(null),
+    ));
     await _processPendingSync();
   }
 

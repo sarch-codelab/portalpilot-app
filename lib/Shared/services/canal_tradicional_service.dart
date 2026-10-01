@@ -9,9 +9,11 @@
 import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
+import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 
 /// Regímenes fiscales soportados por la SAR.
 class SarRegimen {
@@ -144,14 +146,54 @@ class CanalTradicionalService {
 
   String? _empresaId;
   String? _usuarioId;
+  String? _terminalId;
 
-  void setContext({required String empresaId, String? usuarioId}) {
+  void setContext({required String empresaId, String? usuarioId, String? terminalId}) {
     _empresaId = empresaId;
     _usuarioId = usuarioId;
+    _terminalId = terminalId;
   }
 
   String get empresaId => _empresaId ?? 'ROOT';
   String get usuarioId => _usuarioId ?? '';
+
+  Future<void> _encolarCuentaCredito({
+    required String id,
+    required String clienteId,
+    String? clienteNombre,
+    required double limiteCredito,
+    required double saldoActual,
+    required int diasVencimiento,
+    required String estado,
+    DateTime? fechaUltimoPago,
+    double montoUltimoPago = 0,
+    DateTime? fechaUltimaVenta,
+    String? notas,
+    SyncOperation operation = SyncOperation.update,
+    bool triggerSync = true,
+  }) async {
+    await SyncService.instance.enqueueSync(
+      tabla: 'pos_cliente_credito',
+      operacion: operation,
+      datos: {
+        'empresa_codigo': empresaId,
+        'id': id,
+        'cliente_id': clienteId,
+        'cliente_nombre': clienteNombre,
+        'limite_credito': limiteCredito,
+        'saldo_actual': saldoActual,
+        'dias_vencimiento': diasVencimiento,
+        'estado': estado,
+        'fecha_ultimo_pago': fechaUltimoPago?.toIso8601String(),
+        'monto_ultimo_pago': montoUltimoPago,
+        'fecha_ultima_venta': fechaUltimaVenta?.toIso8601String(),
+        'notas': notas,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      empresaId: empresaId,
+      triggerSync: triggerSync,
+    );
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // CUENTAS POR COBRAR (FIADO)
@@ -176,7 +218,8 @@ class CanalTradicionalService {
     final existente = await getCuentaFiado(clienteId);
     if (existente != null) return existente;
 
-    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    final id = const Uuid().v4();
+    await _db.transaction(() async {
     await _db.into(_db.posClienteCredito).insert(
       PosClienteCreditoCompanion.insert(
         id: id,
@@ -192,6 +235,19 @@ class CanalTradicionalService {
         synced: const Value(false),
       ),
     );
+    await _encolarCuentaCredito(
+      id: id,
+      clienteId: clienteId,
+      clienteNombre: clienteNombre,
+      limiteCredito: limiteCredito,
+      saldoActual: 0,
+      diasVencimiento: diasVencimiento,
+      estado: 'al_dia',
+      operation: SyncOperation.insert,
+      triggerSync: false,
+    );
+    });
+    SyncService.instance.syncNowIfOnline();
     return (await getCuentaFiado(clienteId))!;
   }
 
@@ -205,23 +261,43 @@ class CanalTradicionalService {
     final existente = await getCuentaFiado(clienteId);
 
     if (existente != null) {
+      final updatedAt = DateTime.now();
+      final nuevoEstado = existente.saldoActual > 0 ? 'activo' : 'al_dia';
+      await _db.transaction(() async {
       await (_db.update(_db.posClienteCredito)
-            ..where((c) => c.id.equals(existente.id)))
+            ..where((c) => c.id.equals(existente.id) & c.empresaId.equals(empresaId)))
           .write(
             PosClienteCreditoCompanion(
               clienteNombre: Value(clienteNombre ?? existente.clienteNombre),
               limiteCredito: Value(limiteCredito),
               diasVencimiento: Value(diasVencimiento),
-              estado: Value(existente.saldoActual > 0 ? 'activo' : 'al_dia'),
+              estado: Value(nuevoEstado),
               notas: Value(notas),
-              updatedAt: Value(DateTime.now()),
+              updatedAt: Value(updatedAt),
               synced: const Value(false),
             ),
           );
+      await _encolarCuentaCredito(
+        id: existente.id,
+        clienteId: clienteId,
+        clienteNombre: clienteNombre ?? existente.clienteNombre,
+        limiteCredito: limiteCredito,
+        saldoActual: existente.saldoActual,
+        diasVencimiento: diasVencimiento,
+        estado: nuevoEstado,
+        fechaUltimoPago: existente.fechaUltimoPago,
+        montoUltimoPago: existente.montoUltimoPago,
+        fechaUltimaVenta: existente.fechaUltimaVenta,
+        notas: notas,
+        triggerSync: false,
+      );
+      });
+      SyncService.instance.syncNowIfOnline();
       return;
     }
 
-    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    final id = const Uuid().v4();
+    await _db.transaction(() async {
     await _db.into(_db.posClienteCredito).insert(
       PosClienteCreditoCompanion.insert(
         id: id,
@@ -238,6 +314,20 @@ class CanalTradicionalService {
         synced: const Value(false),
       ),
     );
+    await _encolarCuentaCredito(
+      id: id,
+      clienteId: clienteId,
+      clienteNombre: clienteNombre,
+      limiteCredito: limiteCredito,
+      saldoActual: 0,
+      diasVencimiento: diasVencimiento,
+      estado: 'al_dia',
+      notas: notas,
+      operation: SyncOperation.insert,
+      triggerSync: false,
+    );
+    });
+    SyncService.instance.syncNowIfOnline();
   }
 
   /// Registra una venta al crédito (incrementa el saldo de la cuenta).
@@ -252,18 +342,37 @@ class CanalTradicionalService {
       clienteId: clienteId,
       clienteNombre: clienteNombre,
     );
+    final fecha = DateTime.now();
+    final nuevoSaldo = cuenta.saldoActual + monto;
+    await _db.transaction(() async {
     await (_db.update(_db.posClienteCredito)
           ..where((c) => c.id.equals(cuenta.id)))
         .write(
           PosClienteCreditoCompanion(
             clienteNombre: Value(clienteNombre ?? cuenta.clienteNombre),
-            saldoActual: Value(cuenta.saldoActual + monto),
+            saldoActual: Value(nuevoSaldo),
             estado: const Value('activo'),
-            fechaUltimaVenta: Value(DateTime.now()),
-            updatedAt: Value(DateTime.now()),
+            fechaUltimaVenta: Value(fecha),
+            updatedAt: Value(fecha),
             synced: const Value(false),
           ),
         );
+      await _encolarCuentaCredito(
+        id: cuenta.id,
+        clienteId: clienteId,
+        clienteNombre: clienteNombre ?? cuenta.clienteNombre,
+        limiteCredito: cuenta.limiteCredito,
+        saldoActual: nuevoSaldo,
+        diasVencimiento: cuenta.diasVencimiento,
+        estado: 'activo',
+        fechaUltimoPago: cuenta.fechaUltimoPago,
+        montoUltimoPago: cuenta.montoUltimoPago,
+        fechaUltimaVenta: fecha,
+        notas: cuenta.notas,
+        triggerSync: false,
+      );
+    });
+    SyncService.instance.syncNowIfOnline();
   }
 
   /// Valida si una venta al crédito supera el límite configurado.
@@ -300,10 +409,14 @@ class CanalTradicionalService {
     if (monto <= 0) {
       throw ArgumentError('El monto del abono debe ser mayor a cero.');
     }
+    if (!['efectivo', 'tarjeta', 'transferencia', 'cheque', 'otro'].contains(metodoPago)) {
+      throw ArgumentError('El método de pago no es válido.');
+    }
     final cuenta = await getCuentaFiado(clienteId);
     if (cuenta == null) {
       throw StateError('El cliente no tiene cuenta de fiado configurada.');
     }
+    if (cuenta.saldoActual <= 0) throw StateError('El cliente no tiene saldo pendiente.');
 
     final abono = math.min(monto, cuenta.saldoActual);
     final nuevoSaldo = (cuenta.saldoActual - abono).clamp(
@@ -311,23 +424,28 @@ class CanalTradicionalService {
       double.infinity,
     ).toDouble();
 
-    await (_db.update(_db.posClienteCredito)
-          ..where((c) => c.id.equals(cuenta.id)))
+    final fecha = DateTime.now();
+    final abonoId = const Uuid().v4();
+    final referenciaMovimiento = _terminalId == null
+        ? referencia
+        : 'POS_TERMINAL:$_terminalId::${referencia ?? ''}';
+    await _db.transaction(() async {
+      await (_db.update(_db.posClienteCredito)
+            ..where((c) => c.id.equals(cuenta.id) & c.empresaId.equals(empresaId)))
         .write(
           PosClienteCreditoCompanion(
             saldoActual: Value(nuevoSaldo),
-            fechaUltimoPago: Value(DateTime.now()),
+            fechaUltimoPago: Value(fecha),
             montoUltimoPago: Value(abono),
             estado: Value(nuevoSaldo == 0 ? 'al_dia' : 'activo'),
-            updatedAt: Value(DateTime.now()),
+            updatedAt: Value(fecha),
             synced: const Value(false),
           ),
         );
 
-    final fecha = DateTime.now();
-    await _db.into(_db.fiadoAbonos).insert(
+      await _db.into(_db.fiadoAbonos).insert(
       FiadoAbonosCompanion.insert(
-        id: fecha.microsecondsSinceEpoch.toString(),
+        id: abonoId,
         empresaId: empresaId,
         clienteId: clienteId,
         clienteNombre: Value(clienteNombre ?? cuenta.clienteNombre),
@@ -335,7 +453,7 @@ class CanalTradicionalService {
         facturaId: Value(facturaId),
         monto: abono,
         metodoPago: Value(metodoPago),
-        referencia: Value(referencia),
+      referencia: Value(referenciaMovimiento),
         notas: Value(notas),
         usuarioId: Value(usuarioId),
         fecha: Value(fecha),
@@ -343,17 +461,43 @@ class CanalTradicionalService {
       ),
     );
 
-    await _localDb.insertTransaccionLocal(
-      id: fecha.microsecondsSinceEpoch.toString(),
+      await SyncService.instance.enqueueSync(
+        tabla: 'fiado_abonos',
+        operacion: SyncOperation.insert,
+        datos: {
+          'empresa_codigo': empresaId,
+          'fiado_abono': {
+            'id': abonoId,
+            'cliente_id': clienteId,
+            'cliente_nombre': clienteNombre ?? cuenta.clienteNombre,
+            'venta_id': ventaId,
+            'factura_id': facturaId,
+            'monto': abono,
+            'metodo_pago': metodoPago,
+          'referencia': referenciaMovimiento,
+            'notas': notas,
+            'usuario_id': usuarioId,
+            'fecha': fecha.toIso8601String(),
+          },
+        },
+        empresaId: empresaId,
+        triggerSync: false,
+      );
+
+      await _localDb.insertTransaccionLocal(
+      id: abonoId,
       empresaId: empresaId,
       tipo: 'ingreso',
       categoria: 'Abono a cuenta por cobrar',
       descripcion: 'Abono ${clienteNombre ?? clienteId} - $metodoPago',
       monto: abono,
       metodoPago: metodoPago,
-      referencia: referencia,
+      referencia: referenciaMovimiento,
       fecha: fecha,
+      triggerSync: false,
     );
+    });
+    SyncService.instance.syncNowIfOnline();
   }
 
   /// Lista las cuentas por cobrar (por defecto solo las que tienen saldo).

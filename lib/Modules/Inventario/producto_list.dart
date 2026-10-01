@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:http/http.dart' as http;
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Modules/Inventario/producto_form.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
@@ -59,7 +61,32 @@ class _ProductoListState extends State<ProductoList> {
           productosFinales.add(p);
         }
       }
-      
+
+      // El cache fresco del API tiene prioridad: trae imagen_url y stock real;
+      // los productos locales que no estén en el cache se conservan.
+      final cacheJson = prefs.getString('productos_api_cache');
+      final cache = JsonGuard.safeListOfMaps(cacheJson, source: 'Inventario/producto_list/cache');
+      if (cache.isNotEmpty) {
+        String identidad(Map<String, dynamic> p) {
+          final c = (p['codigo'] ?? '').toString().trim();
+          if (c.isNotEmpty) return 'c:$c';
+          final b = (p['barcode'] ?? '').toString().trim();
+          if (b.isNotEmpty) return 'b:$b';
+          return 'id:${p['id']}';
+        }
+
+        final porIdentidad = <String, Map<String, dynamic>>{};
+        for (final p in productosFinales) {
+          porIdentidad[identidad(p)] = p;
+        }
+        for (final p in cache) {
+          porIdentidad[identidad(p)] = p;
+        }
+        productosFinales
+          ..clear()
+          ..addAll(porIdentidad.values);
+      }
+
       setState(() {
         _productos = _dedupePorCodigo(productosFinales);
         _aplicarFiltros();
@@ -73,6 +100,32 @@ class _ProductoListState extends State<ProductoList> {
         _productos = _dedupePorCodigo(JsonGuard.safeListOfMaps(json, source: 'Inventario/producto_list/fallback'));
         _aplicarFiltros();
       });
+    }
+
+    // Refresco en vivo contra el API (imagen_url + stock reales), sin
+    // bloquear la primera pintada local.
+    unawaited(_refrescarDesdeApi());
+  }
+
+  Future<void> _refrescarDesdeApi() async {
+    try {
+      final api = ApiService.instance;
+      final res = await api.get('/api/productos');
+      if (!api.isSuccess(res)) return;
+      final data = res['productos'] ?? res['data'];
+      if (data is! List || data.isEmpty) return;
+      final remotos = data.cast<Map<String, dynamic>>();
+      if (!mounted) return;
+      setState(() {
+        _productos = _dedupePorCodigo(remotos);
+        _aplicarFiltros();
+      });
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('productos_api_cache', jsonEncode(remotos));
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('[ProductoList] Refresco API falló: $e');
     }
   }
   
@@ -504,13 +557,20 @@ class _ProductoListState extends State<ProductoList> {
 
   Widget _buildProductoImagen(Map<String, dynamic> producto, Color accent) {
     const double size = 44;
+    // Acepta http(s), data:URL y base64 plano (mismo criterio que el POS).
     final url = (producto['imagen_url'] as String? ?? '').trim();
-    final base64Raw = (producto['imagen_base64'] as String? ?? '').trim();
-    final esUrl = url.isNotEmpty && url.startsWith('http');
+    final base64Raw =
+        (producto['imagen_base64'] as String? ?? url).trim();
+    final esDataUrl = url.startsWith('data:');
+    final esBase64Plano = !esDataUrl &&
+        url.isNotEmpty &&
+        !url.startsWith('http') &&
+        RegExp(r'^[A-Za-z0-9+/=\r\n]+$').hasMatch(url);
+    final esUrl = url.startsWith('http') && !esDataUrl;
     Uint8List? bytes;
-    if (!esUrl && base64Raw.isNotEmpty) {
+    if (esDataUrl || esBase64Plano || (!esUrl && base64Raw.isNotEmpty)) {
       try {
-        var b = base64Raw;
+        var b = esDataUrl ? url.substring(url.indexOf(',') + 1) : base64Raw;
         if (b.contains(',')) b = b.split(',').last;
         bytes = base64Decode(b);
       } catch (_) {

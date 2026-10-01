@@ -8,6 +8,7 @@ import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_stats_card.dart';
 
 class CrmHome extends StatefulWidget {
   const CrmHome({super.key});
@@ -133,101 +134,35 @@ class _CrmHomeState extends State<CrmHome> {
   }
 
   Widget _buildStatsGrid() {
-    // Ratio adaptativo: 6.5 aplasta las tarjetas en pantallas angostas
-    // (overflow ~35px); abajo de ~380px se dan más alto.
-    return LayoutBuilder(builder: (ctx, c) {
-      final ratio = c.maxWidth < 380 ? 4.6 : 6.5;
-      return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: ratio,
-      children: [
-        _buildStatCard(
-          'Clientes',
-          '$_totalClientes',
-          Icons.people_rounded,
-          const Color(0xFF06B6D4),
+    // Mismo estilo de KPIs que Inventario: tarjetas verticales grandes
+    // (PPStatsGrid); 2 columnas en móvil, 4 en escritorio.
+    return PPStatsGrid(
+      cards: [
+        PPStatsCard(
+          label: 'Clientes',
+          value: '$_totalClientes',
+          icon: Icons.people_rounded,
+          color: const Color(0xFF06B6D4),
         ),
-        _buildStatCard(
-          'Activos',
-          '$_clientesActivos',
-          Icons.check_circle_rounded,
-          const Color(0xFF10B981),
+        PPStatsCard(
+          label: 'Activos',
+          value: '$_clientesActivos',
+          icon: Icons.check_circle_rounded,
+          color: const Color(0xFF10B981),
         ),
-        _buildStatCard(
-          'Ventas Mes',
-          'L.${_formatNumber(_ventasMes)}',
-          Icons.trending_up_rounded,
-          const Color(0xFFF59E0B),
+        PPStatsCard(
+          label: 'Ventas Mes',
+          value: 'L.${_formatNumber(_ventasMes)}',
+          icon: Icons.trending_up_rounded,
+          color: const Color(0xFFF59E0B),
         ),
-        _buildStatCard(
-          'Por Cobrar',
-          'L.${_formatNumber(_pendienteCobro)}',
-          Icons.pending_actions_rounded,
-          const Color(0xFFEF4444),
+        PPStatsCard(
+          label: 'Por Cobrar',
+          value: 'L.${_formatNumber(_pendienteCobro)}',
+          icon: Icons.pending_actions_rounded,
+          color: const Color(0xFFEF4444),
         ),
       ],
-      );
-    });
-  }
-
-  Widget _buildStatCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  value,
-                  style: GoogleFonts.syne(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: appPalette.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  label,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 10,
-                    color: appPalette.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 

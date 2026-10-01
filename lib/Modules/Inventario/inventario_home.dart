@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,14 +36,25 @@ class _InventarioHomeState extends State<InventarioHome> {
   List<Map<String, dynamic>> _bodegas = [];
   int _totalProductos = 0;
   int _stockBajo = 0;
+  int _agotados = 0;
   double _valorInventario = 0.0;
   bool _cargando = true;
+
+  // Cuadro superior derecho cambiante: alterna entre Stock Bajo y Agotados
+  // cada 3 segundos cuando ambos existen.
+  Timer? _kpiCycleTimer;
+  bool _kpiMostrandoAgotados = false;
 
   @override
   void initState() {
     super.initState();
     _cargarDatos();
     appThemeNotifier.addListener(_onThemeChanged);
+    _kpiCycleTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted && _stockBajo > 0 && _agotados > 0) {
+        setState(() => _kpiMostrandoAgotados = !_kpiMostrandoAgotados);
+      }
+    });
   }
 
   void _onThemeChanged() {
@@ -49,6 +63,7 @@ class _InventarioHomeState extends State<InventarioHome> {
 
   @override
   void dispose() {
+    _kpiCycleTimer?.cancel();
     appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
@@ -69,13 +84,18 @@ class _InventarioHomeState extends State<InventarioHome> {
       final bodegas = results[1];
 
       int stockBajo = 0;
+      int agotados = 0;
       double valor = 0.0;
 
       for (final p in productos) {
         final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
         final minimo = (p['stock_minimo'] as num?)?.toInt() ?? 0;
         final precio = (p['precio_venta'] as num?)?.toDouble() ?? 0.0;
-        if (stock <= minimo && minimo > 0) stockBajo++;
+        if (stock <= 0) {
+          agotados++;
+        } else if (minimo > 0 && stock <= minimo) {
+          stockBajo++;
+        }
         valor += stock * precio;
       }
 
@@ -85,33 +105,49 @@ class _InventarioHomeState extends State<InventarioHome> {
           _bodegas = bodegas;
           _totalProductos = productos.length;
           _stockBajo = stockBajo;
+          _agotados = agotados;
           _valorInventario = valor;
           _cargando = false;
         });
       }
+      // Cache de la ÚLTIMA respuesta real del API: la próxima apertura pinta
+      // esto al instante (idéntico a lo que mostrará el refresh) y ya no se
+      // ven "datos viejos que se actualizan de la nada".
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('productos_api_cache', jsonEncode(productos));
+      } catch (_) {}
     } catch (e) {
       debugPrint('[Inventario] Error cargando datos: $e');
       if (mounted) setState(() => _cargando = false);
     }
   }
 
-  /// Pinta desde SharedPreferences al instante (sin esperar a la red).
+  /// Pinta al instante desde el cache de la última respuesta del API (o de
+  /// los registros locales como último recurso, p.ej. primera vez offline).
   Future<void> _cargarLocales() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Preferir el cache fresco del API sobre la lista vieja de 'productos'.
+      final cacheFuente = prefs.getString('productos_api_cache') ?? prefs.getString('productos');
       final localProductos = JsonGuard
-          .safeListOfMaps(prefs.getString('productos'), source: 'Inventario/local/productos')
+          .safeListOfMaps(cacheFuente, source: 'Inventario/local/productos')
           .cast<Map<String, dynamic>>();
 
       if (!mounted || localProductos.isEmpty) return;
 
       int stockBajo = 0;
+      int agotados = 0;
       double valor = 0.0;
       for (final p in localProductos) {
         final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
         final minimo = (p['stock_minimo'] as num?)?.toInt() ?? 0;
         final precio = (p['precio_venta'] as num?)?.toDouble() ?? 0.0;
-        if (stock <= minimo && minimo > 0) stockBajo++;
+        if (stock <= 0) {
+          agotados++;
+        } else if (minimo > 0 && stock <= minimo) {
+          stockBajo++;
+        }
         valor += stock * precio;
       }
 
@@ -119,6 +155,7 @@ class _InventarioHomeState extends State<InventarioHome> {
         _productos = localProductos;
         _totalProductos = localProductos.length;
         _stockBajo = stockBajo;
+        _agotados = agotados;
         _valorInventario = valor;
         _cargando = false;
       });
@@ -129,10 +166,12 @@ class _InventarioHomeState extends State<InventarioHome> {
 
   Future<List<Map<String, dynamic>>> _fetchProductos() async {
     List<Map<String, dynamic>> productos = [];
+    var respuestaRemotaValida = false;
     try {
       final api = ApiService.instance;
       final res = await api.get('/api/productos');
       if (api.isSuccess(res)) {
+        respuestaRemotaValida = true;
         final data = res['productos'] ?? res['data'];
         if (data is List) {
           productos = data.cast<Map<String, dynamic>>();
@@ -141,7 +180,9 @@ class _InventarioHomeState extends State<InventarioHome> {
     } catch (e) {
       debugPrint('[Inventario] API load failed, falling back to local: $e');
     }
-    if (productos.isEmpty) {
+    // Una respuesta válida vacía significa inventario vacío; no volver a
+    // mostrar registros antiguos del dispositivo como si fueran actuales.
+    if (!respuestaRemotaValida) {
       final prefs = await SharedPreferences.getInstance();
       final productosJson = prefs.getString('productos') ?? '[]';
       final List<dynamic> localProductos = JsonGuard.safeListOfMaps(productosJson, source: 'Inventario/productos');
@@ -208,7 +249,7 @@ class _InventarioHomeState extends State<InventarioHome> {
     final productosBajo = _productos.where((p) {
       final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
       final minimo = (p['stock_minimo'] as num?)?.toInt() ?? 0;
-      return stock <= minimo && minimo > 0;
+      return stock > 0 && minimo > 0 && stock <= minimo;
     }).toList();
 
     return ListView(
@@ -224,12 +265,7 @@ class _InventarioHomeState extends State<InventarioHome> {
               icon: Icons.inventory_2_rounded,
               color: _inventarioColor,
             ),
-            PPStatsCard(
-              label: 'Stock Bajo',
-              value: '$_stockBajo',
-              icon: Icons.warning_amber_rounded,
-              color: palette.errorRed,
-            ),
+            _buildKpiCambiante(palette),
             PPStatsCard(
               label: 'Bodegas',
               value: '${_bodegas.length}',
@@ -244,9 +280,9 @@ class _InventarioHomeState extends State<InventarioHome> {
             ),
           ],
         ),
-        if (productosBajo.isNotEmpty) ...[
+        if (productosBajo.isNotEmpty || _agotados > 0) ...[
           const SizedBox(height: 16),
-          _buildAlertBanner(palette, productosBajo.length),
+          _buildAlertBanner(palette, productosBajo.length, _agotados),
         ],
         const SizedBox(height: 22),
         _buildSectionTitle(palette, 'ACCIONES RÁPIDAS'),
@@ -292,14 +328,14 @@ class _InventarioHomeState extends State<InventarioHome> {
           ),
         ),
         const SizedBox(height: 14),
-        Text(
-          'Inventario',
-          style: GoogleFonts.syne(
-            fontSize: MobileUtils.responsiveFontSize(context, 24),
-            fontWeight: FontWeight.w900,
-            color: palette.textPrimary,
-            letterSpacing: -0.5,
-          ),
+        Image.asset(
+          'img/texto/Inventario.webp',
+          width: 190,
+          height: MobileUtils.responsiveFontSize(context, 30),
+          alignment: Alignment.centerLeft,
+          fit: BoxFit.contain,
+          color: palette.isDark ? Colors.white : Colors.black,
+          colorBlendMode: BlendMode.srcIn,
         ),
         const SizedBox(height: 4),
         Text(
@@ -310,7 +346,44 @@ class _InventarioHomeState extends State<InventarioHome> {
     );
   }
 
-  Widget _buildAlertBanner(ThemePalette palette, int count) {
+  /// Cuadro superior derecho CAMBIANTE: si hay productos con stock bajo Y
+  /// agotados, alterna entre ambos cada 3 segundos con una transición suave;
+  /// si solo existe una de las dos condiciones, muestra esa fija.
+  Widget _buildKpiCambiante(ThemePalette palette) {
+    final mostrarAgotados =
+        _agotados > 0 && (_kpiMostrandoAgotados || _stockBajo == 0);
+    final label = mostrarAgotados ? 'Agotados' : 'Stock Bajo';
+    final value = mostrarAgotados ? _agotados : _stockBajo;
+    final icon = mostrarAgotados
+        ? Icons.remove_shopping_cart_rounded
+        : Icons.warning_amber_rounded;
+    final color = mostrarAgotados ? palette.errorRed : _inventarioColor;
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 450),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.08),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: PPStatsCard(
+        key: ValueKey('$label-$value'),
+        label: label,
+        value: '$value',
+        icon: icon,
+        color: color,
+      ),
+    );
+  }
+
+  Widget _buildAlertBanner(ThemePalette palette, int count, int agotados) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -327,11 +400,11 @@ class _InventarioHomeState extends State<InventarioHome> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$count producto${count > 1 ? 's' : ''} con stock bajo',
+                  '${count + agotados} producto${count + agotados == 1 ? '' : 's'} requieren atencion',
                   style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: palette.textPrimary),
                 ),
                 Text(
-                  'Revisa el inventario para reabastecer',
+                  '${agotados > 0 ? '$agotados agotados' : ''}${agotados > 0 && count > 0 ? ' - ' : ''}${count > 0 ? '$count con stock bajo' : ''}',
                   style: GoogleFonts.dmSans(fontSize: 12, color: palette.textMuted),
                 ),
               ],

@@ -70,7 +70,7 @@ class _CanalModernoHomeState extends State<CanalModernoHome> {
             _buildResumen(),
             const SizedBox(height: 16),
             Text(
-              'GESTIÃ“N',
+              'GESTIÓN',
               style: GoogleFonts.syne(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
