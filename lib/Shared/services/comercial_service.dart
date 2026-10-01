@@ -139,6 +139,7 @@ class ComercialService {
   static final ComercialService instance = ComercialService._();
 
   final AppDatabase _db = LocalDatabaseService.instance.database;
+  final LocalDatabaseService _localDb = LocalDatabaseService.instance;
 
   String? _empresaId;
   String? _usuarioId;
@@ -1186,7 +1187,7 @@ class ComercialService {
 
       // Se actualiza el stock en la misma transacci?n que el documento y la cola.
       for (final (p, cant, precio, _) in items) {
-        await _incrementarStock(p.id, cant, precioCompraNuevo: precio);
+        await _incrementarStock(p.id, cant, precioCompraNuevo: precio, referencia: 'Compra a proveedor');
       }
 
       await SyncService.instance.enqueueSync(
@@ -1232,7 +1233,7 @@ class ComercialService {
     return await q.getSingle();
   }
 
-  Future<void> _incrementarStock(String productoId, int cantidad, {required double precioCompraNuevo}) async {
+  Future<void> _incrementarStock(String productoId, int cantidad, {required double precioCompraNuevo, String? referencia}) async {
     final q = _db.select(_db.productos)..where((p) => p.id.equals(productoId) & p.empresaId.equals(empresaId));
     final producto = await q.getSingleOrNull();
     if (producto == null) throw StateError('Producto no encontrado en esta empresa.');
@@ -1248,6 +1249,17 @@ class ComercialService {
         updatedAt: Value(DateTime.now()),
         synced: const Value(false),
       ),
+    );
+    // Kardex: la compra del proveedor es una ENTRADA.
+    await _localDb.registrarMovimientoKardexSolo(
+      empresaCodigo: empresaId,
+      productoId: productoId,
+      productoCodigo: producto.codigo ?? '',
+      nombreProducto: producto.nombre,
+      tipo: 'entrada',
+      cantidad: cantidad,
+      stockDespues: producto.stockActual + cantidad,
+      referencia: referencia ?? 'Compra a proveedor',
     );
   }
 
@@ -1361,6 +1373,17 @@ class ComercialService {
             updatedAt: Value(DateTime.now()),
             synced: const Value(false),
           ),
+        );
+        // Kardex: anular la compra DEVUELVE mercadería al proveedor (salida).
+        await _localDb.registrarMovimientoKardexSolo(
+          empresaCodigo: empresaId,
+          productoId: productoId,
+          productoCodigo: prod.codigo ?? '',
+          nombreProducto: prod.nombre,
+          tipo: 'salida',
+          cantidad: item.cantidad,
+          stockDespues: prod.stockActual - item.cantidad,
+          referencia: 'Anulación de compra',
         );
       }
       await (_db.update(_db.compras)..where((c) => c.id.equals(id) & c.empresaId.equals(empresaId))).write(

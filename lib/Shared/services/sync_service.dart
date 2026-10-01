@@ -440,9 +440,10 @@ class SyncService {
         // correlativo. El backend admite ambos identificadores dentro del
         // tenant autenticado.
         final remoteIdentity = (factura['correlativo'] as String?)?.trim();
-        return await PortalPilotDB.anularFactura(
+        return await PortalPilotDB.updateFactura(
           id: (remoteIdentity?.isNotEmpty ?? false) ? remoteIdentity! : factura['id'] as String,
           empresaCodigo: empresaCodigo,
+          factura: factura,
         );
       case SyncOperation.delete:
         return false;

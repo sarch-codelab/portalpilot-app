@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
+import 'package:portal_pilot_app/Shared/utils/fiscal_compliance.dart';
 
 class SarConfigScreen extends StatefulWidget {
   const SarConfigScreen({super.key});
@@ -134,6 +135,20 @@ class _SarConfigScreenState extends State<SarConfigScreen> {
       puntoEmision: _puntoEmision.text,
       regimen: _regimen,
     );
+    final fiscal = FiscalCompliance();
+    await fiscal.loadConfig();
+    final fiscalConfig = fiscal.config.copyWith(
+      rtnEmpresa: _rtn.text.trim(),
+      nombreEmpresa: _razonSocial.text.trim(),
+      establecimiento: _establecimiento.text.trim(),
+      puntoEmision: _puntoEmision.text.trim(),
+      cai: _cai.text.trim(),
+      caiExpiration: _fechaLimite,
+      clearCai: _cai.text.trim().isEmpty,
+      clearCaiExpiration: _fechaLimite == null,
+      regimenTributario: _regimen,
+    );
+    final fiscalSaved = await fiscal.saveConfig(fiscalConfig);
 
     setState(() => _guardando = false);
     if (!mounted) return;
@@ -141,12 +156,14 @@ class _SarConfigScreenState extends State<SarConfigScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          validacionRTN
+          validacionRTN && fiscalSaved
               ? 'Configuración SAR guardada'
-              : 'Guardada. Nota: el RTN no pasó la validación de dígito verificador.',
+              : !fiscalSaved
+                  ? 'Se guardó en el dispositivo, pero no se pudo encolar la sincronización fiscal.'
+                  : 'Guardada. Nota: el RTN no pasó la validación de dígito verificador.',
           style: GoogleFonts.dmSans(),
         ),
-        backgroundColor: validacionRTN
+        backgroundColor: validacionRTN && fiscalSaved
             ? const Color(0xFF10B981)
             : const Color(0xFFF59E0B),
       ),

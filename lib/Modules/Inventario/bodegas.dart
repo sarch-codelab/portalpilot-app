@@ -3,6 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
+import 'package:portal_pilot_app/Shared/services/sync_service.dart';
+import 'package:uuid/uuid.dart';
 
 class BodegasScreen extends StatefulWidget {
   const BodegasScreen({super.key});
@@ -12,7 +17,9 @@ class BodegasScreen extends StatefulWidget {
 }
 
 class _BodegasScreenState extends State<BodegasScreen> {
-  List<String> _bodegas = ['General'];
+  List<Map<String, dynamic>> _bodegas = [
+    {'id': 'bodega-general', 'nombre': 'General'},
+  ];
   List<Map<String, dynamic>> _productos = [];
 
   @override
@@ -24,10 +31,32 @@ class _BodegasScreenState extends State<BodegasScreen> {
   Future<void> _cargarDatos() async {
     final prefs = await SharedPreferences.getInstance();
     final rawBodegas = prefs.getString('bodegas');
-    final bodegasLeidas = JsonGuard.safeListOfStrings(rawBodegas, source: 'Inventario/bodegas');
+    final decodedBodegas = JsonGuard.tryDecode(rawBodegas);
+    var bodegas = JsonGuard.toListOfMaps(decodedBodegas);
+    if (bodegas.isEmpty) {
+      bodegas = JsonGuard.toListOfStrings(decodedBodegas)
+          .map((nombre) => {'id': 'legacy_${nombre.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_')}', 'nombre': nombre})
+          .toList();
+    }
+    if (bodegas.isEmpty) bodegas = [{'id': 'bodega-general', 'nombre': 'General'}];
+    final productos = JsonGuard.safeListOfMaps(prefs.getString('productos'), source: 'Inventario/bodegas/productos');
+    try {
+      await LocalDatabaseService.instance.initialize();
+      final api = ApiService.instance;
+      final response = await api.get('/api/bodegas', queryParams: {'empresaCodigo': AuthController.instance.empresaCodigo});
+      final remote = response['bodegas'] ?? response['data'];
+      if (api.isSuccess(response) && remote is List) {
+        bodegas = remote.whereType<Map>().map((b) => Map<String, dynamic>.from(b)).toList();
+        if (!bodegas.any((b) => b['nombre'] == 'General')) {
+          bodegas.insert(0, {'id': 'bodega-general', 'nombre': 'General'});
+        }
+        await prefs.setString('bodegas', jsonEncode(bodegas));
+      }
+    } catch (_) {}
+    if (!mounted) return;
     setState(() {
-      _bodegas = bodegasLeidas.isEmpty && rawBodegas == null ? const ['General'] : bodegasLeidas;
-      _productos = JsonGuard.safeListOfMaps(prefs.getString('productos'), source: 'Inventario/bodegas/productos');
+      _bodegas = bodegas;
+      _productos = productos;
     });
   }
 
@@ -65,11 +94,21 @@ class _BodegasScreenState extends State<BodegasScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFF737373)))),
           ElevatedButton(
             onPressed: () async {
-              if (controller.text.isNotEmpty && !_bodegas.contains(controller.text)) {
+              final nombre = controller.text.trim();
+              if (nombre.isNotEmpty && !_bodegas.any((b) => (b['nombre'] ?? '').toString().toLowerCase() == nombre.toLowerCase())) {
                 final prefs = await SharedPreferences.getInstance();
-                _bodegas.add(controller.text);
+                final id = const Uuid().v4();
+                final bodega = {'id': id, 'nombre': nombre};
+                _bodegas.add(bodega);
                 await prefs.setString('bodegas', jsonEncode(_bodegas));
-                _cargarDatos();
+                await LocalDatabaseService.instance.initialize();
+                await SyncService.instance.enqueueSync(
+                  tabla: 'bodegas',
+                  operacion: SyncOperation.insert,
+                  datos: {'empresa_codigo': AuthController.instance.empresaCodigo, ...bodega},
+                  empresaId: AuthController.instance.empresaCodigo,
+                );
+                if (mounted) setState(() {});
               }
               if (ctx.mounted) Navigator.pop(ctx);
             },
@@ -81,7 +120,8 @@ class _BodegasScreenState extends State<BodegasScreen> {
     );
   }
 
-  void _eliminarBodega(String nombre) {
+  void _eliminarBodega(Map<String, dynamic> bodega) {
+    final nombre = (bodega['nombre'] ?? '').toString();
     if (nombre == 'General') return;
     final count = _productosEnBodega(nombre);
     if (count > 0) {
@@ -105,9 +145,16 @@ class _BodegasScreenState extends State<BodegasScreen> {
           ElevatedButton(
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
-              _bodegas.remove(nombre);
+              _bodegas.removeWhere((b) => b['id'] == bodega['id']);
               await prefs.setString('bodegas', jsonEncode(_bodegas));
-              _cargarDatos();
+              await LocalDatabaseService.instance.initialize();
+              await SyncService.instance.enqueueSync(
+                tabla: 'bodegas',
+                operacion: SyncOperation.delete,
+                datos: {'empresa_codigo': AuthController.instance.empresaCodigo, 'id': bodega['id']},
+                empresaId: AuthController.instance.empresaCodigo,
+              );
+              if (mounted) setState(() {});
               if (ctx.mounted) Navigator.pop(ctx);
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
@@ -141,7 +188,8 @@ class _BodegasScreenState extends State<BodegasScreen> {
         padding: const EdgeInsets.all(16),
         itemCount: _bodegas.length,
         itemBuilder: (_, i) {
-          final nombre = _bodegas[i];
+          final bodega = _bodegas[i];
+          final nombre = (bodega['nombre'] ?? 'General').toString();
           final prodCount = _productosEnBodega(nombre);
           final stockTotal = _stockEnBodega(nombre);
           final esGeneral = nombre == 'General';
@@ -184,7 +232,7 @@ class _BodegasScreenState extends State<BodegasScreen> {
                 if (!esGeneral)
                   IconButton(
                     icon: const Icon(Icons.delete_rounded, color: Color(0xFFEF4444), size: 20),
-                    onPressed: () => _eliminarBodega(nombre),
+                    onPressed: () => _eliminarBodega(bodega),
                   ),
               ],
             ),

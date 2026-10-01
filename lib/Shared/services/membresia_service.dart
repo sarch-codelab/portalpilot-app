@@ -265,6 +265,36 @@ class MembresiaService {
   }
 
   /// Socios con su membresía vigente (para la lista principal).
+  /// Socios activos cuyo nombre coincide con el texto (para el POS del club).
+  Future<List<Socio>> buscarSociosActivos(String texto) async {
+    await _marcarVencidas();
+    final t = texto.trim().toLowerCase();
+    final tieneTexto = t.isNotEmpty;
+    final q = _db.select(_db.socios)
+      ..where((s) {
+        Expression<bool> cond = s.empresaId.equals(empresaId) & s.activo.equals(true);
+        if (tieneTexto) {
+          cond = cond & s.nombre.lower().like('%$t%');
+        }
+        return cond;
+      })
+      ..orderBy([(s) => OrderingTerm.asc(s.nombre)])
+      ..limit(25);
+    return q.get();
+  }
+
+  /// ¿Tiene membresía ACTIVA hoy este socio?
+  Future<bool> socioTieneMembresiaActiva(String socioId) async {
+    final activas = await (_db.select(_db.socioMembresias)
+          ..where((a) =>
+              a.empresaId.equals(empresaId) &
+              a.socioId.equals(socioId) &
+              a.estado.equals(EstadoAfiliacion.activa) &
+              a.fechaFin.isBiggerThanValue(DateTime.now())))
+        .get();
+    return activas.isNotEmpty;
+  }
+
   Future<List<SocioFila>> getSociosFila() async {
     await _marcarVencidas();
     final socios = await getSocios();

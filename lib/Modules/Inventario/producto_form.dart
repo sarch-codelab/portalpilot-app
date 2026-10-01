@@ -187,11 +187,27 @@ class _ProductoFormState extends State<ProductoForm> {
   Future<void> _cargarBodegas() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('bodegas');
-    if (raw == null) {
-      setState(() => _bodegas = const ['General']);
-      return;
+    var bodegas = JsonGuard.toListOfMaps(JsonGuard.tryDecode(raw))
+        .map((b) => (b['nombre'] ?? '').toString())
+        .where((nombre) => nombre.trim().isNotEmpty)
+        .toList();
+    if (bodegas.isEmpty) {
+      bodegas = JsonGuard.toListOfStrings(JsonGuard.tryDecode(raw));
     }
-    setState(() => _bodegas = JsonGuard.safeListOfStrings(raw, source: 'Inventario/bodegas/producto_form'));
+    try {
+      final api = ApiService.instance;
+      final response = await api.get('/api/bodegas', queryParams: {'empresaCodigo': AuthController.instance.empresaCodigo});
+      final remote = response['bodegas'] ?? response['data'];
+      if (api.isSuccess(response) && remote is List) {
+        bodegas = remote.whereType<Map>()
+            .map((b) => (b['nombre'] ?? '').toString())
+            .where((nombre) => nombre.trim().isNotEmpty)
+            .toList();
+        await prefs.setString('bodegas', jsonEncode(remote));
+      }
+    } catch (_) {}
+    if (!bodegas.contains('General')) bodegas.insert(0, 'General');
+    if (mounted) setState(() => _bodegas = bodegas);
   }
 
   void _cargarProducto() {

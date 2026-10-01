@@ -193,10 +193,12 @@ class _InventarioHomeState extends State<InventarioHome> {
 
   Future<List<Map<String, dynamic>>> _fetchBodegas() async {
     List<Map<String, dynamic>> bodegas = [];
+    var respuestaRemotaValida = false;
     try {
       final api = ApiService.instance;
       final res = await api.get('/api/bodegas');
       if (api.isSuccess(res)) {
+        respuestaRemotaValida = true;
         final data = res['bodegas'] ?? res['data'];
         if (data is List) {
           bodegas = data.cast<Map<String, dynamic>>();
@@ -205,8 +207,20 @@ class _InventarioHomeState extends State<InventarioHome> {
     } catch (e) {
       debugPrint('[Inventario] Bodegas API failed: $e');
     }
-    if (bodegas.isEmpty) {
-      bodegas = [{'nombre': 'General'}];
+    if (!respuestaRemotaValida) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final local = JsonGuard.tryDecode(prefs.getString('bodegas'));
+        bodegas = JsonGuard.toListOfMaps(local);
+        if (bodegas.isEmpty) {
+          bodegas = JsonGuard.toListOfStrings(local)
+              .map((nombre) => {'nombre': nombre})
+              .toList();
+        }
+      } catch (_) {}
+    }
+    if (!bodegas.any((b) => b['nombre'] == 'General')) {
+      bodegas.insert(0, {'id': 'bodega-general', 'nombre': 'General'});
     }
     return bodegas;
   }

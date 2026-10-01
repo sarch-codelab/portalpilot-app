@@ -18,6 +18,7 @@ const routes = {
   'cotizaciones': cotizacionesHandler,
   'facturas': facturasHandler,
   'facturas/resumen': facturasResumenHandler,
+  'configuracion-fiscal': configuracionFiscalHandler,
   'kardex': kardexHandler,
   'audit': auditHandler,
   'matriculas': matriculasHandler,
@@ -29,6 +30,7 @@ const routes = {
   'storage': storageHandler,
   'sync': syncHandler,
   'transacciones': transaccionesHandler,
+  'bodegas': bodegasHandler,
   'ventas': ventasHandler,
 };
 
@@ -999,12 +1001,28 @@ async function facturasHandler(req, res) {
       const empresaCodigo = verifiedTenantCode(req, body.empresa_codigo || '');
       const f = body.factura || body;
       const empresaId = await resolverEmpresaId(empresaCodigo);
+      const tasaIsvEstandar = Number(f.tasa_isv_estandar ?? 0.15);
+      if (!Number.isFinite(tasaIsvEstandar) || tasaIsvEstandar < 0 || tasaIsvEstandar > 0.50) {
+        return fail(res, { message: 'La tasa ISV estándar debe estar entre 0 y 0.50.', status: 400 });
+      }
+      if (f.correlativo) {
+        const existing = await supabaseRequest(
+          `/facturas?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&correlativo=eq.${encodeURIComponent(f.correlativo)}&select=id&limit=1`
+        );
+        if (existing.status >= 400) return fail(res, { message: existing.body, status: 502 });
+        if ((JSON.parse(existing.body || '[]') || []).length) {
+          return ok(res, { success: true, duplicate: true });
+        }
+      }
 
       const payload = {
         empresa_codigo: empresaCodigo,
         correlativo: f.correlativo || '',
         tipo_documento: f.tipo_documento || 'Factura',
         cai: f.cai || '',
+        rango_inicio: f.rango_inicio || null,
+        rango_fin: f.rango_fin || null,
+        fecha_limite_emision: f.fecha_limite_emision || null,
         cliente_nombre: f.cliente_nombre || null,
         cliente_rtn: f.cliente_rtn || null,
         cliente_direccion: f.cliente_direccion || null,
@@ -1016,6 +1034,7 @@ async function facturasHandler(req, res) {
         isv_18: f.isv_18 || 0,
         descuento: f.descuento || 0,
         total: f.total || 0,
+        tasa_isv_estandar: tasaIsvEstandar,
         estado: f.estado || 'emitida',
         notas: f.notas || null,
       };
@@ -1030,18 +1049,30 @@ async function facturasHandler(req, res) {
       const id = (req.query?.id || req.params?.id || '').toString();
       const body = parseBody(req);
       const empresaCodigo = verifiedTenantCode(req, body.empresa_codigo || '');
-      if (!id) return fail(res, { message: 'Falta el identificador de la factura.', status: 400 });
+      const f = body.factura || body;
+      const correlativo = (req.query?.correlativo || f.correlativo || '').toString();
+      if (!id && !correlativo) return fail(res, { message: 'Falta el identificador de la factura.', status: 400 });
       const update = { updated_at: new Date().toISOString() };
-      if (body.estado !== undefined) update.estado = body.estado;
-      if (body.motivo_anulacion !== undefined) update.motivo_anulacion = body.motivo_anulacion;
-      if (body.fecha_anulacion !== undefined) update.fecha_anulacion = body.fecha_anulacion;
+      const allowed = ['tipo_documento','cai','rango_inicio','rango_fin','fecha_limite_emision','cliente_nombre','cliente_rtn','cliente_direccion','condicion_pago','tipo_venta','items','subtotal','isv_15','isv_18','descuento','total','tasa_isv_estandar','estado','notas','fecha_anulacion','motivo_anulacion'];
+      if (f.tasa_isv_estandar !== undefined) {
+        const tasa = Number(f.tasa_isv_estandar);
+        if (!Number.isFinite(tasa) || tasa < 0 || tasa > 0.50) {
+          return fail(res, { message: 'La tasa ISV estándar debe estar entre 0 y 0.50.', status: 400 });
+        }
+      }
+      for (const key of allowed) if (f[key] !== undefined) update[key] = f[key];
+      const identityFilter = id
+        ? `id=eq.${encodeURIComponent(id)}`
+        : `correlativo=eq.${encodeURIComponent(correlativo)}`;
 
-      const result = await supabaseRequest(`/facturas?id=eq.${encodeURIComponent(id)}&empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}`, {
+      const result = await supabaseRequest(`/facturas?${identityFilter}&empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}`, {
         method: 'PATCH',
         body: JSON.stringify(update),
       });
       if (result.status >= 400) return fail(res, { message: result.body });
-      return ok(res, { success: true, data: JSON.parse(result.body) });
+      const rows = JSON.parse(result.body || '[]');
+      if (!rows.length) return fail(res, { message: 'Factura no encontrada en esta empresa.', status: 404 });
+      return ok(res, { success: true, data: rows });
     }
 
     return res.status(405).json({ error: 'MÃ©todo no permitido' });
@@ -1112,6 +1143,26 @@ async function facturasResumenHandler(req, res) {
         facturado_mes: mesTotal,
       },
     });
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+async function configuracionFiscalHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido' });
+  try {
+    const empresaCodigo = verifiedTenantCode(req, req.query?.empresaCodigo || req.query?.empresa_codigo);
+    const result = await supabaseRequest(
+      `/configuracion_fiscal?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&select=configuracion,updated_at&limit=1`
+    );
+    if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
+    const rows = JSON.parse(result.body || '[]');
+    return ok(res, { success: true, configuracion: rows[0]?.configuracion || null, updated_at: rows[0]?.updated_at || null });
   } catch (err) {
     return fail(res, err);
   }
@@ -1415,14 +1466,73 @@ function proveedoresHandler(req, res) {
   return comercialListHandler(req, res, { table: 'proveedores', responseKey: 'proveedores' });
 }
 
-function transaccionesHandler(req, res) {
+async function transaccionesHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
-  
-  res.status(501).json({ error: 'Endpoint en desarrollo' });
+
+  try {
+    if (req.method === 'GET') {
+      const empresaCodigo = verifiedTenantCode(req, req.query?.empresaCodigo || req.query?.empresa_codigo);
+      const result = await supabaseRequest(`/transacciones?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=fecha.desc&limit=1000`);
+      if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
+      return ok(res, JSON.parse(result.body || '[]'));
+    }
+    if (req.method === 'POST') {
+      const body = parseBody(req);
+      const empresaCodigo = verifiedTenantCode(req, body.empresa_codigo || '');
+      const t = body.transaccion || body;
+      if (!['ingreso', 'gasto', 'transferencia', 'ajuste'].includes(String(t.tipo))) {
+        return fail(res, { message: 'Tipo de transacción inválido.', status: 400 });
+      }
+      const monto = Number(t.monto);
+      if (!Number.isFinite(monto) || monto < 0) return fail(res, { message: 'Monto de transacción inválido.', status: 400 });
+      if (t.id) {
+        const existing = await supabaseRequest(`/transacciones?id=eq.${encodeURIComponent(t.id)}&empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&select=id&limit=1`);
+        if (existing.status >= 400) return fail(res, { message: existing.body, status: 502 });
+        if ((JSON.parse(existing.body || '[]') || []).length) return ok(res, { success: true, duplicate: true });
+      }
+      const payload = {
+        ...(t.id ? { id: t.id } : {}),
+        empresa_codigo: empresaCodigo,
+        empresa_id: await resolverEmpresaId(empresaCodigo),
+        tipo: t.tipo,
+        categoria: t.categoria || null,
+        descripcion: t.descripcion || null,
+        monto,
+        metodo_pago: t.metodo_pago || null,
+        referencia: t.referencia || null,
+        fecha: t.fecha || new Date().toISOString(),
+      };
+      const result = await supabaseRequest('/transacciones', { method: 'POST', body: JSON.stringify(payload) });
+      if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
+      return ok(res, { success: true, data: JSON.parse(result.body || '[]') }, 201);
+    }
+    return res.status(405).json({ error: 'Método no permitido' });
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+async function bodegasHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido' });
+  try {
+    const empresaCodigo = verifiedTenantCode(req, req.query?.empresaCodigo || req.query?.empresa_codigo);
+    const result = await supabaseRequest(
+      `/bodegas?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&order=nombre.asc&limit=500`
+    );
+    if (result.status >= 400) return fail(res, { message: result.body, status: 502 });
+    return ok(res, { success: true, bodegas: JSON.parse(result.body || '[]') });
+  } catch (err) {
+    return fail(res, err);
+  }
 }
 
 async function ventasHandler(req, res) {
@@ -1505,6 +1615,8 @@ const TABLAS_SYNC = new Set([
   'compras',
   'compra_items',
   'transacciones',
+  'configuracion_fiscal',
+  'bodegas',
   'matriculas',
   'notas',
   'empleados',
@@ -1630,9 +1742,17 @@ async function syncHandler(req, res) {
     // Ajustes manuales de Kardex también modifican existencias; ambos efectos
     // se confirman juntos mediante la función SQL transaccional.
     if (tabla === 'kardex') {
-      let procesados = 0;
+      // Compatibilidad con filas encoladas por versiones anteriores: estas
+      // procedían de ventas/compras cuyo RPC padre ya aplicó stock y Kardex.
+      // Volver a pasarlas por el RPC de movimiento duplicaría el ajuste.
+      const movimientosYaAplicados = rows.filter((m) =>
+        /venta pos|recepci.n de compra|anulaci.n de compra/i.test(String(m?.notas || '')) ||
+        /venta pos|compra a proveedor|anulaci.n de compra/i.test(String(m?.referencia || ''))
+      );
+      const pendientes = rows.filter((m) => !movimientosYaAplicados.includes(m));
+      let procesados = movimientosYaAplicados.length;
       const errores = [];
-      for (const movimiento of rows) {
+      for (const movimiento of pendientes) {
         const result = await supabaseRequest('/rpc/pos_registrar_movimiento_stock', {
           method: 'POST',
           body: JSON.stringify({

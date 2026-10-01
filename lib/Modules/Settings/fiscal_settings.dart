@@ -19,6 +19,8 @@ class _FiscalSettingsState extends State<FiscalSettings> {
   final _establecimientoController = TextEditingController();
   final _puntoEmisionController = TextEditingController();
   final _caiController = TextEditingController();
+  final _tasaIsvController = TextEditingController();
+  final _limiteExentoController = TextEditingController();
 
   FiscalConfig _config = FiscalConfig.defaultConfig();
   bool _isLoading = true;
@@ -42,6 +44,8 @@ class _FiscalSettingsState extends State<FiscalSettings> {
     _establecimientoController.dispose();
     _puntoEmisionController.dispose();
     _caiController.dispose();
+    _tasaIsvController.dispose();
+    _limiteExentoController.dispose();
     super.dispose();
   }
 
@@ -54,6 +58,8 @@ class _FiscalSettingsState extends State<FiscalSettings> {
       _establecimientoController.text = _config.establecimiento;
       _puntoEmisionController.text = _config.puntoEmision;
       _caiController.text = _config.cai ?? '';
+      _tasaIsvController.text = _config.tasaISV.toStringAsFixed(2);
+      _limiteExentoController.text = _config.limiteExentoISV.toStringAsFixed(2);
       _isLoading = false;
     });
   }
@@ -154,18 +160,14 @@ class _FiscalSettingsState extends State<FiscalSettings> {
                 const SizedBox(height: 12),
                 _buildNumberField(
                   'Tasa ISV (%)',
-                  _config.tasaISV,
-                  (value) => setState(
-                    () => _config = _config.copyWith(tasaISV: value),
-                  ),
+                  _tasaIsvController,
+                  '0–50',
                 ),
                 const SizedBox(height: 12),
                 _buildNumberField(
                   'Límite Exento ISV (L.)',
-                  _config.limiteExentoISV,
-                  (value) => setState(
-                    () => _config = _config.copyWith(limiteExentoISV: value),
-                  ),
+                  _limiteExentoController,
+                  'L.',
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
@@ -236,11 +238,7 @@ class _FiscalSettingsState extends State<FiscalSettings> {
     );
   }
 
-  Widget _buildNumberField(
-    String label,
-    double value,
-    Function(double) onChanged,
-  ) {
+  Widget _buildNumberField(String label, TextEditingController controller, String suffix) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -259,11 +257,18 @@ class _FiscalSettingsState extends State<FiscalSettings> {
               color: appThemeNotifier.isDark ? appPalette.textPrimary : Colors.black,
             ),
           ),
-          Text(
-            value.toStringAsFixed(2),
-            style: GoogleFonts.syne(
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF10B981),
+          SizedBox(
+            width: 110,
+            child: TextField(
+              controller: controller,
+              textAlign: TextAlign.end,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: GoogleFonts.syne(fontWeight: FontWeight.w700, color: const Color(0xFF10B981)),
+              decoration: InputDecoration(
+                suffixText: suffix,
+                isDense: true,
+                border: InputBorder.none,
+              ),
             ),
           ),
         ],
@@ -331,8 +336,19 @@ class _FiscalSettingsState extends State<FiscalSettings> {
       nombreEmpresa: _nombreEmpresaController.text,
       establecimiento: _establecimientoController.text,
       puntoEmision: _puntoEmisionController.text,
-      cai: _caiController.text.isEmpty ? null : _caiController.text,
+      cai: _caiController.text.trim(),
+      clearCai: _caiController.text.trim().isEmpty,
+      tasaISV: double.tryParse(_tasaIsvController.text.trim()) ?? double.nan,
+      limiteExentoISV: double.tryParse(_limiteExentoController.text.trim()) ?? double.nan,
     );
+
+    if (!updatedConfig.tasaISV.isFinite || updatedConfig.tasaISV < 0 || updatedConfig.tasaISV > 50 ||
+        !updatedConfig.limiteExentoISV.isFinite || updatedConfig.limiteExentoISV < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La tasa debe estar entre 0 y 50; el límite exento no puede ser negativo.')),
+      );
+      return;
+    }
 
     final saved = await FiscalCompliance().saveConfig(updatedConfig);
     if (!mounted) return;

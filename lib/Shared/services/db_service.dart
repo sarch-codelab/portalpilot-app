@@ -193,6 +193,30 @@ class PortalPilotDB {
     }
   }
 
+  static Future<bool> updateFactura({
+    required String id,
+    required String empresaCodigo,
+    required Map<String, dynamic> factura,
+  }) async {
+    try {
+      final response = await http
+          .patch(
+            _uri('/api/facturas', {'correlativo': id}),
+            headers: _headers,
+            body: jsonEncode({'empresa_codigo': empresaCodigo, 'factura': factura}),
+          )
+          .timeout(_timeout);
+      if (response.statusCode >= 400) {
+        debugPrint('⚠️ updateFactura sync -> ${response.statusCode}: ${utf8.decode(response.bodyBytes, allowMalformed: true)}');
+        return false;
+      }
+      return _responseAccepted(jsonDecode(utf8.decode(response.bodyBytes, allowMalformed: true)));
+    } catch (e) {
+      debugPrint('❌ updateFactura sync: $e');
+      return false;
+    }
+  }
+
   /// Transacciones - sync to backend
   static Future<bool> insertTransaccion({required Map<String, dynamic> transaccion, required String empresaCodigo}) async {
     try {

@@ -135,26 +135,69 @@ class _FacturaListState extends State<FacturaList> {
     final prefs = await SharedPreferences.getInstance();
     final facturasJson = prefs.getString('facturas') ?? '[]';
     final List<dynamic> facturas = JsonGuard.safeListOfMaps(facturasJson, source: 'Facturacion/anular');
-
-    for (final f in facturas) {
-      if (f['id'] == id) {
-        f['estado'] = 'anulada';
-        f['fecha_anulacion'] = DateTime.now().toIso8601String();
-        break;
-      }
-    }
-
-    await prefs.setString('facturas', jsonEncode(facturas));
-
-    // Anular en backend
     try {
-      final api = ApiService.instance;
-      final serverId = facturas.firstWhere(
-        (f) => f['id'] == id,
-        orElse: () => {},
-      )['server_id'] ?? id;
-      await api.patch('/api/facturas/$serverId', body: {'estado': 'anulada'});
-    } catch (_) {}
+      final dynamic raw = facturas.firstWhere((f) => f['id'] == id, orElse: () => {});
+      if (raw is! Map) throw StateError('No se encontró la factura.');
+      final factura = Map<String, dynamic>.from(raw);
+      final empresa = AuthController.instance.empresaCodigo;
+      final correlativo = (factura['correlativo'] ?? '').toString();
+      if (correlativo.isEmpty) throw StateError('La factura no tiene correlativo.');
+
+      var local = await LocalDatabaseService.instance.getFacturaByCorrelativo(empresa, correlativo);
+      if (local == null) {
+        final rawItems = factura['items'];
+        final itemList = rawItems is List
+            ? rawItems.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+            : rawItems is Map && rawItems['items'] is List
+                ? (rawItems['items'] as List).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+                : <Map<String, dynamic>>[];
+        await LocalDatabaseService.instance.insertFacturaLocal(
+          id: (factura['server_id'] ?? factura['id']).toString(),
+          empresaId: empresa,
+          usuarioId: AuthController.instance.email,
+          correlativo: correlativo,
+          tipoDocumento: (factura['tipo_documento'] ?? 'Factura').toString(),
+          cai: (factura['cai'] ?? '').toString(),
+          rangoInicio: factura['rango_inicio']?.toString(),
+          rangoFin: factura['rango_fin']?.toString(),
+          fechaLimiteEmision: DateTime.tryParse((factura['fecha_limite_emision'] ?? '').toString()),
+          clienteNombre: factura['cliente_nombre']?.toString(),
+          clienteRtn: factura['cliente_rtn']?.toString(),
+          clienteDireccion: factura['cliente_direccion']?.toString(),
+          condicionPago: (factura['condicion_pago'] ?? 'Contado').toString(),
+          tipoVenta: (factura['tipo_venta'] ?? 'Gravada').toString(),
+          items: {'items': itemList},
+          subtotal: (factura['subtotal'] as num?)?.toDouble() ?? 0,
+          isv15: (factura['isv_15'] as num?)?.toDouble() ?? 0,
+          isv18: (factura['isv_18'] as num?)?.toDouble() ?? 0,
+          descuento: (factura['descuento'] as num?)?.toDouble() ?? 0,
+          total: (factura['total'] as num?)?.toDouble() ?? 0,
+          tasaIsvEstandar: (factura['tasa_isv_estandar'] as num?)?.toDouble() ?? 0.15,
+          estado: (factura['estado'] ?? 'emitida').toString(),
+          notas: factura['notas']?.toString(),
+          triggerSync: false,
+        );
+        local = await LocalDatabaseService.instance.getFacturaByCorrelativo(empresa, correlativo);
+      }
+      if (local == null) throw StateError('No se pudo guardar la factura en el dispositivo.');
+
+      await LocalDatabaseService.instance.anularFacturaLocal(local.id, 'Anulación desde listado');
+      for (final f in facturas) {
+        if (f is Map && f['id'] == id) {
+          f['estado'] = 'anulada';
+          f['fecha_anulacion'] = DateTime.now().toIso8601String();
+          break;
+        }
+      }
+      await prefs.setString('facturas', jsonEncode(facturas));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo anular la factura localmente: $e')),
+        );
+      }
+      return;
+    }
 
     Logger().audit(
       'anular',

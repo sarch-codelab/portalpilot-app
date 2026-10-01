@@ -110,6 +110,14 @@ class LocalDatabaseService {
         .getSingleOrNull();
   }
 
+  Future<Factura?> getFacturaByCorrelativo(String empresaId, String correlativo) async {
+    final rows = await (_db.select(_db.facturas)
+          ..where((f) => f.empresaId.equals(empresaId) & f.correlativo.equals(correlativo))
+          ..orderBy([(f) => OrderingTerm.desc(f.updatedAt)]))
+        .get();
+    return rows.firstOrNull;
+  }
+
   Future<void> insertFacturaLocal({
     required String id,
     required String empresaId,
@@ -133,6 +141,9 @@ class LocalDatabaseService {
     required double total,
     required String estado,
     String? notas,
+    SyncOperation operacion = SyncOperation.insert,
+    bool triggerSync = true,
+    double tasaIsvEstandar = 0.15,
   }) async {
     final factura = FacturasCompanion.insert(
       id: id,
@@ -166,11 +177,12 @@ class LocalDatabaseService {
 
     await _syncService.enqueueSync(
       tabla: 'facturas',
-      operacion: SyncOperation.insert,
+      operacion: operacion,
       datos: {
         'empresa_codigo': empresaId,
         'factura': {
           'id': id,
+          'usuario_id': usuarioId,
           'correlativo': correlativo,
           'tipo_documento': tipoDocumento,
           'cai': cai,
@@ -182,17 +194,19 @@ class LocalDatabaseService {
           'cliente_direccion': clienteDireccion,
           'condicion_pago': condicionPago,
           'tipo_venta': tipoVenta,
-          'items': items,
+          'items': items['items'] ?? items,
           'subtotal': subtotal,
           'isv_15': isv15,
           'isv_18': isv18,
           'descuento': descuento,
           'total': total,
+          'tasa_isv_estandar': tasaIsvEstandar.clamp(0.0, 0.50),
           'estado': estado,
           'notas': notas,
         },
       },
       empresaId: empresaId,
+      triggerSync: triggerSync,
     );
   }
 
@@ -391,6 +405,47 @@ class LocalDatabaseService {
     }
   }
 
+  /// Registra SOLO el movimiento de kardex (sin tocar stock). Para ventas,
+  /// compras y anulaciones que ya ajustaron existencias por su cuenta.
+  /// Best-effort: nunca rompe la operación que lo llama.
+  Future<void> registrarMovimientoKardexSolo({
+    required String empresaCodigo,
+    required String productoId,
+    required String productoCodigo,
+    required String nombreProducto,
+    required String tipo, // 'entrada' | 'salida'
+    required int cantidad,
+    int? stockDespues,
+    String? referencia,
+    String? notas,
+  }) async {
+    try {
+      // La operación padre (venta/compra/anulación) aplica stock y Kardex
+      // remotamente en una transacción; encolar también este movimiento
+      // descontaría o sumaría existencias por segunda vez.
+      final movimientoId = const Uuid().v4();
+      final prefs = await SharedPreferences.getInstance();
+      final kardex = JsonGuard.safeListOfMaps(prefs.getString('kardex'), source: 'Inventario/kardex/auto');
+      kardex.insert(0, {
+        'id': movimientoId,
+        'empresa_codigo': empresaCodigo,
+        'producto_id': productoId,
+        'producto_codigo': productoCodigo.trim(),
+        'producto_nombre': nombreProducto,
+        'tipo_movimiento': tipo,
+        'cantidad': cantidad,
+        'stock_despues': stockDespues,
+        'referencia': referencia,
+        'notas': notas,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      if (kardex.length > 500) kardex.removeRange(500, kardex.length);
+      await prefs.setString('kardex', jsonEncode(kardex));
+    } catch (e) {
+      debugPrint('[Kardex] No se pudo registrar movimiento automático: $e');
+    }
+  }
+
   /// Cambia existencias y registra el movimiento en la misma transacción local.
   /// La fila de la cola queda confirmada junto al cambio de stock antes de
   /// intentar cualquier envío de red.
@@ -447,6 +502,7 @@ class LocalDatabaseService {
           'cantidad': cantidad,
           'referencia': referencia,
           'notas': notas,
+          'fecha': DateTime.now().toIso8601String(),
           'stock_despues': nuevoStock,
           'created_at': DateTime.now().toIso8601String(),
         },
@@ -587,27 +643,29 @@ class LocalDatabaseService {
       updatedAt: Value(DateTime.now()),
     );
 
-    await _db.into(_db.transacciones).insertOnConflictUpdate(transaccion);
-
-    await _syncService.enqueueSync(
-      tabla: 'transacciones',
-      operacion: SyncOperation.insert,
-      datos: {
-        'empresa_codigo': empresaId,
-        'transaccion': {
-          'id': id,
-          'tipo': tipo,
-          'categoria': categoria,
-          'descripcion': descripcion,
-          'monto': monto,
-          'metodo_pago': metodoPago,
-          'referencia': referencia,
-          'fecha': fecha.toIso8601String(),
+    await _db.transaction(() async {
+      await _db.into(_db.transacciones).insertOnConflictUpdate(transaccion);
+      await _syncService.enqueueSync(
+        tabla: 'transacciones',
+        operacion: SyncOperation.insert,
+        datos: {
+          'empresa_codigo': empresaId,
+          'transaccion': {
+            'id': id,
+            'tipo': tipo,
+            'categoria': categoria,
+            'descripcion': descripcion,
+            'monto': monto,
+            'metodo_pago': metodoPago,
+            'referencia': referencia,
+            'fecha': fecha.toIso8601String(),
+          },
         },
-      },
-      empresaId: empresaId,
-      triggerSync: triggerSync,
-    );
+        empresaId: empresaId,
+        triggerSync: false,
+      );
+    });
+    if (triggerSync) _syncService.syncNowIfOnline();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -747,6 +805,13 @@ class LocalDatabaseService {
 
   Future<List<SyncItem>> getPendingSyncItems() async {
     return await _syncService.getPendingItems();
+  }
+
+  Future<bool> hasPendingSyncFor(String tabla, String empresaId) async {
+    final rows = await (_db.select(_db.syncQueue)
+          ..where((s) => s.tabla.equals(tabla) & s.empresaId.equals(empresaId)))
+        .get();
+    return rows.isNotEmpty;
   }
 
   bool get isOnline => _connectivityService.isOnline;

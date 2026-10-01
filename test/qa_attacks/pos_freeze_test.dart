@@ -122,10 +122,21 @@ void main() {
         await pumpFake(tester, const Duration(milliseconds: 500));
         expect(find.text('Carrito (2 items)'), findsOneWidget);
 
-        // Tap en la TARJETA del producto (visible): suma cantidad.
-        await tester.tap(find.widgetWithText(GestureDetector, 'Coca-Cola 600ml'));
-        await pumpFake(tester, const Duration(milliseconds: 300));
-        expect(find.text('Carrito (2 items)'), findsOneWidget);
+        // Segundo escaneo del mismo código: suma cantidad (2 units).
+        for (final key in [
+          LogicalKeyboardKey.keyC,
+          LogicalKeyboardKey.keyC,
+          LogicalKeyboardKey.digit6,
+          LogicalKeyboardKey.digit0,
+          LogicalKeyboardKey.digit0,
+        ]) {
+          await tester.sendKeyEvent(key);
+          await tester.pump();
+        }
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await pumpFake(tester, const Duration(milliseconds: 500));
+        // El contador expresa UNIDADES: 2 de Coca-Cola + 1 de Pan = 3 items.
+        expect(find.text('Carrito (3 items)'), findsOneWidget);
 
         // ── 4. Intento de cobro (toque real al botón COBRAR) ──
         // Con fuentes de prueba la geometría puede variar; el tap ejercita

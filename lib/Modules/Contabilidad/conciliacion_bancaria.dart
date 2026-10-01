@@ -4,6 +4,9 @@ import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 
@@ -90,7 +93,7 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
       return false;
     }
     final nueva = {
-      'id': DateTime.now().microsecondsSinceEpoch.toString(),
+      'id': const Uuid().v4(),
       'tipo': tipo,
       'descripcion': descripcion.trim(),
       'monto': monto,
@@ -113,19 +116,17 @@ class _ConciliacionBancariaState extends State<ConciliacionBancaria> {
       });
       await prefs.setString('transacciones', jsonEncode(locales));
     } catch (_) {}
-    try {
-      final api = ApiService.instance;
-      await api.post('/api/transacciones', body: {
-        'empresa_codigo': api.empresaCodigo,
-        'transaccion': {
-          'tipo': tipo == 'Ingreso' ? 'ingreso' : 'gasto',
-          'descripcion': nueva['descripcion'],
-          'monto': monto,
-          'fecha': DateTime.now().toIso8601String(),
-          'estado': 'Pendiente',
-        },
-      });
-    } catch (_) {}
+    await LocalDatabaseService.instance.insertTransaccionLocal(
+      id: nueva['id'] as String,
+      empresaId: AuthController.instance.empresaCodigo,
+      usuarioId: AuthController.instance.email,
+      tipo: tipo == 'Ingreso' ? 'ingreso' : 'gasto',
+      categoria: 'Conciliación bancaria',
+      descripcion: nueva['descripcion'] as String,
+      monto: monto,
+      referencia: 'Conciliación manual',
+      fecha: DateTime.now(),
+    );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

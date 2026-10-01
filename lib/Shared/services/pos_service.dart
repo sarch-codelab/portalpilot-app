@@ -83,6 +83,7 @@ class PosService {
     double descuentoGlobal = 0,
     String? notas,
     bool esCredito = false,
+    double tasaEstandar = 0.15,
   }) async {
     if (_currentEmpresaId == null || _currentUsuarioId == null) {
       throw StateError('Contexto POS no inicializado');
@@ -119,7 +120,10 @@ class PosService {
       subtotal += bruto;
       descuentoItems += item.descuento;
       if ((item.isvRate - 18).abs() < 0.001) isv18 += baseImponible * 0.18;
-      if ((item.isvRate - 15).abs() < 0.001) isv15 += baseImponible * 0.15;
+      // La tasa estándar (15%) sale de la Configuración Fiscal del negocio.
+      if ((item.isvRate - 15).abs() < 0.001) {
+        isv15 += baseImponible * (tasaEstandar.clamp(0.0, 0.50));
+      }
     }
 
     final total = subtotal - descuentoItems - descuentoGlobal + isv15 + isv18;
@@ -197,6 +201,27 @@ class PosService {
       for (final entry in cantidadesPorProducto.entries) {
         await _descontarStockLocal(entry.key, entry.value);
       }
+      // Kardex: cada venta es una SALIDA de inventario. Best-effort dentro de
+      // la misma transacción para que el kardex nunca quede mentiroso.
+      for (final item in items.where((i) => i.productoId.isNotEmpty)) {
+        try {
+          final prod = await (_db.select(_db.productos)
+                ..where((p) => p.id.equals(item.productoId) & p.empresaId.equals(_currentEmpresaId!)))
+              .getSingleOrNull();
+          if (prod != null) {
+            await LocalDatabaseService.instance.registrarMovimientoKardexSolo(
+              empresaCodigo: _currentEmpresaId!,
+              productoId: prod.id,
+              productoCodigo: prod.codigo ?? item.codigo,
+              nombreProducto: prod.nombre,
+              tipo: 'salida',
+              cantidad: item.cantidad,
+              stockDespues: prod.stockActual,
+              referencia: 'Venta POS ${venta.correlativo.value ?? ''}'.trim(),
+            );
+          }
+        } catch (_) {}
+      }
       if (esCredito && clienteId != null) {
         await _actualizarCreditoCliente(clienteId, total, clienteNombre: clienteNombre);
       }
@@ -225,6 +250,7 @@ class PosService {
             'descuento': descuentoItems + descuentoGlobal,
             'isv_15': isv15,
             'isv_18': isv18,
+            'tasa_isv_estandar': tasaEstandar.clamp(0.0, 0.50),
             'total': total,
             'metodo_pago': metodoPago,
             'estado': esCredito ? 'pendiente_pago' : 'completada',
@@ -787,6 +813,7 @@ class PosService {
 
     Map<String, int> itemsPorProducto = {};
 
+    double totalFiado = 0;
     for (final v in ventas) {
       totalVentas += v.total;
       
@@ -799,6 +826,9 @@ class PosService {
           break;
         case 'transferencia':
           totalTransferencia += v.total;
+          break;
+        case 'fiado':
+          totalFiado += v.total;
           break;
       }
     }
@@ -815,6 +845,7 @@ class PosService {
       'efectivo': totalEfectivo,
       'tarjeta': totalTarjeta,
       'transferencia': totalTransferencia,
+      'fiado': totalFiado,
       'promedio_ticket': totalTransacciones > 0 ? totalVentas / totalTransacciones : 0,
       'top_productos': itemsPorProducto.entries
           .map((e) => {'producto': e.key, 'cantidad': e.value})
@@ -832,6 +863,62 @@ class PosService {
   }
 
   String _formatDate(DateTime dt) => '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+
+  /// Resumen del turno abierto para la UI de caja (Pos Home). Mismos cálculos
+  /// que el cierre: lo que DEBERÍA haber en la gaveta según el sistema.
+  Future<Map<String, dynamic>> resumenCajaAbierta() async {
+    final arqueo = await getArqueoAbierto();
+    if (arqueo == null) return {};
+
+    final ventas = await (_db.select(_db.posVentas)
+          ..where((v) => v.empresaId.equals(_currentEmpresaId!) & v.terminalId.equals(_currentTerminalId!) & v.createdAt.isBiggerOrEqualValue(arqueo.fechaApertura) & v.estado.equals('completada')))
+        .get();
+
+    double efectivo = 0, tarjeta = 0, transferencia = 0, mixto = 0, fiado = 0;
+    for (final v in ventas) {
+      switch (v.metodoPago) {
+        case 'efectivo':
+          efectivo += v.total;
+        case 'tarjeta':
+          tarjeta += v.total;
+        case 'transferencia':
+          transferencia += v.total;
+        case 'fiado':
+          fiado += v.total;
+        default:
+          mixto += v.total;
+      }
+    }
+
+    final transacciones = await (_db.select(_db.transacciones)
+          ..where((t) => t.empresaId.equals(_currentEmpresaId!) & t.fecha.isBiggerOrEqualValue(arqueo.fechaApertura) & t.referencia.like('POS_TERMINAL:${_currentTerminalId!}%')))
+        .get();
+
+    double gastos = 0, gastosEfectivo = 0, entradas = 0, salidas = 0;
+    for (final t in transacciones) {
+      if (t.tipo == 'gasto') {
+        gastos += t.monto;
+        if ((t.metodoPago ?? 'efectivo') == 'efectivo') gastosEfectivo += t.monto;
+      } else if (t.tipo == 'ingreso' && t.categoria != 'Fondo inicial' && (t.metodoPago ?? 'efectivo') == 'efectivo') {
+        entradas += t.monto;
+      }
+    }
+
+    return {
+      'fondo_inicial': arqueo.fondoInicial,
+      'efectivo': efectivo,
+      'tarjeta': tarjeta,
+      'transferencia': transferencia,
+      'fiado': fiado,
+      'mixto': mixto,
+      'gastos': gastos,
+      'entradas': entradas,
+      'salidas': salidas,
+      'transacciones': ventas.length,
+      'sistema_total': arqueo.fondoInicial + efectivo + entradas - gastosEfectivo - salidas,
+      'desde': arqueo.fechaApertura,
+    };
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // UTILIDADES

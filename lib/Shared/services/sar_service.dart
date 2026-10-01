@@ -653,6 +653,7 @@ class SarService {
   static SarTotales calcularTotales(
     List<Map<String, dynamic>> items, {
     double descuentoGlobal = 0,
+    double tasaIsvEstandar = 0.15,
   }) {
     double base15 = 0;
     double base18 = 0;
@@ -684,7 +685,7 @@ class SarService {
     final b15 = _redondear(base15 * factor);
     final b18 = _redondear(base18 * factor);
     final bEx = _redondear(baseExenta * factor);
-    final isv15 = _redondear(b15 * 0.15);
+    final isv15 = _redondear(b15 * tasaIsvEstandar.clamp(0.0, 0.50));
     final isv18 = _redondear(b18 * 0.18);
     final totalIsv = _redondear(isv15 + isv18);
     final total = _redondear(b15 + b18 + bEx + totalIsv);

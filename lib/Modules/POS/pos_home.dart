@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Modules/POS/pos_terminal_v2.dart';
@@ -8,6 +10,9 @@ import 'package:portal_pilot_app/Modules/CanalTradicional/fiado_screen.dart';
 import 'package:portal_pilot_app/Modules/CanalTradicional/ruta_screen.dart';
 import 'package:portal_pilot_app/Modules/Membresias/membresia_home.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/services/pos_service.dart';
+import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/utils/logger.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_stats_card.dart';
@@ -29,6 +34,194 @@ class _PosHomeState extends State<PosHome> {
   final _aiQueryController = TextEditingController();
   final List<_AIMessage> _aiMessages = [];
   bool _isAILoading = false;
+
+  // ── Caja del turno (el cajero necesita abrir/cerrar su gaveta) ──
+  final PosService _posService = PosService.instance;
+  Map<String, dynamic>? _caja;
+
+  Future<void> _cargarCaja() async {
+    try {
+      _posService.setContext(
+        empresaId: AuthController.instance.empresaCodigo,
+        terminalId: 'TERM-${AuthController.instance.empresaCodigo}-01',
+        usuarioId: AuthController.instance.email,
+      );
+      final res = await _posService.resumenCajaAbierta();
+      if (mounted) setState(() => _caja = res.isEmpty ? null : res);
+    } catch (_) {
+      if (mounted) setState(() => _caja = null);
+    }
+  }
+
+  Future<void> _abrirCajaDialogo() async {
+    final ctrl = TextEditingController();
+    final fondo = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: appPalette.cardElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Abrir caja', style: GoogleFonts.syne(fontWeight: FontWeight.w800, color: appPalette.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('¿Cuánto efectivo dejas de fondo en la gaveta?', style: GoogleFonts.dmSans(fontSize: 13, color: appPalette.textMuted)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+              decoration: InputDecoration(prefixText: 'L ', prefixStyle: GoogleFonts.dmSans(color: appPalette.textPrimary, fontWeight: FontWeight.w700), filled: true, fillColor: appPalette.bgSecondary, enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: appPalette.borderLight)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316)))),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
+            onPressed: () => Navigator.pop(ctx, double.tryParse(ctrl.text.replaceAll(',', '')) ?? 0),
+            child: Text('Abrir', style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (fondo == null) return;
+    try {
+      await _posService.abrirCaja(fondoInicial: fondo);
+      Logger().audit('crear', 'arqueo', 'apertura', userId: AuthController.instance.email, module: 'pos', changes: {'fondo_inicial': fondo});
+      await _cargarCaja();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Caja abierta con L${fondo.toStringAsFixed(2)} de fondo', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFF10B981)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo abrir la caja: $e', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFEF4444)));
+      }
+    }
+  }
+
+  Future<void> _cerrarCajaDialogo() async {
+    final sistema = (_caja?['sistema_total'] as num?)?.toDouble() ?? 0;
+    final ctrl = TextEditingController(text: sistema.toStringAsFixed(2));
+    final conteo = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: appPalette.cardElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Cerrar caja (corte Z)', style: GoogleFonts.syne(fontWeight: FontWeight.w800, color: appPalette.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Según el sistema debería haber:', style: GoogleFonts.dmSans(fontSize: 13, color: appPalette.textMuted)),
+            Text('L${sistema.toStringAsFixed(2)}', style: GoogleFonts.syne(fontSize: 24, fontWeight: FontWeight.w900, color: const Color(0xFF10B981))),
+            const SizedBox(height: 10),
+            Text('Cuenta el efectivo físico de la gaveta:', style: GoogleFonts.dmSans(fontSize: 13, color: appPalette.textMuted)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: GoogleFonts.dmSans(color: appPalette.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+              decoration: InputDecoration(prefixText: 'L ', prefixStyle: GoogleFonts.dmSans(color: appPalette.textPrimary, fontWeight: FontWeight.w700), filled: true, fillColor: appPalette.bgSecondary, enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: appPalette.borderLight)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316)))),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () => Navigator.pop(ctx, double.tryParse(ctrl.text.replaceAll(',', '')) ?? 0),
+            child: Text('Cerrar turno', style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (conteo == null) return;
+    try {
+      await _posService.cerrarCaja(conteoFisico: conteo);
+      final dif = conteo - sistema;
+      Logger().audit('editar', 'arqueo', 'cierre', userId: AuthController.instance.email, module: 'pos', changes: {'sistema': sistema.toStringAsFixed(2), 'conteo': conteo.toStringAsFixed(2), 'diferencia': dif.toStringAsFixed(2)});
+      await _cargarCaja();
+      if (mounted) {
+        final difTxt = dif.abs() < 0.01 ? '¡Caja cuadrada!' : (dif > 0 ? 'Sobrante: L${dif.toStringAsFixed(2)}' : 'Faltante: L${dif.abs().toStringAsFixed(2)}');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Turno cerrado · $difTxt', style: GoogleFonts.dmSans()), backgroundColor: dif.abs() < 0.01 ? const Color(0xFF10B981) : const Color(0xFFF59E0B)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo cerrar la caja: $e', style: GoogleFonts.dmSans()), backgroundColor: const Color(0xFFEF4444)));
+      }
+    }
+  }
+
+  Widget _buildCajaPanel() {
+    final abierta = _caja != null;
+    final sistema = (_caja?['sistema_total'] as num?)?.toDouble() ?? 0;
+    final efectivo = (_caja?['efectivo'] as num?)?.toDouble() ?? 0;
+    final fiado = (_caja?['fiado'] as num?)?.toDouble() ?? 0;
+    final desde = _caja?['desde'] as DateTime?;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: appPalette.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: abierta ? const Color(0xFF10B981).withValues(alpha: 0.35) : appPalette.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(abierta ? Icons.lock_open_rounded : Icons.lock_rounded, color: abierta ? const Color(0xFF10B981) : appPalette.textMuted, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  abierta ? 'Caja abierta${desde != null ? ' · desde ${desde.day}/${desde.month} ${desde.hour.toString().padLeft(2, '0')}:${desde.minute.toString().padLeft(2, '0')}' : ''}' : 'Caja cerrada',
+                  style: GoogleFonts.dmSans(fontSize: 13.5, fontWeight: FontWeight.w700, color: appPalette.textPrimary),
+                ),
+              ),
+              TextButton(
+                onPressed: abierta ? _cerrarCajaDialogo : _abrirCajaDialogo,
+                child: Text(abierta ? 'Cerrar turno' : 'Abrir caja', style: GoogleFonts.dmSans(fontSize: 12.5, fontWeight: FontWeight.w800, color: abierta ? const Color(0xFFEF4444) : const Color(0xFF10B981))),
+              ),
+            ],
+          ),
+          if (abierta) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(child: _cajaDato('En gaveta (sistema)', 'L${sistema.toStringAsFixed(2)}', const Color(0xFF10B981))),
+                const SizedBox(width: 10),
+                Expanded(child: _cajaDato('Efectivo del turno', 'L${efectivo.toStringAsFixed(2)}', const Color(0xFFF97316))),
+                const SizedBox(width: 10),
+                Expanded(child: _cajaDato('Fiado del turno', 'L${fiado.toStringAsFixed(2)}', const Color(0xFFF59E0B))),
+              ],
+            ),
+          ] else
+            Text(
+              'Abre la caja con el fondo inicial antes de vender. Al final del día, el corte Z te dice si cuadró.',
+              style: GoogleFonts.dmSans(fontSize: 12, color: appPalette.textMuted),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cajaDato(String label, String valor, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 10.5, color: appPalette.textMuted)),
+          const SizedBox(height: 2),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(valor, style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: color))),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -86,6 +279,7 @@ class _PosHomeState extends State<PosHome> {
   }
 
   Future<void> _cargarDatos() async {
+    unawaited(_cargarCaja());
     try {
       final api = ApiService.instance;
 
@@ -149,6 +343,8 @@ class _PosHomeState extends State<PosHome> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
                 _buildDashboardHeader(),
+                const SizedBox(height: 16),
+                _buildCajaPanel(),
                 const SizedBox(height: 16),
                 _buildStatsGrid(),
                 const SizedBox(height: 16),

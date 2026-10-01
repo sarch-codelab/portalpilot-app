@@ -20,6 +20,8 @@ import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
 import 'package:portal_pilot_app/Shared/services/pos_service.dart';
 import 'package:portal_pilot_app/Shared/services/pos_hardware_service.dart';
 import 'package:portal_pilot_app/Shared/services/sync_service.dart';
+import 'package:portal_pilot_app/Shared/services/canal_tradicional_service.dart';
+import 'package:portal_pilot_app/Shared/services/membresia_service.dart';
 import 'package:portal_pilot_app/Shared/services/nfc_card_service.dart';
 import 'package:portal_pilot_app/Shared/widgets/sync_status_indicator.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
@@ -77,7 +79,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       return false; // el usuario está escribiendo en un campo: no interferir
     }
     final now = DateTime.now();
-    if (now.difference(_wedgeLastKeyAt) > const Duration(milliseconds: 150)) {
+    // 400ms: los escáneres ráfagan en <30ms/tecla, pero en teléfonos lentos o
+    // con la app cargando el SO puede espaciar los caracteres; con 150ms se
+    // perdían escaneos enteros (buffer se limpiaba a mitad de código).
+    if (now.difference(_wedgeLastKeyAt) > const Duration(milliseconds: 400)) {
       _wedgeBuffer.clear();
     }
     _wedgeLastKeyAt = now;
@@ -521,7 +526,13 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     return null;
   }
 
-  Future<void> _cobrar({String? notasExtra, double? vuelto}) async {
+  Future<void> _cobrar({
+    String? notasExtra,
+    double? vuelto,
+    String? clienteId,
+    String? clienteNombre,
+    bool esCredito = false,
+  }) async {
     if (_carrito.isEmpty || _isProcessing) return;
 
     setState(() => _isProcessing = true);
@@ -572,6 +583,10 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         metodoPago: _metodoPago,
         descuentoGlobal: 0,
         notas: notasTarjeta,
+        esCredito: esCredito,
+        clienteId: clienteId,
+        clienteNombre: clienteNombre,
+        tasaEstandar: tasaEstandar,
       );
 
       if (venta == null) throw Exception('Error creando venta');
@@ -586,6 +601,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           'metodo_pago': _metodoPago,
           'total': total.toStringAsFixed(2),
           'items': carritoConPromos.length,
+          'cliente': ?clienteNombre,
         },
       );
 
@@ -601,7 +617,13 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       _limpiarCarrito();
       
       if (mounted) {
-        await _mostrarDialogoVentaExitosa(venta, total, vuelto: vuelto);
+        await _mostrarDialogoVentaExitosa(
+          venta,
+          total,
+          vuelto: vuelto,
+          fiado: esCredito,
+          clienteNombre: clienteNombre,
+        );
       }
     } catch (e) {
       _mostrarSnackBar('Error al procesar venta: $e', isError: true);
@@ -632,7 +654,13 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     debugPrint('Imprimiendo ticket...');
   }
 
-  Future<void> _mostrarDialogoVentaExitosa(dynamic venta, double total, {double? vuelto}) async {
+  Future<void> _mostrarDialogoVentaExitosa(
+    dynamic venta,
+    double total, {
+    double? vuelto,
+    bool fiado = false,
+    String? clienteNombre,
+  }) async {
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -652,7 +680,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
             ),
             const SizedBox(height: 20),
             Text(
-              '¡Venta Exitosa!',
+              fiado ? '¡Venta al Fiado!' : '¡Venta Exitosa!',
               style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
             ),
             const SizedBox(height: 8),
@@ -660,7 +688,23 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
               _posService.formatCurrency(total),
               style: GoogleFonts.syne(fontSize: 28, fontWeight: FontWeight.w900, color: const Color(0xFF10B981)),
             ),
-            if (vuelto != null && vuelto > 0) ...[
+            if (fiado) ...[
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  'Quedó fiado a ${clienteNombre ?? 'el cliente'}\nAparece en Fiado · CxC',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFFF59E0B)),
+                ),
+              ),
+            ] else if (vuelto != null && vuelto > 0) ...[
               const SizedBox(height: 14),
               Container(
                 width: double.infinity,
@@ -697,14 +741,302 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   // ═════════════════════════════════════════════════════════════
-  // COBRO POR MÉTODO DE PAGO: efectivo (recibido → vuelto), mixto,
-  // tarjeta sin NFC (referencia manual) y transferencia (banco).
+  // COBRO POR MÉTODO DE PAGO: fiado (cuenta del cliente), efectivo
+  // (recibido → vuelto), mixto, tarjeta sin NFC y transferencia.
   // ═════════════════════════════════════════════════════════════
+
+  /// Busqueda temporal del selector de fiado.
+  String _fiadoBusqueda = '';
+
+  /// Aplica el precio de SOCIO (membresía vigente) al carrito completo.
+  Future<void> _aplicarPrecioSocio() async {
+    if (_carrito.isEmpty) {
+      _mostrarSnackBar('Agrega productos al carrito primero', isError: true);
+      return;
+    }
+    final membresias = MembresiaService.instance;
+    membresias.setContext(empresaId: _auth.empresaCodigo, usuarioId: _auth.email);
+
+    // 1) Elegir socio (buscador con lista de activos).
+    final socio = await showDialog<Socio>(
+      context: context,
+      builder: (ctx) => _DialogoSelectorSocio(membresias: membresias),
+    );
+    if (socio == null) return;
+
+    // 2) Verificar membresía vigente.
+    final activa = await membresias.socioTieneMembresiaActiva(socio.id);
+    if (!mounted) return;
+    if (!activa) {
+      _mostrarSnackBar('${socio.nombre} no tiene membresía vigente: se cobra precio general.', isError: true);
+      return;
+    }
+
+    // 3) Recalcular cada línea con el precio del socio.
+    int ajustadas = 0;
+    double ahorro = 0;
+    final nuevos = <PosCarritoItem>[];
+    for (final item in _carrito) {
+      final prod = _productos.where((p) => p.id == item.productoId).firstOrNull;
+      if (prod == null) {
+        nuevos.add(item);
+        continue;
+      }
+      try {
+        final precioSocio = await membresias.precioParaSocio(socio.id, prod);
+        if (precioSocio < item.precioUnitario) {
+          ahorro += (item.precioUnitario - precioSocio) * item.cantidad;
+          ajustadas++;
+        }
+        nuevos.add(item.copyWith(precioUnitario: precioSocio));
+      } catch (_) {
+        nuevos.add(item);
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _carrito
+        ..clear()
+        ..addAll(nuevos);
+    });
+    _mostrarSnackBar(
+      ajustadas > 0
+          ? 'Precio socio aplicado a $ajustadas producto(s) · ahorro ${_posService.formatCurrency(ahorro)}'
+          : 'El socio no tiene descuento en estos productos',
+      isError: false,
+    );
+  }
+
+  /// Selector de cliente para fiar. Combina cuentas de fiado existentes y
+  /// clientes del CRM; permite crear uno nuevo escribiendo el nombre.
+  /// Devuelve (clienteId, nombre) o null si canceló.
+  Future<(String, String)?> _mostrarClienteFiado() async {
+    _fiadoBusqueda = '';
+    final fiado = CanalTradicionalService.instance;
+    fiado.setContext(
+      empresaId: _auth.empresaCodigo,
+      usuarioId: _auth.email,
+    );
+
+    final resultados = <(String, String, double)>[]; // id, nombre, saldo
+    final nombres = <String, (String, double)>{}; // nombre -> (id, saldo)
+
+    Future<void> cargar() async {
+      resultados.clear();
+      nombres.clear();
+      try {
+        final cuentas = await fiado.getCuentasFiado(soloConSaldo: false);
+        for (final c in cuentas) {
+          nombres[c.nombre] = (c.credito.clienteId, c.saldo);
+        }
+      } catch (_) {}
+      try {
+        final clientes = await _localDb.getClientes(_auth.empresaCodigo);
+        for (final c in clientes) {
+          final nombre = c.nombre.trim();
+          if (nombre.isEmpty) continue;
+          if (!nombres.containsKey(nombre)) {
+            nombres[nombre] = (c.id, 0);
+          }
+        }
+      } catch (_) {}
+      resultados.addAll(
+        nombres.entries.map((e) => (e.value.$1, e.key, e.value.$2)).toList()
+          ..sort((a, b) => a.$2.toLowerCase().compareTo(b.$2.toLowerCase())),
+      );
+    }
+
+    await cargar();
+    if (!mounted) return null;
+
+    return showDialog<(String, String)>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) {
+          final query = _fiadoBusqueda.trim().toLowerCase();
+          final visibles = query.isEmpty
+              ? resultados
+              : resultados
+                  .where((r) => r.$2.toLowerCase().contains(query))
+                  .toList();
+
+          Future<void> nuevoCliente() async {
+            final ctrl = TextEditingController();
+            final nombre = await showDialog<String>(
+              context: ctx,
+              builder: (c2) => AlertDialog(
+                backgroundColor: const Color(0xFF141414),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Text('Nuevo cliente', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                content: TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  style: GoogleFonts.dmSans(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Nombre del cliente',
+                    labelStyle: GoogleFonts.dmSans(color: const Color(0xFF737373)),
+                    filled: true,
+                    fillColor: const Color(0xFF0F0F0F),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316))),
+                  ),
+                  onSubmitted: (v) => Navigator.pop(c2, v.trim()),
+                ),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(c2), child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA1A1AA)))),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
+                    onPressed: () => Navigator.pop(c2, ctrl.text.trim()),
+                    child: Text('Guardar', style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            );
+            if (nombre == null || nombre.isEmpty) return;
+            // ID determinístico: 'María López' siempre cae en la misma cuenta.
+            final normalizado = nombre.toLowerCase().trim().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+            final id = 'cli_$normalizado';
+            try {
+              await fiado.asegurarCuentaFiado(clienteId: id, clienteNombre: nombre);
+            } catch (_) {}
+            if (ctx.mounted) Navigator.of(ctx).pop((id, nombre));
+          }
+
+          return AlertDialog(
+            backgroundColor: const Color(0xFF141414),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.people_alt_rounded, color: Color(0xFFF97316), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text('¿A quién le fiás?', maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 320,
+              height: 360,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    onChanged: (v) => setS(() => _fiadoBusqueda = v),
+                    style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Buscar cliente...',
+                      hintStyle: GoogleFonts.dmSans(color: const Color(0xFF525252)),
+                      prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF737373), size: 20),
+                      isDense: true,
+                      filled: true,
+                      fillColor: const Color(0xFF0F0F0F),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316))),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: visibles.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No hay clientes con ese nombre.\nUsá "Cliente nuevo" abajo.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.dmSans(fontSize: 12.5, color: const Color(0xFF737373)),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: visibles.length,
+                            itemBuilder: (_, i) {
+                              final (id, nombre, saldo) = visibles[i];
+                              return ListTile(
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+                                leading: CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: const Color(0xFFF97316).withValues(alpha: 0.15),
+                                  child: Text(nombre.isNotEmpty ? nombre[0].toUpperCase() : '?', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFFF97316))),
+                                ),
+                                title: Text(nombre, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                                subtitle: saldo > 0
+                                    ? Text('Debe ${_posService.formatCurrency(saldo)}', style: GoogleFonts.dmSans(fontSize: 11.5, color: const Color(0xFFF59E0B)))
+                                    : Text('Sin deuda', style: GoogleFonts.dmSans(fontSize: 11.5, color: const Color(0xFF737373))),
+                                onTap: () => Navigator.of(ctx).pop((id, nombre)),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: nuevoCliente,
+                      icon: const Icon(Icons.person_add_alt_1_rounded, size: 18, color: Color(0xFFF97316)),
+                      label: Text('Cliente nuevo', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFFF97316))),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFF97316)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text('Cancelar', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFFA1A1AA))),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   /// Orquesta el cobro según el método seleccionado.
   Future<void> _confirmarCobro() async {
     if (_carrito.isEmpty || _isProcessing) return;
     switch (_metodoPago) {
+      case 'fiado':
+        final cliente = await _mostrarClienteFiado();
+        if (cliente == null) return; // canceló
+        // Aviso si la venta supera el límite de crédito del cliente: en un
+        // negocio real a veces se fía igual, pero que sea decisión consciente.
+        try {
+          final fiado = CanalTradicionalService.instance;
+          fiado.setContext(empresaId: _auth.empresaCodigo, usuarioId: _auth.email);
+          final exceso = await fiado.validarLimiteCredito(clienteId: cliente.$1, monto: _total);
+          if (exceso != null && mounted) {
+            final continuar = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: const Color(0xFF141414),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Text('Supera el límite de crédito', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFFF59E0B))),
+                content: Text(exceso, style: GoogleFonts.dmSans(fontSize: 13.5, color: Colors.white)),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA1A1AA)))),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text('Fiar de todos modos', style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            );
+            if (continuar != true) return;
+          }
+        } catch (_) {}
+        await _cobrar(
+          notasExtra: 'Fiado: ${cliente.$2}',
+          clienteId: cliente.$1,
+          clienteNombre: cliente.$2,
+          esCredito: true,
+        );
       case 'efectivo':
         final pago = await _mostrarCobroEfectivo();
         if (pago == null) return;
@@ -1576,8 +1908,15 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
 
   double get _subtotal => _carrito.fold<double>(0, (s, i) => s + i.precioUnitario * i.cantidad);
   double get _descuentoItems => _carrito.fold<double>(0, (s, i) => s + i.descuento);
+  double get _tasaIsvEstandar =>
+      (FiscalCompliance().config.tasaISV / 100).clamp(0.0, 0.50).toDouble();
   double get _isv15 => _carrito.fold<double>(0, (s, i) {
-    if (i.isvRate >= 14.99 && i.isvRate < 17.99) return s + (i.precioUnitario * i.cantidad - i.descuento) * 0.15;
+    if (i.isvRate >= 14.99 && i.isvRate < 17.99) {
+      final rate = i.isvRate > 0.01 && (i.isvRate - 15).abs() > 0.01
+          ? i.isvRate / 100
+          : _tasaIsvEstandar;
+      return s + (i.precioUnitario * i.cantidad - i.descuento) * rate;
+    }
     return s;
   });
   double get _isv18 => _carrito.fold<double>(0, (s, i) {
@@ -1592,15 +1931,27 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       appBar: _buildAppBar(),
-      // Keep the terminal body bounded to the viewport. If an outer route
-      // provides loose height constraints, the mobile Column can otherwise
-      // receive infinite height and lose hit-test/layout sizes.
-      body: SizedBox.expand(
-        child: _showScanner
-            ? _buildScannerView()
-            : (MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height
-                ? _buildWideLayout()
-                : _buildMobileLayout()),
+      // El POS también puede abrirse dentro de una ruta que entrega altura
+      // suelta. SizedBox.expand heredaba Infinity en ese caso y dejaba la barra
+      // inferior sin tamaño, rompiendo el hit-test de toda la pantalla.
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final height = constraints.hasBoundedHeight
+              ? constraints.maxHeight
+              : (MediaQuery.sizeOf(context).height -
+                      kToolbarHeight -
+                      MediaQuery.paddingOf(context).vertical)
+                  .clamp(0.0, double.infinity);
+          return SizedBox(
+            width: double.infinity,
+            height: height,
+            child: _showScanner
+                ? _buildScannerView()
+                : (MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height
+                    ? _buildWideLayout()
+                    : _buildMobileLayout()),
+          );
+        },
       ),
     );
   }
@@ -2620,12 +2971,38 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                 children: [
                   _buildMetodoChip('efectivo', 'Efectivo', Icons.payments_rounded),
                   const SizedBox(width: 8),
+                  _buildMetodoChip('fiado', 'Fiado', Icons.people_alt_rounded),
+                  const SizedBox(width: 8),
                   _buildMetodoChip('tarjeta', 'Tarjeta', Icons.credit_card_rounded),
                   const SizedBox(width: 8),
                   _buildMetodoChip('transferencia', 'Transferencia', Icons.account_balance_rounded),
                   const SizedBox(width: 8),
                   _buildMetodoChip('mixto', 'Mixto', Icons.account_balance_wallet_rounded),
                 ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            // Descuento de SOCIO del club (membresía vigente = precio especial).
+            Align(
+              alignment: Alignment.centerLeft,
+              child: GestureDetector(
+                onTap: _aplicarPrecioSocio,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.card_membership_rounded, color: Color(0xFFA78BFA), size: 14),
+                      const SizedBox(width: 5),
+                      Text('Precio socio (membresía)', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFA78BFA))),
+                    ],
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -3044,6 +3421,111 @@ class _ProductoVacio extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _DialogoSelectorSocio extends StatefulWidget {
+  final MembresiaService membresias;
+  const _DialogoSelectorSocio({required this.membresias});
+
+  @override
+  State<_DialogoSelectorSocio> createState() => _DialogoSelectorSocioState();
+}
+
+class _DialogoSelectorSocioState extends State<_DialogoSelectorSocio> {
+  List<Socio> _socios = [];
+  bool _cargando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _buscar('');
+  }
+
+  Future<void> _buscar(String t) async {
+    setState(() => _cargando = true);
+    try {
+      final lista = await widget.membresias.buscarSociosActivos(t);
+      if (mounted) setState(() { _socios = lista; _cargando = false; });
+    } catch (_) {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF141414),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          const Icon(Icons.card_membership_rounded, color: Color(0xFF8B5CF6), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text('Precio socio', maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 320,
+        height: 340,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              onChanged: (v) => _buscar(v),
+              style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Buscar socio por nombre...',
+                hintStyle: GoogleFonts.dmSans(color: const Color(0xFF525252)),
+                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF737373), size: 20),
+                isDense: true,
+                filled: true,
+                fillColor: const Color(0xFF0F0F0F),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF8B5CF6))),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: _cargando
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B5CF6), strokeWidth: 2))
+                  : _socios.isEmpty
+                      ? Center(child: Text('No hay socios con ese nombre', textAlign: TextAlign.center, style: GoogleFonts.dmSans(fontSize: 12.5, color: const Color(0xFF737373))))
+                      : ListView.builder(
+                          itemCount: _socios.length,
+                          itemBuilder: (_, i) {
+                            final s = _socios[i];
+                            return ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+                              leading: CircleAvatar(
+                                radius: 16,
+                                backgroundColor: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                                child: Text(s.nombre.isNotEmpty ? s.nombre[0].toUpperCase() : '?', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF8B5CF6))),
+                              ),
+                              title: Text(s.nombre, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                              subtitle: (s.documento ?? '').isNotEmpty
+                                  ? Text('Doc: ${s.documento}', maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.dmSans(fontSize: 11.5, color: const Color(0xFF737373)))
+                                  : null,
+                              onTap: () => Navigator.pop(context, s),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        SizedBox(
+          width: double.infinity,
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFFA1A1AA))),
+          ),
+        ),
+      ],
     );
   }
 }

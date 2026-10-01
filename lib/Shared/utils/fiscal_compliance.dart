@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
+import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
+import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 
 /// Configuración de compliance fiscal para Honduras (SAR)
 class FiscalCompliance {
@@ -36,6 +39,30 @@ class FiscalCompliance {
       } else {
         _config = FiscalConfig.defaultConfig();
       }
+
+      // La copia local permite operar sin internet; si hay sesión y conexión,
+      // la configuración compartida de Supabase es la referencia más reciente.
+      try {
+        final empresaCodigo = AuthController.instance.empresaCodigo;
+        await LocalDatabaseService.instance.initialize();
+        final hasPendingLocalChange = await LocalDatabaseService.instance
+            .hasPendingSyncFor('configuracion_fiscal', empresaCodigo);
+        if (!hasPendingLocalChange) {
+          final api = ApiService.instance;
+          final response = await api.get(
+            '/api/configuracion-fiscal',
+            queryParams: {'empresaCodigo': empresaCodigo},
+          );
+          final remote = response['configuracion'];
+          if (api.isSuccess(response) && remote is Map) {
+            final json = Map<String, dynamic>.from(remote);
+            _config = FiscalConfig.fromJson(json);
+            await prefs.setString(_key, jsonEncode(_config!.toJson()));
+          }
+        }
+      } catch (e) {
+        debugPrint('Configuración fiscal remota no disponible; se usa la copia local: $e');
+      }
     } catch (e) {
       debugPrint('Error al cargar configuración fiscal: $e');
       _config = FiscalConfig.defaultConfig();
@@ -48,7 +75,25 @@ class FiscalCompliance {
       final prefs = await SharedPreferences.getInstance();
       final configJson = jsonEncode(config.toJson());
       _config = config;
-      return await prefs.setString(_key, configJson);
+      final savedLocal = await prefs.setString(_key, configJson);
+      if (!savedLocal) return false;
+
+      // Persistir local y encolar el envío en la misma base SQLite usada por
+      // el resto de módulos; el reintento queda pendiente si no hay señal.
+      final empresaCodigo = AuthController.instance.empresaCodigo.trim();
+      if (empresaCodigo.isEmpty || empresaCodigo.toUpperCase() == 'ROOT') return true;
+      await LocalDatabaseService.instance.initialize();
+      await SyncService.instance.enqueueSync(
+        tabla: 'configuracion_fiscal',
+        operacion: SyncOperation.insert,
+        datos: {
+          'empresa_codigo': empresaCodigo,
+          'id': empresaCodigo,
+          'configuracion': config.toJson(),
+        },
+        empresaId: empresaCodigo,
+      );
+      return true;
     } catch (e) {
       debugPrint('Error al guardar configuración fiscal: $e');
       return false;
@@ -256,6 +301,8 @@ class FiscalConfig {
     String? puntoEmision,
     String? cai,
     DateTime? caiExpiration,
+    bool clearCai = false,
+    bool clearCaiExpiration = false,
     double? tasaISV,
     double? tasaISVExento,
     double? tasaISVAlto,
@@ -268,8 +315,8 @@ class FiscalConfig {
       nombreEmpresa: nombreEmpresa ?? this.nombreEmpresa,
       establecimiento: establecimiento ?? this.establecimiento,
       puntoEmision: puntoEmision ?? this.puntoEmision,
-      cai: cai ?? this.cai,
-      caiExpiration: caiExpiration ?? this.caiExpiration,
+      cai: clearCai ? null : (cai ?? this.cai),
+      caiExpiration: clearCaiExpiration ? null : (caiExpiration ?? this.caiExpiration),
       tasaISV: tasaISV ?? this.tasaISV,
       tasaISVExento: tasaISVExento ?? this.tasaISVExento,
       tasaISVAlto: tasaISVAlto ?? this.tasaISVAlto,

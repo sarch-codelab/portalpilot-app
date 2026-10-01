@@ -73,6 +73,8 @@ CREATE INDEX IF NOT EXISTS idx_fiado_abonos_empresa_fecha
   ON public.fiado_abonos (empresa_codigo, fecha DESC);
 
 ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS barcode text;
+ALTER TABLE public.facturas
+  ADD COLUMN IF NOT EXISTS tasa_isv_estandar numeric(6,5) NOT NULL DEFAULT 0.15;
 
 DO $$
 BEGIN
@@ -121,6 +123,7 @@ DECLARE
   v_precio numeric;
   v_descuento_linea numeric;
   v_tasa numeric;
+  v_tasa_estandar numeric := COALESCE((p_venta->>'tasa_isv_estandar')::numeric, 0.15);
   v_decrementados jsonb := '[]'::jsonb;
   v_existente facturas%ROWTYPE;
   v_credito pos_cliente_credito%ROWTYPE;
@@ -134,6 +137,9 @@ DECLARE
   v_isv15_calculado numeric := 0;
   v_isv18_calculado numeric := 0;
 BEGIN
+  IF v_tasa_estandar < 0 OR v_tasa_estandar > 0.50 THEN
+    RAISE EXCEPTION 'La tasa estándar de ISV debe estar entre 0 y 50 por ciento';
+  END IF;
   IF COALESCE(BTRIM(p_empresa_codigo), '') = '' THEN
     RAISE EXCEPTION 'empresa_codigo es requerido';
   END IF;
@@ -172,7 +178,7 @@ BEGIN
     IF v_tasa NOT IN (0, 15, 18) THEN RAISE EXCEPTION 'Tasa ISV inválida para %', v_item->>'nombre'; END IF;
     v_subtotal_calculado := v_subtotal_calculado + v_precio * v_cantidad;
     v_descuento_items := v_descuento_items + v_descuento_linea;
-    IF v_tasa = 15 THEN v_isv15_calculado := v_isv15_calculado + (v_precio * v_cantidad - v_descuento_linea) * 0.15; END IF;
+    IF v_tasa = 15 THEN v_isv15_calculado := v_isv15_calculado + (v_precio * v_cantidad - v_descuento_linea) * v_tasa_estandar; END IF;
     IF v_tasa = 18 THEN v_isv18_calculado := v_isv18_calculado + (v_precio * v_cantidad - v_descuento_linea) * 0.18; END IF;
     IF COALESCE(BTRIM(v_item->>'codigo'), '') = '' THEN
       RAISE EXCEPTION 'El producto % no tiene código para sincronizar', v_item->>'nombre';
@@ -226,7 +232,7 @@ BEGIN
   INSERT INTO facturas (
     empresa_codigo, empresa_id, correlativo, tipo_documento, cai,
     cliente_nombre, cliente_rtn, condicion_pago, tipo_venta, items,
-    subtotal, isv_15, isv_18, descuento, total, estado, notas
+    subtotal, isv_15, isv_18, descuento, total, estado, notas, tasa_isv_estandar
   ) VALUES (
     p_empresa_codigo, p_empresa_id, v_correlativo, 'Factura', 'POS-DIRECTO',
     COALESCE(NULLIF(p_venta->>'cliente_nombre', ''), 'Consumidor Final'),
@@ -235,7 +241,8 @@ BEGIN
     'Gravada', p_venta->'items', v_subtotal, v_isv15, v_isv18, v_descuento,
     v_total,
     CASE WHEN p_venta->>'estado' = 'pendiente_pago' THEN 'pendiente' ELSE 'pagada' END,
-    COALESCE(NULLIF(BTRIM(p_venta->>'notas'), ''), 'Pago: ' || COALESCE(p_venta->>'metodo_pago', 'efectivo'))
+    COALESCE(NULLIF(BTRIM(p_venta->>'notas'), ''), 'Pago: ' || COALESCE(p_venta->>'metodo_pago', 'efectivo')),
+    v_tasa_estandar
   );
 
   IF p_venta->>'estado' = 'pendiente_pago' AND NULLIF(BTRIM(p_venta->>'cliente_id'), '') IS NOT NULL THEN

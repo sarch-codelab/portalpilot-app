@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import 'package:portal_pilot_app/Modules/Facturacion/factura_detalle.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/sar_config_screen.dart';
@@ -8,10 +9,10 @@ import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/utils/fiscal_compliance.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
 import 'package:portal_pilot_app/Shared/services/canal_tradicional_service.dart';
-import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/factura_pdf_service.dart';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
+import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 
 class FacturaForm extends StatefulWidget {
@@ -55,6 +56,13 @@ class _FacturaFormState extends State<FacturaForm> {
   Map<String, dynamic>? _clienteSeleccionado;
 
   String get _tipoCodigo => SarTipoDocumento.codigoPorNombre(_tipoDocumento);
+  double get _tasaIsvEstandar {
+    final historical = widget.facturaExistente?['tasa_isv_estandar'];
+    final rate = historical is num
+        ? historical.toDouble()
+        : FiscalCompliance().config.tasaISV / 100;
+    return rate.clamp(0.0, 0.50).toDouble();
+  }
 
   @override
   void initState() {
@@ -117,6 +125,8 @@ class _FacturaFormState extends State<FacturaForm> {
       _clientesGuardados = JsonGuard.safeListOfMaps(clientesJson, source: 'Facturacion/factura_form/clientes');
     });
 
+    if (widget.facturaExistente != null) _recalcular();
+
     if (widget.facturaExistente == null) {
       await _actualizarPreviewCorrelativo();
     }
@@ -144,7 +154,11 @@ class _FacturaFormState extends State<FacturaForm> {
   }
 
   void _recalcular() {
-    final tot = SarService.calcularTotales(_items, descuentoGlobal: _descuento);
+    final tot = SarService.calcularTotales(
+      _items,
+      descuentoGlobal: _descuento,
+      tasaIsvEstandar: _tasaIsvEstandar,
+    );
     setState(() {
       _subtotal = tot.subtotal;
       _isv15 = tot.isv15;
@@ -553,7 +567,7 @@ class _FacturaFormState extends State<FacturaForm> {
     final factura = {
       'id': widget.facturaExistente != null
           ? widget.facturaExistente!['id']
-          : DateTime.now().millisecondsSinceEpoch.toString(),
+          : const Uuid().v4(),
       'correlativo': correlativo,
       'tipo_documento': _tipoDocumento,
       'fecha': widget.facturaExistente != null
@@ -578,6 +592,7 @@ class _FacturaFormState extends State<FacturaForm> {
       'isv_18': _isv18,
       'descuento': _descuento,
       'total': _total,
+      'tasa_isv_estandar': _tasaIsvEstandar,
       'estado': 'emitida',
       'contingencia': contingenciaActiva,
       'notas': contingenciaActiva
@@ -593,35 +608,6 @@ class _FacturaFormState extends State<FacturaForm> {
     }
 
     await prefs.setString('facturas', jsonEncode(facturas));
-
-    // Enviar factura al backend
-    try {
-      final api = ApiService.instance;
-      final body = {
-        'correlativo': correlativo,
-        'cliente_nombre': _clienteNombreController.text,
-        'cliente_rtn': _clienteRTNController.text,
-        'cliente_email': '',
-        'subtotal': _subtotal,
-        'isv_15': _isv15,
-        'isv_18': _isv18,
-        'descuento': _descuento,
-        'total': _total,
-        'tipo_documento': _tipoDocumento,
-        'metodo_pago': _condicionPagoController.text,
-        'notas': factura['notas'] ?? '',
-      };
-      if (esEdicion && widget.facturaExistente?['id'] != null) {
-        await api.patch(
-          '/api/facturas/${widget.facturaExistente!['id']}',
-          body: body,
-        );
-      } else {
-        await api.post('/api/facturas', body: body);
-      }
-    } catch (e) {
-      debugPrint('⚠️ No se pudo sincronizar factura con backend: $e');
-    }
 
     try {
       await LocalDatabaseService.instance.insertFacturaLocal(
@@ -645,10 +631,15 @@ class _FacturaFormState extends State<FacturaForm> {
         isv18: _isv18,
         descuento: _descuento,
         total: _total,
+        tasaIsvEstandar: _tasaIsvEstandar,
         estado: 'emitida',
         notas: factura['notas'],
+        operacion: esEdicion ? SyncOperation.update : SyncOperation.insert,
       );
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo guardar la factura localmente: $e')));
+      return;
+    }
 
     // Auditoría: emisión de documento fiscal.
     if (!esEdicion) {
