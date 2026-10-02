@@ -34,6 +34,7 @@ class FacturaPdfService {
     final items = List<Map<String, dynamic>>.from(factura['items'] ?? []);
     final subtotal = _num(factura['subtotal']);
     final isv15 = _num(factura['isv_15']);
+    final tasaIsvEstandar = ((factura['tasa_isv_estandar'] as num?)?.toDouble() ?? 0.15) * 100;
     final isv18 = _num(factura['isv_18']);
     final descuento = _num(factura['descuento']);
     final total = _num(factura['total']);
@@ -114,7 +115,7 @@ class FacturaPdfService {
           pw.SizedBox(height: 8),
           _itemsTable(items),
           pw.SizedBox(height: 8),
-          _totales(subtotal, isv15, isv18, descuento, total),
+          _totales(subtotal, isv15, isv18, descuento, total, tasaIsvEstandar),
           pw.SizedBox(height: 8),
           _letras(total),
           pw.SizedBox(height: 8),
@@ -505,6 +506,7 @@ class FacturaPdfService {
     double isv18,
     double descuento,
     double total,
+    double tasaIsvEstandar,
   ) {
     pw.Widget fila(
       String label,
@@ -575,7 +577,7 @@ class FacturaPdfService {
           child: pw.Column(
             children: [
               fila('SUBTOTAL', 'L. ${SarService.formatearMonto(subtotal)}'),
-              fila('ISV 15%', 'L. ${SarService.formatearMonto(isv15)}'),
+              fila('ISV ${tasaIsvEstandar.toStringAsFixed(2)}%', 'L. ${SarService.formatearMonto(isv15)}'),
               fila('ISV 18%', 'L. ${SarService.formatearMonto(isv18)}'),
               if (descuento > 0)
                 fila(

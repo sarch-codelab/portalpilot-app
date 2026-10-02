@@ -1379,8 +1379,8 @@ async function productosHandler(req, res) {
         if (empresaId) p.empresa_id = empresaId;
       });
 
-      // Upsert manual idempotente por (empresa_codigo, codigo):
-      // el on_conflict requiere un constraint UNIQUE que aÃºn no existe en la tabla.
+      // Cada sucursal mantiene su propia existencia para el mismo SKU.
+      // Upsert manual idempotente por (empresa_codigo, codigo, bodega).
       const results = [];
       const errores = [];
       for (const payload of payloads) {
@@ -1393,7 +1393,8 @@ async function productosHandler(req, res) {
           continue;
         }
 
-        const filtro = `/productos?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&codigo=eq.${encodeURIComponent(codigo)}&select=id`;
+        const bodega = payload.bodega || 'General';
+        const filtro = `/productos?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&codigo=eq.${encodeURIComponent(codigo)}&bodega=eq.${encodeURIComponent(bodega)}&select=id`;
         const existing = await supabaseRequest(filtro);
         let rows = [];
         try { rows = JSON.parse(existing.body || '[]'); } catch {}
@@ -1403,7 +1404,7 @@ async function productosHandler(req, res) {
           if (duplicate.status < 400) {
             const matches = JSON.parse(duplicate.body || '[]');
             const ownId = rows[0]?.id;
-            if (matches.some((item) => item.id !== ownId)) { errores.push(`C?digo de barras duplicado: ${payload.barcode}`); continue; }
+            if (matches.some((item) => item.id !== ownId && item.codigo !== codigo)) { errores.push(`C?digo de barras duplicado: ${payload.barcode}`); continue; }
           }
         }
 

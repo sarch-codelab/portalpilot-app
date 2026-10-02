@@ -340,6 +340,9 @@ class LocalDatabaseService {
     for (final p in productos) {
       final codigo = (p['codigo'] as String?)?.trim();
       final barcode = (p['barcode'] as String?)?.trim();
+      final bodega = (p['bodega'] as String?)?.trim().isNotEmpty == true
+          ? (p['bodega'] as String).trim()
+          : 'General';
       String id;
 
       // Dedupe por (empresa) usando codigo y luego barcode: si ya existe,
@@ -347,13 +350,23 @@ class LocalDatabaseService {
       Producto? existing;
       if (codigo != null && codigo.isNotEmpty) {
         existing = await (_db.select(_db.productos)
-              ..where((x) => x.empresaId.equals(empresaId) & x.codigo.equals(codigo)))
+              ..where((x) => x.empresaId.equals(empresaId) &
+                  x.codigo.equals(codigo) & x.bodega.equals(bodega)))
             .getSingleOrNull();
       }
-      if (existing == null && barcode != null && barcode.isNotEmpty) {
-        existing = await (_db.select(_db.productos)
+      if (barcode != null && barcode.isNotEmpty) {
+        final barcodeMatches = await (_db.select(_db.productos)
               ..where((x) => x.empresaId.equals(empresaId) & x.barcode.equals(barcode)))
-            .getSingleOrNull();
+            .get();
+        final conflictingBarcode = barcodeMatches.any((x) =>
+            x.codigo != codigo && x.id != (p['id'] as String?));
+        if (conflictingBarcode) {
+          throw StateError('El código de barras $barcode ya pertenece a otro producto.');
+        }
+        existing ??= barcodeMatches.cast<Producto?>().firstWhere(
+              (x) => x?.codigo == codigo && x?.bodega == bodega,
+              orElse: () => null,
+            );
       }
 
       if (existing != null) {
@@ -379,7 +392,7 @@ class LocalDatabaseService {
         precioVenta: Value((p['precio_venta'] as num?)?.toDouble() ?? 0.0),
         stockMinimo: Value(p['stock_minimo'] as int? ?? 0),
         stockActual: Value(p['stock_actual'] as int? ?? 0),
-        bodega: Value(p['bodega'] as String? ?? 'General'),
+        bodega: Value(bodega),
         isvRate: Value((p['isv_rate'] as num?)?.toDouble() ?? 15.0),
         exento: Value(p['exento'] as bool? ?? false),
         isPerishable: Value(p['is_perishable'] as bool? ?? false),

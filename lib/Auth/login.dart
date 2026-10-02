@@ -220,110 +220,36 @@ class _LoginScreenState extends State<LoginScreen>
 
     // Progreso real de la carga guiado por los pasos de login
     final loadingProgress = LoadingStepsController();
-
-    // Mostrar overlay de carga fullscreen
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => LoadingScreen(controller: loadingProgress),
-      );
-    }
+    _abrirOverlayCarga(loadingProgress);
 
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     try {
-      final Map<String, dynamic> response = await PortalPilotDB.login(
+      final primerIntento = await PortalPilotDB.login(
         email: email,
         password: password,
       );
       // Paso 1 completado: credenciales verificadas
       loadingProgress.completeStep();
 
-      final Map<String, dynamic> userJson = response['user'] ?? {};
-      final String token = response['token'] ?? '';
+      // El backend responde 202 cuando la cuenta exige un segundo factor: aún
+      // no hay sesión, hay que validar el código antes de continuar.
+      final response = primerIntento.requiereSegundoFactor
+          ? await _completarSegundoFactor(
+              email: email,
+              primerIntento: primerIntento,
+              loadingProgress: loadingProgress,
+            )
+          : primerIntento.data;
 
-      final loggedUser = UserModel.fromBackendJson(userJson, token);
-
-      if (!loggedUser.isActive) {
-        throw Exception('Tu cuenta está pendiente de activación por el Owner.');
-      }
-
-        final prefs = await SharedPreferences.getInstance();
-        final responseAreaNegocio = _areaNegocioDesdeRespuesta(response, userJson);
-        final String areaNegocio = responseAreaNegocio.isNotEmpty
-          ? responseAreaNegocio
-          : (prefs.getString('empresa_area_negocio') ?? '');
-      final String planEmpresa = _planDesdeRespuesta(response, userJson);
-      final List<String> featuresEmpresa =
-          _featuresDesdeRespuesta(userJson);
-      final bool trialVencido = userJson['trial_expired'] == true ||
-          userJson['read_only'] == true;
-
-      final area = (loggedUser.area ?? '').toLowerCase();
-      String modulos = AreasNegocio.modulosPorDefecto(areaNegocio).join(',');
-      if (modulos.isEmpty) {
-        modulos = prefs.getString('onboarding_modulos') ??
-        'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
-      }
-
-      if (area == 'finanzas') {
-        modulos = 'contabilidad,facturacion';
-      } else if (area == 'salud') {
-        modulos = 'facturacion,inventario';
-      } else if (loggedUser.isRoot) {
-        modulos = 'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
-      }
-
-      // Paso 2 completado: sesión con el servidor establecida
-      loadingProgress.completeStep();
-
-      await Future.wait([
-        AuthController.instance.setSession(
-          nombre: loggedUser.nombre ?? '',
-          apellido: loggedUser.apellido ?? '',
-          email: loggedUser.email,
-          rol: loggedUser.rol,
-          area: loggedUser.area ?? '',
-          rango: loggedUser.rango ?? '',
-          empresaCodigo: loggedUser.empresaCodigo,
-          empresaNombre: loggedUser.empresaNombre ?? '',
-          token: token,
-          modulos: modulos.split(',').map((m) => m.trim()).toList(),
-          features: featuresEmpresa,
-          soloLectura: trialVencido,
-          empresaAreaNegocio: areaNegocio,
-          empresaPlan: planEmpresa,
-          // Foto de perfil real del usuario (Supabase Storage o data URL).
-          fotoPerfilUrl: (userJson['foto_perfil_url'] ?? userJson['avatar_url'] ?? userJson['foto'] ?? '') as String,
-        ),
-        MultiAreaConfig.instance.cargar(
-          areaNegocio: areaNegocio,
-          modulosAsignados: modulos.split(',').map((m) => m.trim()).toList(),
-        ),
-        _saveCredentialsForBiometric(email, password),
-      ]);
-
-      // Paso 3 completado: dashboard preparado. Abriendo módulos…
-      loadingProgress.completeStep();
-      await Future.delayed(const Duration(milliseconds: 550));
-
-      // Progreso completo
-      loadingProgress.completeStep();
-      await Future.delayed(const Duration(milliseconds: 600));
-
+      // `null` = el usuario canceló el diálogo de 2FA: no hay error que mostrar.
+      if (response == null) return;
       if (!mounted) return;
-      Navigator.of(context).pop(); // Cerrar overlay
-      await Future.delayed(const Duration(milliseconds: 120));
 
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      await _abrirSesion(response, email, loadingProgress);
     } catch (e) {
-      if (mounted) Navigator.of(context).pop(); // Cerrar overlay en error
+      _cerrarOverlayCarga();
       _notificationManager.showNotification(
         e.toString().replaceAll('Exception:', '').trim(),
         NotificationType.error,
@@ -332,6 +258,177 @@ class _LoginScreenState extends State<LoginScreen>
       loadingProgress.dispose();
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Pide el código de 6 dígitos (o de respaldo) y devuelve la sesión ya
+  /// emitida por el backend, o `null` si el usuario cancela.
+  Future<Map<String, dynamic>?> _completarSegundoFactor({
+    required String email,
+    required LoginResult primerIntento,
+    required LoadingStepsController loadingProgress,
+  }) async {
+    var secret = '';
+    var otpauthUri = '';
+    if (primerIntento.requiresTwoFactorSetup) {
+      try {
+        final setup = await PortalPilotDB.iniciarSetup2fa(
+          primerIntento.setupToken,
+        );
+        secret = setup.secret;
+        otpauthUri = setup.otpauthUri;
+      } catch (e) {
+        _cerrarOverlayCarga();
+        _notificationManager.showNotification(
+          e.toString().replaceAll('Exception:', '').trim(),
+          NotificationType.error,
+        );
+        return null;
+      }
+    }
+    if (!mounted) return null;
+
+    // El overlay de carga estorba para escribir el código: se cierra aquí y
+    // el diálogo hace su propio indicador mientras valida.
+    _cerrarOverlayCarga();
+
+    final sesion = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => TwoFactorDialog(
+        email: email,
+        enroll: primerIntento.requiresTwoFactorSetup,
+        secret: secret,
+        otpauthUri: otpauthUri,
+        onSubmit: (code) => primerIntento.requiresTwoFactor
+            ? PortalPilotDB.verificarLogin2fa(
+                mfaToken: primerIntento.mfaToken,
+                code: code,
+              )
+            : PortalPilotDB.confirmarSetup2fa(
+                setupToken: primerIntento.setupToken,
+                code: code,
+              ),
+      ),
+    );
+
+    if (sesion == null || !mounted) return null;
+    _abrirOverlayCarga(loadingProgress);
+    return sesion;
+  }
+
+  /// Crea la sesión local a partir de la respuesta de login (directa o tras
+  /// validar el segundo factor) y navega al Home.
+  Future<void> _abrirSesion(
+    Map<String, dynamic> response,
+    String email,
+    LoadingStepsController loadingProgress,
+  ) async {
+    final Map<String, dynamic> userJson = response['user'] ?? {};
+    final String token = response['token'] ?? '';
+
+    final loggedUser = UserModel.fromBackendJson(userJson, token);
+
+    if (!loggedUser.isActive) {
+      throw Exception('Tu cuenta está pendiente de activación por el Owner.');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final responseAreaNegocio = _areaNegocioDesdeRespuesta(response, userJson);
+    final String areaNegocio = responseAreaNegocio.isNotEmpty
+        ? responseAreaNegocio
+        : (prefs.getString('empresa_area_negocio') ?? '');
+    final String planEmpresa = _planDesdeRespuesta(response, userJson);
+    final List<String> featuresEmpresa = _featuresDesdeRespuesta(userJson);
+    final bool trialVencido =
+        userJson['trial_expired'] == true || userJson['read_only'] == true;
+
+    final area = (loggedUser.area ?? '').toLowerCase();
+    String modulos = AreasNegocio.modulosPorDefecto(areaNegocio).join(',');
+    if (modulos.isEmpty) {
+      modulos = prefs.getString('onboarding_modulos') ??
+          'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
+    }
+
+    if (area == 'finanzas') {
+      modulos = 'contabilidad,facturacion';
+    } else if (area == 'salud') {
+      modulos = 'facturacion,inventario';
+    } else if (loggedUser.isRoot) {
+      modulos =
+          'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
+    }
+
+    // Paso 2 completado: sesión con el servidor establecida
+    loadingProgress.completeStep();
+
+    await Future.wait([
+      AuthController.instance.setSession(
+        nombre: loggedUser.nombre ?? '',
+        apellido: loggedUser.apellido ?? '',
+        email: loggedUser.email,
+        rol: loggedUser.rol,
+        area: loggedUser.area ?? '',
+        rango: loggedUser.rango ?? '',
+        empresaCodigo: loggedUser.empresaCodigo,
+        empresaNombre: loggedUser.empresaNombre ?? '',
+        token: token,
+        modulos: modulos.split(',').map((m) => m.trim()).toList(),
+        features: featuresEmpresa,
+        soloLectura: trialVencido,
+        empresaAreaNegocio: areaNegocio,
+        empresaPlan: planEmpresa,
+        // Foto de perfil real del usuario (Supabase Storage o data URL).
+        fotoPerfilUrl: (userJson['foto_perfil_url'] ??
+                userJson['avatar_url'] ??
+                userJson['foto'] ??
+                '') as String,
+      ),
+      MultiAreaConfig.instance.cargar(
+        areaNegocio: areaNegocio,
+        modulosAsignados: modulos.split(',').map((m) => m.trim()).toList(),
+      ),
+      _saveCredentialsForBiometric(email, _passwordController.text.trim()),
+    ]);
+
+    // Paso 3 completado: dashboard preparado. Abriendo módulos…
+    loadingProgress.completeStep();
+    await Future.delayed(const Duration(milliseconds: 550));
+
+    // Progreso completo
+    loadingProgress.completeStep();
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    if (!mounted) return;
+    _cerrarOverlayCarga(); // Cerrar overlay
+    await Future.delayed(const Duration(milliseconds: 120));
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+    );
+  }
+
+  /// `true` mientras el overlay de carga esté en pantalla. El login pasa por
+  /// el overlay dos veces cuando hay 2FA (se cierra para escribir el código y
+  /// se reabre al validarlo), así que hace falta saber si está visible para no
+  /// cerrar por error la pantalla de login en el `catch`.
+  bool _loginOverlayVisible = false;
+
+  void _abrirOverlayCarga(LoadingStepsController progress) {
+    if (!mounted || _loginOverlayVisible) return;
+    _loginOverlayVisible = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => LoadingScreen(controller: progress),
+    );
+  }
+
+  void _cerrarOverlayCarga() {
+    if (!_loginOverlayVisible || !mounted) return;
+    _loginOverlayVisible = false;
+    Navigator.of(context).pop();
   }
 
   /// Extrae empresa.area_negocio de la respuesta del backend (si existe).

@@ -50,14 +50,15 @@ class _ProductoListState extends State<ProductoList> {
       final productosFromPrefs = JsonGuard.safeListOfMaps(json, source: 'Inventario/producto_list');
       
       // Usar productos de DB como prioridad, agregar los de prefs que no estén en DB
-      final codigosEnDb = productosFromDb
-          .map((p) => (p['codigo'] ?? '').toString())
-          .where((c) => c.isNotEmpty)
+      final identidadesEnDb = productosFromDb
+          .map((p) => '${(p['codigo'] ?? '').toString().trim()}::${(p['bodega'] ?? 'General').toString().trim()}')
+          .where((c) => !c.startsWith('::'))
           .toSet();
       final productosFinales = [...productosFromDb];
       for (final p in productosFromPrefs) {
         final codigo = (p['codigo'] ?? '').toString();
-        if (codigo.isEmpty || !codigosEnDb.contains(codigo)) {
+        final identidad = '$codigo::${(p['bodega'] ?? 'General').toString().trim()}';
+        if (codigo.isEmpty || !identidadesEnDb.contains(identidad)) {
           productosFinales.add(p);
         }
       }
@@ -69,7 +70,7 @@ class _ProductoListState extends State<ProductoList> {
       if (cache.isNotEmpty) {
         String identidad(Map<String, dynamic> p) {
           final c = (p['codigo'] ?? '').toString().trim();
-          if (c.isNotEmpty) return 'c:$c';
+          if (c.isNotEmpty) return 'c:$c::${(p['bodega'] ?? 'General').toString().trim()}';
           final b = (p['barcode'] ?? '').toString().trim();
           if (b.isNotEmpty) return 'b:$b';
           return 'id:${p['id']}';
@@ -174,17 +175,18 @@ class _ProductoListState extends State<ProductoList> {
       };
 
   List<Map<String, dynamic>> _dedupePorCodigo(List<Map<String, dynamic>> items) {
-    // Llave primaria por codigo; si no hay codigo, por barcode (identidad única
-    // del producto). Dos registros con el mismo codigo (o el mismo barcode
-    // cuando no hay codigo) colapsan a una sola fila para no duplicar.
+    // El mismo SKU puede tener existencias independientes en varias bodegas.
+    // El barcode compartido entre esas filas sigue representando el mismo SKU.
     final vistoCodigo = <String>{};
     final vistoBarcode = <String>{};
     final resultado = <Map<String, dynamic>>[];
     for (final p in items) {
       final codigo = (p['codigo'] ?? '').toString().trim();
       final barcode = (p['barcode'] ?? '').toString().trim();
+      final bodega = (p['bodega'] ?? 'General').toString().trim();
+      final identidadCodigo = '$codigo::$bodega';
       if (codigo.isNotEmpty) {
-        if (vistoCodigo.add(codigo)) {
+        if (vistoCodigo.add(identidadCodigo)) {
           if (barcode.isNotEmpty) vistoBarcode.add(barcode);
           resultado.add(p);
         }

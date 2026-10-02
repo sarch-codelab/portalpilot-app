@@ -376,8 +376,13 @@ class PortalPilotDB {
     }
   }
 
-  /// Login contra el backend Express (requiere internet)
-  static Future<Map<String, dynamic>> login({
+  /// Login contra el backend Express (requiere internet).
+  ///
+  /// El backend responde HTTP 200 con la sesión, o HTTP 202 cuando la cuenta
+  /// exige un segundo factor: en ese caso devuelve un desafío (`mfaToken` si el
+  /// usuario ya tiene 2FA, `setupToken` si debe inscribirlo) y todavía no hay
+  /// sesión. Ver [LoginResult].
+  static Future<LoginResult> login({
     required String email,
     required String password,
   }) async {
@@ -390,38 +395,193 @@ class PortalPilotDB {
         )
         .timeout(_timeout);
 
-    final String responseBody = utf8.decode(response.bodyBytes, allowMalformed: true);
-    Map<String, dynamic>? data;
-    try {
-      data = jsonDecode(responseBody) as Map<String, dynamic>?;
-    } catch (_) {
-      data = null;
-    }
+    final data = _decodeAuthBody(response);
 
     if (response.statusCode == 200) {
-      return data ?? {};
+      return LoginResult(data: data ?? <String, dynamic>{});
     }
 
-    String errorMessage = 'Error al iniciar sesión.';
-    if (data != null) {
-      if (data['error'] != null) {
-        errorMessage = data['error'].toString();
-      } else if (data['message'] != null) {
-        errorMessage = data['message'].toString();
-      } else if (data['protection'] != null) {
-        errorMessage =
-            'La API está protegida por Vercel. Desactiva la protección de despliegue o usa un dominio público válido.';
+    if (response.statusCode == 202) {
+      final mfaToken = data?['mfaToken']?.toString() ?? '';
+      if (data?['requiresTwoFactor'] == true && mfaToken.isNotEmpty) {
+        return LoginResult(
+          data: data ?? const <String, dynamic>{},
+          requiresTwoFactor: true,
+          mfaToken: mfaToken,
+        );
       }
-    } else if (response.statusCode == 401) {
-      errorMessage =
-          'No autorizado. El despliegue está protegido o la API requiere autenticación.';
-    } else if (response.statusCode == 404) {
-      errorMessage =
-          'No se encontró el endpoint de login. Revisa la URL de la API y la configuración de Vercel.';
+      final setupToken = data?['setupToken']?.toString() ?? '';
+      if (data?['requiresTwoFactorSetup'] == true && setupToken.isNotEmpty) {
+        return LoginResult(
+          data: data ?? const <String, dynamic>{},
+          requiresTwoFactorSetup: true,
+          setupToken: setupToken,
+        );
+      }
+      throw Exception(
+        'El servidor pidió una verificación adicional que no pudo iniciarse. '
+        'Inicia sesión de nuevo. (Código 202)',
+      );
     }
 
-    throw Exception('$errorMessage (Código ${response.statusCode})');
+    throw Exception(
+      '${_authErrorMessage(data, response.statusCode)} '
+      '(Código ${response.statusCode})',
+    );
   }
+
+  /// Genera el secreto TOTP para la inscripción obligatoria de 2FA.
+  /// La URI `otpauth://` es la que se escanea como QR en la web; aquí se
+  /// devuelve en texto para que la app la muestre y la copie al portapapeles.
+  static Future<({String secret, String otpauthUri})> iniciarSetup2fa(
+    String setupToken,
+  ) async {
+    final data = await _postAuth('/api/login/2fa/setup', {
+      'setupToken': setupToken,
+    });
+    final secret = data['secret']?.toString() ?? '';
+    if (secret.isEmpty) {
+      throw Exception('El servidor no devolvió el secreto de verificación.');
+    }
+    return (secret: secret, otpauthUri: data['otpauthUri']?.toString() ?? '');
+  }
+
+  /// Confirma la inscripción de 2FA y devuelve la sesión ya iniciada.
+  static Future<Map<String, dynamic>> confirmarSetup2fa({
+    required String setupToken,
+    required String code,
+  }) async {
+    return _postAuth('/api/login/2fa/setup-confirm', {
+      'setupToken': setupToken,
+      'code': _normalizarCodigo2fa(code),
+    });
+  }
+
+  /// Completa el login con el segundo factor: código TOTP de 30s o un código
+  /// de respaldo. Devuelve la sesión final (`token` + `user`).
+  static Future<Map<String, dynamic>> verificarLogin2fa({
+    required String mfaToken,
+    required String code,
+  }) async {
+    return _postAuth('/api/login/2fa', {
+      'mfaToken': mfaToken,
+      'code': _normalizarCodigo2fa(code),
+    });
+  }
+
+  /// Los códigos de respaldo se guardan hasheados en mayúsculas (`XXXX-XXXX`)
+  /// y el TOTP son 6 dígitos: normalizamos igual que el backend.
+  static String _normalizarCodigo2fa(String code) =>
+      code.trim().toUpperCase();
+
+  /// POST de los endpoints de autenticación: devuelve el JSON o lanza con el
+  /// mensaje que envió el backend.
+  static Future<Map<String, dynamic>> _postAuth(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await http
+        .post(
+          _uri(path),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
+
+    final data = _decodeAuthBody(response);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data ?? <String, dynamic>{};
+    }
+
+    throw Exception(
+      '${_authErrorMessage(data, response.statusCode)} '
+      '(Código ${response.statusCode})',
+    );
+  }
+
+  /// Body JSON de una respuesta de auth, o `null` si no es JSON válido.
+  static Map<String, dynamic>? _decodeAuthBody(http.Response response) {
+    try {
+      final raw = jsonDecode(
+        utf8.decode(response.bodyBytes, allowMalformed: true),
+      );
+      return raw is Map<String, dynamic> ? raw : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Traduce el body de un error de auth a un mensaje legible.
+  static String _authErrorMessage(Map<String, dynamic>? data, int statusCode) {
+    if (data != null) {
+      final error = data['error'];
+      if (error != null && error.toString().trim().isNotEmpty) {
+        return error.toString();
+      }
+      final message = data['message'];
+      if (message != null && message.toString().trim().isNotEmpty) {
+        return message.toString();
+      }
+      if (data['protection'] != null) {
+        return 'La API está protegida por Vercel. Desactiva la protección de '
+            'despliegue o usa un dominio público válido.';
+      }
+    }
+    if (statusCode == 401) {
+      return 'No autorizado. El despliegue está protegido o la API requiere '
+          'autenticación.';
+    }
+    if (statusCode == 404) {
+      return 'No se encontró el endpoint de login. Revisa la URL de la API y '
+          'la configuración de Vercel.';
+    }
+    if (statusCode == 429) {
+      return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
+    }
+    return 'Error al iniciar sesión.';
+  }
+}
+
+/// Resultado de [PortalPilotDB.login].
+///
+/// El backend responde 202 cuando la cuenta exige un segundo factor: no hay
+/// sesión todavía, solo un desafío con vigencia de minutos que hay que
+/// completar con [PortalPilotDB.verificarLogin2fa] (o
+/// [PortalPilotDB.confirmarSetup2fa] si es la inscripción).
+class LoginResult {
+  const LoginResult({
+    required this.data,
+    this.requiresTwoFactor = false,
+    this.requiresTwoFactorSetup = false,
+    this.mfaToken = '',
+    this.setupToken = '',
+  });
+
+  /// Cuerpo completo de la respuesta del backend.
+  final Map<String, dynamic> data;
+
+  /// El usuario ya tiene 2FA activo: hay que enviar el código a
+  /// `/api/login/2fa` con [mfaToken].
+  final bool requiresTwoFactor;
+
+  /// El usuario debe activar 2FA antes de entrar: hay que inscribirlo con
+  /// [setupToken].
+  final bool requiresTwoFactorSetup;
+
+  /// Desafío de 5 minutos para `/api/login/2fa`.
+  final String mfaToken;
+
+  /// Desafío de 10 minutos para la inscripción de 2FA.
+  final String setupToken;
+
+  /// `true` cuando la respuesta trae sesión lista (`token` + `user`).
+  bool get autenticado =>
+      data['token'] is String &&
+      (data['token'] as String).isNotEmpty &&
+      data['user'] is Map<String, dynamic>;
+
+  /// `true` cuando el login quedó a la espera del segundo factor.
+  bool get requiereSegundoFactor => requiresTwoFactor || requiresTwoFactorSetup;
 }
 
 class UserModel {

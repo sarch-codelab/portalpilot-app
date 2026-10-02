@@ -275,7 +275,7 @@ class _FacturaFormState extends State<FacturaForm> {
                                   items: [
                                     DropdownMenuItem(
                                       value: '15',
-                                      child: Text('15% (Bien)'),
+                                      child: Text('${(_tasaIsvEstandar * 100).toStringAsFixed(2)}% (Bien)'),
                                     ),
                                     DropdownMenuItem(
                                       value: '18',
@@ -1454,7 +1454,7 @@ class _FacturaFormState extends State<FacturaForm> {
           ),
           const SizedBox(height: 6),
           _buildSummaryRow(
-            'ISV 15%',
+            'ISV ${(_tasaIsvEstandar * 100).toStringAsFixed(2)}%',
             'L.${_isv15.toStringAsFixed(2)}',
             const Color(0xFF3B82F6),
           ),

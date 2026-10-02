@@ -15,6 +15,7 @@ class FacturaDetalle extends StatelessWidget {
     final total = (factura['total'] as num?)?.toDouble() ?? 0.0;
     final subtotal = (factura['subtotal'] as num?)?.toDouble() ?? 0.0;
     final isv15 = (factura['isv_15'] as num?)?.toDouble() ?? 0.0;
+    final tasaIsvEstandar = ((factura['tasa_isv_estandar'] as num?)?.toDouble() ?? 0.15) * 100;
     final isv18 = (factura['isv_18'] as num?)?.toDouble() ?? 0.0;
     final descuento = (factura['descuento'] as num?)?.toDouble() ?? 0.0;
     final items = JsonGuard.toListOfMaps(factura['items']);
@@ -281,7 +282,7 @@ class FacturaDetalle extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _buildSummaryRow(
-                  'ISV 15%',
+                  'ISV ${tasaIsvEstandar.toStringAsFixed(2)}%',
                   'L.${isv15.toStringAsFixed(2)}',
                   const Color(0xFF3B82F6),
                 ),
