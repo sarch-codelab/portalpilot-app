@@ -1,6 +1,7 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:portal_pilot_app/Shared/services/notification_service.dart';
 import 'package:flutter/services.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:window_manager/window_manager.dart';
@@ -10,9 +11,13 @@ import 'package:portal_pilot_app/Shared/services/sar_service.dart';
 import 'package:portal_pilot_app/Shared/services/window_manager.dart';
 import 'package:portal_pilot_app/Shared/services/orientation_service.dart';
 import 'package:portal_pilot_app/Shared/services/offline_sync_service.dart';
-import 'package:portal_pilot_app/Shared/services/sync_service.dart' as durable_sync;
+import 'package:portal_pilot_app/Shared/services/sync_service.dart'
+    as durable_sync;
 import 'package:portal_pilot_app/Shared/services/session_guard.dart';
+import 'package:portal_pilot_app/Shared/services/app_update_service.dart';
+import 'package:portal_pilot_app/Shared/services/fcm_update_service.dart';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
+import 'package:portal_pilot_app/Shared/utils/local_paths.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 import 'package:portal_pilot_app/launch_screen.dart';
 
@@ -20,35 +25,47 @@ void main() {
   // TODO el arranque (ensureInitialized incluido) corre en la MISMA zona
   // capturadora: mezclar zonas entre ensureInitialized y runApp dispara el
   // assertion "Zone mismatch" del framework.
-  runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-    // Aviso global al usuario cuando se detectan datos JSON corruptos (P1):
-    // los servicios avisan vía JsonGuard.reportCorrupt sin contexto, y aquí la
-    // raíz de la app muestra el toast oficial.
-    JsonGuard.onCorrupt = (_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        try {
-          final ctx = SessionGuard.navigatorKey.currentContext;
-          if (ctx == null) return;
-          PPNotifications.error(ctx, JsonGuard.kCorruptDataMessage, title: 'Datos corruptos');
-        } catch (e) {
-          debugPrint('⚠️ No se pudo notificar datos corruptos: $e');
-        }
-      });
-    };
+      // Sandbox/entornos con escritura restringida: redirige Documents,
+      // AppData y Temp a una carpeta local si PORTAL_PILOT_DATA_DIR está
+      // definida. No hace nada en producción.
+      configureLocalPaths();
 
-    FlutterError.onError = (FlutterErrorDetails details) {
-      FlutterError.presentError(details);
-      debugPrint('🚨 Flutter error: ${details.exception}');
-      debugPrint('Stack: ${details.stack}');
-    };
+      // Aviso global al usuario cuando se detectan datos JSON corruptos (P1):
+      // los servicios avisan vía JsonGuard.reportCorrupt sin contexto, y aquí la
+      // raíz de la app muestra el toast oficial.
+      JsonGuard.onCorrupt = (_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            final ctx = SessionGuard.navigatorKey.currentContext;
+            if (ctx == null) return;
+            PPNotifications.error(
+              ctx,
+              JsonGuard.kCorruptDataMessage,
+              title: 'Datos corruptos',
+            );
+          } catch (e) {
+            debugPrint('⚠️ No se pudo notificar datos corruptos: $e');
+          }
+        });
+      };
 
-    await _initApp();
-  }, (error, stack) {
-    debugPrint('🚨 Error no capturado: $error');
-    debugPrint('Stack: $stack');
-  });
+      FlutterError.onError = (FlutterErrorDetails details) {
+        FlutterError.presentError(details);
+        debugPrint('🚨 Flutter error: ${details.exception}');
+        debugPrint('Stack: ${details.stack}');
+      };
+
+      await _initApp();
+    },
+    (error, stack) {
+      debugPrint('🚨 Error no capturado: $error');
+      debugPrint('Stack: $stack');
+    },
+  );
 }
 
 Future<void> _initApp() async {
@@ -67,11 +84,6 @@ Future<void> _initApp() async {
     debugPrint('⚠️ OfflineSyncService init error: $e');
   }
 
-  // La capa actual de datos encola cambios en SyncService (SQLite). Debe
-  // arrancar siempre para vaciar la cola persistente tras un reinicio y para
-  // reintentar automáticamente cuando vuelva la conectividad. El servicio
-  // OfflineSyncService anterior se conserva para las pantallas que lo usan,
-  // pero no reemplaza esta cola durable.
   try {
     await durable_sync.SyncService.instance.initialize();
   } catch (e) {
@@ -82,6 +94,20 @@ Future<void> _initApp() async {
     await PortalPilotDB.initialize();
   } catch (e) {
     debugPrint('Error al inicializar backend: $e');
+  }
+
+  // Inicializar servicios de actualización (solo Android)
+  if (Platform.isAndroid) {
+    try {
+      await FCMUpdateService.instance.initialize();
+      await AppUpdateService.instance.checkForUpdate(force: true);
+      AppUpdateService.instance.startPeriodicCheck();
+      debugPrint('[PortalPilot] Servicios de actualización iniciados');
+    } catch (e) {
+      debugPrint(
+        '[PortalPilot] Error iniciando servicios de actualización: $e',
+      );
+    }
   }
 
   runApp(const PortalPilotApp());
@@ -107,11 +133,145 @@ class PortalPilotApp extends StatefulWidget {
 
 class _PortalPilotAppState extends State<PortalPilotApp> {
   bool _windowRestored = false;
+  StreamSubscription<AppUpdateInfo>? _updateSubscription;
 
   @override
   void initState() {
     super.initState();
     _initWindow();
+    _listenForUpdates();
+  }
+
+  @override
+  void dispose() {
+    _updateSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _listenForUpdates() {
+    if (!Platform.isAndroid) return;
+    _updateSubscription = AppUpdateService.instance.updateStream.listen((
+      updateInfo,
+    ) {
+      if (mounted) {
+        _showUpdateDialog(updateInfo);
+      }
+    });
+    // Verificar si ya hay actualización pendiente al iniciar
+    final pending = AppUpdateService.instance.pendingUpdate;
+    if (pending != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showUpdateDialog(pending);
+      });
+    }
+  }
+
+  Future<void> _showUpdateDialog(AppUpdateInfo updateInfo) async {
+    final dismissed = await AppUpdateService.instance.isVersionDismissed(
+      updateInfo.versionCode,
+    );
+    if (dismissed && !updateInfo.forceUpdate) return;
+
+    // Re-obtenemos el context tras el await: el anterior pudo desmontarse.
+    final ctx = SessionGuard.navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+
+    await showDialog<bool>(
+      context: ctx,
+      barrierDismissible: !updateInfo.forceUpdate,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.system_update_alt, color: Color(0xFF8B5CF6)),
+            const SizedBox(width: 8),
+            Text(
+              'Actualización ${updateInfo.forceUpdate ? 'Obligatoria' : 'Disponible'}',
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Versión ${updateInfo.versionName} (${updateInfo.versionCode})',
+            ),
+            const SizedBox(height: 12),
+            if (updateInfo.changelog.isNotEmpty) ...[
+              const Text(
+                'Novedades:',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              ...updateInfo.changelog.map(
+                (c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('• ', style: TextStyle(fontSize: 14)),
+                      Expanded(
+                        child: Text(c, style: const TextStyle(fontSize: 13)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (updateInfo.forceUpdate)
+              const Text(
+                'Esta actualización es obligatoria para continuar usando la app.',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
+              )
+            else
+              const Text('¿Deseas actualizar ahora?'),
+          ],
+        ),
+        actions: [
+          if (!updateInfo.forceUpdate)
+            TextButton(
+              onPressed: () async {
+                await AppUpdateService.instance.dismissVersion(
+                  updateInfo.versionCode,
+                );
+                if (ctx.mounted) Navigator.pop(ctx, false);
+              },
+              child: const Text('Después'),
+            ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx, true);
+              await _downloadAndInstall(updateInfo);
+            },
+            child: const Text('Instalar ahora'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _downloadAndInstall(AppUpdateInfo updateInfo) async {
+    final context = SessionGuard.navigatorKey.currentContext;
+    if (context == null) return;
+
+    PPNotifications.info(
+      context,
+      'Descargando actualización v${updateInfo.versionName}...',
+    );
+
+    try {
+      await AppUpdateService.instance.downloadAndInstall(updateInfo);
+      // La app se cerrará automáticamente al instalar el APK
+      // El usuario debe volver a abrir la app manualmente
+    } catch (e) {
+      if (context.mounted) {
+        PPNotifications.error(context, 'Error al actualizar: $e');
+      }
+    }
   }
 
   Future<void> _initWindow() async {
@@ -142,15 +302,13 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
           home: _windowRestored
               ? const SplashScreen()
               : const Scaffold(
-                  backgroundColor: Color(0xFF070510),
+                  backgroundColor: Color(0xFF000000),
                   body: Align(
                     alignment: Alignment.center,
                     child: SizedBox(
                       width: 40,
                       height: 40,
-                      child: ColoredBox(
-                        color: Color(0xFF070510),
-                      ),
+                      child: ColoredBox(color: Color(0xFF000000)),
                     ),
                   ),
                 ),
@@ -186,8 +344,9 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
                     SizedBox(
                       height: 44,
                       child: WindowCaption(
-                        backgroundColor:
-                            isDark ? const Color(0xFF0A0814) : Colors.white,
+                        backgroundColor: isDark
+                            ? const Color(0xFF000000)
+                            : Colors.white,
                         brightness: isDark ? Brightness.dark : Brightness.light,
                         title: Row(
                           children: [
@@ -211,10 +370,13 @@ class _PortalPilotAppState extends State<PortalPilotApp> {
                             const SizedBox(width: 10),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 3),
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFB94DDC)
-                                    .withValues(alpha: 0.12),
+                                color: const Color(
+                                  0xFFB94DDC,
+                                ).withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(

@@ -1,12 +1,19 @@
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:portal_pilot_app/Shared/utils/mobile_utils.dart';
+import 'package:portal_pilot_app/Modules/module_manager.dart';
 import 'package:portal_pilot_app/Shared/models/modulo.dart';
 import 'package:portal_pilot_app/Shared/services/haptic_service.dart';
 import 'package:portal_pilot_app/Shared/services/pp_module_navigator.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_notification_panel.dart';
+import 'package:portal_pilot_app/Shared/services/notification_service.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_notification_panel.dart';
+import 'package:portal_pilot_app/Shared/services/notification_service.dart';
+import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 /// Núcleo de navegación de Portal Pilot.
 ///
@@ -109,6 +116,8 @@ class _PPAppShellState extends State<PPAppShell> {
     super.initState();
     // Refresca topbar/sidebar/bottomnav cuando cambia el tema global.
     appThemeNotifier.addListener(_onThemeChanged);
+    // Refresca la navegación cuando se recalculan los módulos del plan.
+    ModuleManager.instance.addListener(_onThemeChanged);
   }
 
   void _onThemeChanged() {
@@ -116,6 +125,21 @@ class _PPAppShellState extends State<PPAppShell> {
   }
 
   List<Modulo> get _allModules => Modulo.modulosDisponibles;
+
+  /// Módulos visibles en la navegación (sidebar/drawer): solo los del plan
+    /// contratado. Los módulos de sistema se muestran en una sección separada.
+  List<Modulo> get _navModules {
+    return _allModules
+      .where((m) => !_isSystemModule(m.id) && ModuleManager.instance.isAppModuleAllowed(m.id))
+        .toList();
+  }
+
+    List<Modulo> get _systemModules => _allModules
+      .where((m) => const {'settings', 'soporte', 'estado_sistema'}.contains(m.id))
+      .toList();
+
+    bool _isSystemModule(String id) =>
+      const {'settings', 'soporte', 'estado_sistema'}.contains(id);
 
   Modulo get _currentModule {
     for (final m in _allModules) {
@@ -127,6 +151,7 @@ class _PPAppShellState extends State<PPAppShell> {
   @override
   void dispose() {
     appThemeNotifier.removeListener(_onThemeChanged);
+    ModuleManager.instance.removeListener(_onThemeChanged);
     _focusNode.dispose();
     _searchController.dispose();
     super.dispose();
@@ -137,6 +162,10 @@ class _PPAppShellState extends State<PPAppShell> {
   }
 
   Future<void> _openModule({required BuildContext context, required Modulo modulo}) async {
+    if (!ModuleManager.instance.isAppModuleAllowed(modulo.id)) {
+      PPNotifications.info(context, 'Este módulo no está incluido en tu plan.', title: 'Módulo no disponible');
+      return;
+    }
     HapticService.instance.lightImpact();
     await PPModuleNavigator.push(context, modulo);
   }
@@ -144,6 +173,10 @@ class _PPAppShellState extends State<PPAppShell> {
   Future<void> _openModuleById(BuildContext context, String id) async {
     for (final m in _allModules) {
       if (m.id == id) {
+        if (!ModuleManager.instance.isAppModuleAllowed(id)) {
+          PPNotifications.info(context, 'Este módulo no está incluido en tu plan.', title: 'Módulo no disponible');
+          return;
+        }
         await _openModule(context: context, modulo: m);
         return;
       }
@@ -256,12 +289,10 @@ class _PPAppShellState extends State<PPAppShell> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
                 if (!collapsed) _buildSidebarLabel('MÓDULOS', palette),
-                ..._allModules.map((m) => _buildNavItem(m, palette, controller)),
-                if (!collapsed) ...[
-                  const SizedBox(height: 10),
-                  _buildSidebarLabel('SISTEMA', palette),
-                  _buildSidebarFooterItem(palette, controller, collapsed),
-                ],
+                ..._navModules.map((m) => _buildNavItem(m, palette, controller)),
+                const SizedBox(height: 10),
+                if (!collapsed) _buildSidebarLabel('SISTEMA', palette),
+                ..._systemModules.map((m) => _buildNavItem(m, palette, controller)),
               ],
             ),
           ),
@@ -377,6 +408,8 @@ class _PPAppShellState extends State<PPAppShell> {
               ),
               ),
               child: Row(
+                mainAxisAlignment:
+                    collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
                 children: [
                   Icon(
                     modulo.icono,
@@ -404,21 +437,6 @@ class _PPAppShellState extends State<PPAppShell> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildSidebarFooterItem(ThemePalette palette, PPController controller, bool collapsed) {
-    return _buildNavItem(
-      Modulo(
-        id: 'settings',
-        nombre: 'Configuración',
-        descripcion: 'Config',
-        icono: Icons.settings_rounded,
-        color: palette.brand,
-        ruta: '',
-      ),
-      palette,
-      controller,
     );
   }
 
@@ -454,9 +472,6 @@ class _PPAppShellState extends State<PPAppShell> {
 
   // ─────────────────────────── Top bar ──────────────────────────────────────
   Widget _buildTopBar(ThemePalette palette, PPController controller, bool isMobile) {
-    // En ventanas muy angostas se comprime el hueco del breadcrumb antes de
-    // dejar que la fila del encabezado desborde.
-    final titleSpacing = MobileUtils.isCompact(context) ? 2.0 : 6.0;
     return Material(
       color: palette.appBarColor,
       child: Container(
@@ -503,7 +518,7 @@ class _PPAppShellState extends State<PPAppShell> {
               // Flexible: en ventanas desktop angostas el breadcrumb + buscador
               // fijo (250px) + botones excedían el ancho y desbordaban ~79px.
               Flexible(
-                child: _buildBreadcrumb(palette, titleSpacing: titleSpacing),
+                child: _buildBreadcrumb(palette),
               ),
             if (!isMobile && widget.onGlobalSearch != null)
               _buildGlobalSearch(palette),
@@ -517,13 +532,19 @@ class _PPAppShellState extends State<PPAppShell> {
             ],
             const SizedBox(width: 8),
             _buildThemeToggle(palette),
+            const SizedBox(width: 6),
+            _buildNotificationBell(palette),
+            const SizedBox(width: 6),
+            const _NetworkHealthIndicator(),
+            const SizedBox(width: 4),
+            _buildHomeButton(palette),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBreadcrumb(ThemePalette palette, {double titleSpacing = 6.0}) {
+  Widget _buildBreadcrumb(ThemePalette palette) {
     final module = _currentModule;
     final color = widget.moduleColor ?? module.color;
     final icon = widget.moduleIcon ?? module.icono;
@@ -531,24 +552,6 @@ class _PPAppShellState extends State<PPAppShell> {
 
     return Row(
       children: [
-        InkWell(
-          onTap: () {
-            Navigator.of(context).popUntil((r) => r.isFirst);
-          },
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: palette.bgSecondary,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(Icons.home_rounded, color: palette.textMuted, size: 17),
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: titleSpacing),
-          child: const Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFF5D5672)),
-        ),
         Container(
           padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
@@ -560,6 +563,24 @@ class _PPAppShellState extends State<PPAppShell> {
         const SizedBox(width: 8),
         Flexible(child: _buildModuleTitle(palette, title)),
       ],
+    );
+  }
+
+  Widget _buildHomeButton(ThemePalette palette) {
+    return Tooltip(
+      message: 'Inicio',
+      child: InkWell(
+        onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: palette.bgSecondary,
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(Icons.home_rounded, color: palette.textMuted, size: 17),
+        ),
+      ),
     );
   }
 
@@ -576,7 +597,7 @@ class _PPAppShellState extends State<PPAppShell> {
       fit: BoxFit.contain,
       color: palette.isDark ? Colors.white : Colors.black,
       colorBlendMode: BlendMode.srcIn,
-      errorBuilder: (_, __, ___) => Text(fallback, style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: palette.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+      errorBuilder: (_, _, _) => Text(fallback, style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: palette.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 
@@ -759,11 +780,21 @@ class _PPAppShellState extends State<PPAppShell> {
               _buildPortalCoreButton(palette, controller),
               Expanded(
                 child: _buildMobileNavButton(
-                  icon: Icons.auto_awesome_rounded,
-                  label: 'Navi',
-                  isSelected: widget.moduleId == 'chat_ia',
+                  icon: ModuleManager.instance.isAppModuleAllowed('chat_ia')
+                      ? Icons.auto_awesome_rounded
+                      : Icons.support_agent_rounded,
+                  label: ModuleManager.instance.isAppModuleAllowed('chat_ia')
+                      ? 'Navi'
+                      : 'Soporte',
+                  isSelected: widget.moduleId == 'chat_ia' ||
+                      (!ModuleManager.instance.isAppModuleAllowed('chat_ia') &&
+                          widget.moduleId == 'soporte'),
                   palette: palette,
-                  onTap: () => controller.openModuleById('chat_ia'),
+                  onTap: () => controller.openModuleById(
+                    ModuleManager.instance.isAppModuleAllowed('chat_ia')
+                        ? 'chat_ia'
+                        : 'soporte',
+                  ),
                 ),
               ),
               Expanded(
@@ -854,7 +885,7 @@ class _PPAppShellState extends State<PPAppShell> {
 
   // ─────────────────────────── Drawer (Móvil) ───────────────────────────────
   Widget _buildMobileDrawer(ThemePalette palette, PPController controller) {
-    final modules = _allModules;
+    final modules = _navModules;
 
     return Drawer(
       backgroundColor: palette.cardColor,
@@ -919,9 +950,9 @@ class _PPAppShellState extends State<PPAppShell> {
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     child: Text('SISTEMA', style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.bold, color: palette.textDim, letterSpacing: 1.5)),
                   ),
-                  _buildDrawerSysItem(Icons.settings_rounded, 'Configuración', palette, () => controller.openModuleById('settings')),
-                  _buildDrawerSysItem(Icons.auto_awesome_rounded, 'Navi IA', palette, () => controller.openModuleById('chat_ia')),
-                  _buildDrawerSysItem(Icons.business_rounded, 'Multi-Empresa', palette, () => controller.openModuleById('multi_empresa')),
+                  ..._systemModules.map(
+                    (m) => _buildDrawerModuleItem(m, palette, controller),
+                  ),
                 ],
               ),
             ),
@@ -971,23 +1002,146 @@ class _PPAppShellState extends State<PPAppShell> {
     );
   }
 
-  Widget _buildDrawerSysItem(IconData icon, String title, ThemePalette palette, VoidCallback onTap) {
-    return ListTile(
-      dense: true,
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: palette.brand.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(10),
+}
+
+class _AppPingMonitor extends ChangeNotifier {
+  _AppPingMonitor._();
+
+  static final _AppPingMonitor instance = _AppPingMonitor._();
+
+  Timer? _timer;
+  int _clients = 0;
+  bool _checking = false;
+  bool online = false;
+  int? latencyMs;
+
+  void attach() {
+    _clients++;
+    if (_timer != null) return;
+    _probe();
+    _timer = Timer.periodic(const Duration(seconds: 20), (_) => _probe());
+  }
+
+  void detach() {
+    _clients = (_clients - 1).clamp(0, 1 << 20);
+    if (_clients != 0) return;
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  Future<void> _probe() async {
+    if (_checking) return;
+    _checking = true;
+    final stopwatch = Stopwatch()..start();
+    try {
+      final result = await ApiService.instance.get('/api/me');
+      online = result['networkError'] != true && result['timeoutError'] != true;
+      latencyMs = online ? stopwatch.elapsedMilliseconds : null;
+    } catch (_) {
+      online = false;
+      latencyMs = null;
+    } finally {
+      _checking = false;
+      notifyListeners();
+    }
+  }
+}
+
+class _NetworkHealthIndicator extends StatefulWidget {
+  const _NetworkHealthIndicator();
+
+  @override
+  State<_NetworkHealthIndicator> createState() => _NetworkHealthIndicatorState();
+}
+
+class _NetworkHealthIndicatorState extends State<_NetworkHealthIndicator> {
+  final _monitor = _AppPingMonitor.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _monitor.addListener(_onPingChanged);
+    _monitor.attach();
+  }
+
+  @override
+  void dispose() {
+    _monitor.removeListener(_onPingChanged);
+    _monitor.detach();
+    super.dispose();
+  }
+
+  void _onPingChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
+    final latency = _monitor.latencyMs;
+    final level = !_monitor.online || latency == null
+        ? 1
+        : latency <= 250
+            ? 3
+            : latency <= 700
+                ? 2
+                : 1;
+    final color = !_monitor.online
+        ? palette.errorRed
+        : latency == null
+            ? palette.textDim
+            : latency <= 250
+                ? palette.successGreen
+                : latency <= 700
+                    ? const Color(0xFFF59E0B)
+                    : palette.errorRed;
+    final label = !_monitor.online
+        ? 'Sin conexión'
+        : latency == null
+            ? 'Midiendo conexión'
+            : 'Ping autenticado a Portal Pilot: $latency ms';
+
+    return Tooltip(
+      message: label,
+      child: SizedBox(
+        width: 64,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 20,
+              height: 17,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(3, (index) {
+                  return Container(
+                    width: 4,
+                    height: 6 + index * 4,
+                    decoration: BoxDecoration(
+                      color: index < level ? color : palette.borderLight,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                latency == null ? '-- ms' : '$latency ms',
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                style: GoogleFonts.dmSans(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
         ),
-        child: Icon(icon, color: palette.brand, size: 19),
       ),
-      title: Text(title, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500, color: palette.textMuted)),
-      trailing: Icon(Icons.arrow_forward_ios_rounded, color: palette.textDim, size: 13),
-      onTap: () {
-        Navigator.pop(context);
-        onTap();
-      },
     );
   }
 }
