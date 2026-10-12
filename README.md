@@ -53,15 +53,15 @@ El sistema incluye módulos por área de negocio y un **asistente de IA "Navi"**
 
 La IA **Navi** y las capacidades del ERP se adaptan según el plan contratado por la empresa (leído del backend en el inicio de sesión y persistido en `empresa_plan`):
 
-| Plan | Precio | Usuarios | Almacenamiento | IA Navi | Soporte |
-|---|---|---|---|---|---|
-| **Prueba** | Gratis (15 días) | 5 | 5 GB | Uso básico | Email |
-| **Pulpería** | L 299 / mes | 3 | **5 GB** | Básico adaptado a POS/fiado | Email |
-| **Tienda** | L 799 / mes | 15 | 25 GB | Análisis de ventas/inventario | Email prioritario |
-| **Club** | L 1,399 / mes | 35 | 100 GB | Fidelización y analytics | WhatsApp / 24/7 |
-| **Personalizado** | Desde L 150 / mes | 15 | 25 GB | Según módulos contratados | Email |
-| **Business** | L 1,499 / mes | 15 | 100 GB | Uso generoso | Email prioritario |
-| **Enterprise** | L 4,999 / mes | Ilimitados | 500 GB | Avanzada / personalizada | Prioritario 24/7 |
+| Plan | Precio | Usuarios | Módulos | Almacenamiento | IA Navi | Soporte |
+|---|---|---|---|---|---|---|
+| **Prueba** | Gratis (15 días) | 5 | Todos (23) | 5 GB | Uso básico | Email |
+| **Pulpería** | L 299 / mes | 3 | 5 | **5 GB** | Básico adaptado a POS/fiado | WhatsApp horario hábil |
+| **Tienda** | L 799 / mes | 15 | 8 | 25 GB | Análisis de ventas/inventario | Prioridad WhatsApp |
+| **Club** | L 1,399 / mes | 35 | Suite completa | 100 GB | Fidelización y BI | Priority 24/7 |
+| **Personalizado** | Desde L 150 / mes | 15 | Cotizador | 25 GB | Según módulos contratados | Email |
+
+> **Business (L 1,499), Enterprise (L 4,999) y Custom son legacy**: ya no se venden; solo operan tenants existentes. El catálogo vigente lo expone `GET /api/plans`.
 
 Todos los planes incluyen **Facturación electrónica SAR**. El uso de almacenamiento se mide de verdad por tenant (objetos en Supabase Storage bajo el código de la empresa) y se muestra en el módulo **Estado del Sistema** de la app.
 
