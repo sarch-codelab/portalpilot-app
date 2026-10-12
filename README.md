@@ -45,7 +45,7 @@
 
 Está construido con un único código Flutter que compila para **Windows, Android, iOS y Web**, respaldado por una API serverless en Vercel y una base de datos PostgreSQL multi-tenant.
 
-El sistema incluye módulos por área de negocio y un **asistente de IA "Navi"** que se adapta al plan de suscripción de la empresa (Prueba / Business / Enterprise).
+El sistema incluye módulos por área de negocio y un **asistente de IA "Navi"** que se adapta al plan de suscripción de la empresa (Prueba / Pulpería / Tienda / Club / Personalizado / Business / Enterprise).
 
 ---
 
@@ -53,13 +53,17 @@ El sistema incluye módulos por área de negocio y un **asistente de IA "Navi"**
 
 La IA **Navi** y las capacidades del ERP se adaptan según el plan contratado por la empresa (leído del backend en el inicio de sesión y persistido en `empresa_plan`):
 
-| Plan | Precio | Usuarios | Empresas | IA Navi | Soporte |
+| Plan | Precio | Usuarios | Almacenamiento | IA Navi | Soporte |
 |---|---|---|---|---|---|
-| **Prueba** | Gratis (15 días) | 5 | 1 | Uso básico | Email |
-| **Business** | L 1,499 / mes | 15 | 3 | Uso generoso | Email prioritario |
-| **Enterprise** | L 4,999 / mes | Ilimitados | Ilimitadas | Avanzada / personalizada | Prioritario 24/7 |
+| **Prueba** | Gratis (15 días) | 5 | 5 GB | Uso básico | Email |
+| **Pulpería** | L 299 / mes | 3 | **5 GB** | Básico adaptado a POS/fiado | Email |
+| **Tienda** | L 799 / mes | 15 | 25 GB | Análisis de ventas/inventario | Email prioritario |
+| **Club** | L 1,399 / mes | 35 | 100 GB | Fidelización y analytics | WhatsApp / 24/7 |
+| **Personalizado** | Desde L 150 / mes | 15 | 25 GB | Según módulos contratados | Email |
+| **Business** | L 1,499 / mes | 15 | 100 GB | Uso generoso | Email prioritario |
+| **Enterprise** | L 4,999 / mes | Ilimitados | 500 GB | Avanzada / personalizada | Prioritario 24/7 |
 
-Todos los planes incluyen **Facturación electrónica SAR**.
+Todos los planes incluyen **Facturación electrónica SAR**. El uso de almacenamiento se mide de verdad por tenant (objetos en Supabase Storage bajo el código de la empresa) y se muestra en el módulo **Estado del Sistema** de la app.
 
 ---
 
@@ -107,8 +111,8 @@ Todos los planes incluyen **Facturación electrónica SAR**.
 **Navi** es el asistente inteligente integrado del ERP (antes "Edu IA"). Se conecta a la API en Vercel con **Groq** (modelos `openai/gpt-oss-20b` y `openai/gpt-oss-120b`, con auto-descubrimiento de modelos) y se **adapta al plan de la empresa**:
 
 - **Prueba** → respuestas concisas, funcionalidades esenciales (máx. ~300 palabras).
-- **Business** → uso generoso, análisis de ventas/inventario y reportes estándar (máx. ~500 palabras).
-- **Enterprise** → análisis predictivo, reportes profundos y personalización avanzada (máx. ~800 palabras).
+- **Pulpería / Tienda / Club / Personalizado** → el asistente se adapta a los módulos del plan: análisis de ventas e inventario y reportes estándar.
+- **Business / Enterprise** → análisis predictivo, reportes profundos y personalización avanzada (máx. ~800 palabras).
 
 **Capacidades de la IA (endpoints serverless `api/ai/…`):**
 - `ai/chat` — Chat conversacional de Navi con contexto del ERP y RPA local (crear documentos/HTML).
