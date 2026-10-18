@@ -74,7 +74,6 @@ app.*.map.json
 # Entorno local de Python (no es parte del release)
 .venv/
 .playwright-mcp/
-reporte.html
 supabase/.temp/
 
 # Entorno local de desarrollo Windows (sandbox: TEMP y DB dentro del repo)
