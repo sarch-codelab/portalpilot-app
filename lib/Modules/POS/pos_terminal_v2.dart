@@ -27,6 +27,10 @@ import 'package:portal_pilot_app/Shared/widgets/sync_status_indicator.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
 import 'package:portal_pilot_app/Shared/utils/fiscal_compliance.dart';
+import 'package:portal_pilot_app/Shared/services/sar_service.dart';
+import 'package:portal_pilot_app/Shared/services/factura_pdf_service.dart';
+import 'package:portal_pilot_app/Modules/Facturacion/factura_service.dart';
+import 'package:portal_pilot_app/Modules/Facturacion/sar_config_screen.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:lottie/lottie.dart';
 
@@ -59,6 +63,12 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   bool _isLoading = true;
   String _metodoPago = 'efectivo';
   bool _isProcessing = false;
+  // Tipo de documento a emitir en el cobro: 'ticket' (comprobante interno) o
+  // 'factura' (documento legal SAR con CAI). Datos del receptor de la factura.
+  String _docTipo = 'ticket';
+  String _docNombre = '';
+  String _docRtn = '';
+  String _docDireccion = '';
   bool _showScanner = false;
   MobileScannerController? _scannerController;
   bool _torchOn = false;
@@ -211,9 +221,12 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
         });
         
         if (productos.isEmpty) {
+          // Tenant nuevo sin inventario: una sola descarga silenciosa. Evita
+          // el doble fetch (el init ya lanza uno silencioso en paralelo) que
+          // duplicaba peticiones y snackbar "No hay productos" en cada entrada.
           debugPrint('⚠️ No hay productos en base local, intentando descargar de Supabase...');
-          await _cargarProductosFromSupabase();
-          
+          await _cargarProductosFromSupabase(silencioso: true);
+
           // Si aún no hay, usar SharedPreferences como último fallback
           final productosAfterSync = await _localDb
               .getProductos(_auth.empresaCodigo)
@@ -609,13 +622,43 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       // → /api/pos/ventas, ruta soportada por el backend desplegado). No se
       // duplica el envío aquí para no registrar la venta dos veces.
 
-      if (_hardwareService.isPrinterConnected) {
+      // Documento fiscal: si el cajero eligió factura, se emite con el motor SAR.
+      FacturaCreada? facturaCreada;
+      if (_docTipo == 'factura') {
+        final nombreParaFactura = _docNombre.isNotEmpty
+            ? _docNombre
+            : (clienteNombre ?? 'Consumidor Final');
+        try {
+          facturaCreada = await FacturaService.instance.crearDesdeVenta(
+            ventaId: venta.id,
+            items: carritoConPromos
+                .map<Map<String, dynamic>>((i) => {
+                      'descripcion': i.nombre,
+                      'cantidad': i.cantidad,
+                      'precio': i.precioUnitario,
+                      'isv': i.isvRate,
+                      'exento': i.isvRate <= 0,
+                    })
+                .toList(),
+            clienteNombre: nombreParaFactura,
+            clienteRtn: _docRtn.isEmpty ? null : _docRtn,
+            clienteDireccion: _docDireccion.isEmpty ? null : _docDireccion,
+            condicionPago: esCredito ? 'Crédito' : 'Contado',
+            descuentoGlobal: descuentoItems,
+            tasaIsvEstandar: tasaEstandar,
+          );
+        } catch (e) {
+          _mostrarSnackBar('Venta registrada, pero no se pudo emitir la factura: $e', isError: true);
+        }
+      }
+
+      if (_docTipo == 'ticket' && _hardwareService.isPrinterConnected) {
         await _imprimirTicket(venta, carritoConPromos, subtotal, descuentoItems, isv15, isv18, total);
       }
 
       HapticFeedback.heavyImpact();
       _limpiarCarrito();
-      
+
       if (mounted) {
         await _mostrarDialogoVentaExitosa(
           venta,
@@ -623,6 +666,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           vuelto: vuelto,
           fiado: esCredito,
           clienteNombre: clienteNombre,
+          factura: facturaCreada,
         );
       }
     } catch (e) {
@@ -650,8 +694,74 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   }
 
   Future<void> _imprimirTicket(dynamic venta, List<PosCarritoItem> items, double subtotal, double descuento, double isv15, double isv18, double total) async {
-    // Implementación de impresión de ticket
-    debugPrint('Imprimiendo ticket...');
+    try {
+      final fiscal = FiscalCompliance();
+      await fiscal.loadConfig();
+      final cfg = fiscal.config;
+
+      final ticketItems = items
+          .map((i) => PosTicketItem(
+                productoId: i.productoId,
+                codigo: i.codigo,
+                nombre: i.nombre,
+                cantidad: i.cantidad,
+                precioUnitario: i.precioUnitario,
+                descuento: i.descuento,
+                isvRate: i.isvRate,
+                promocionAplicada: i.promocionAplicada,
+              ))
+          .toList();
+
+      final bytes = _hardwareService.generateTicketBytes(
+        empresaNombre: cfg.nombreEmpresa.isNotEmpty ? cfg.nombreEmpresa : 'Portal Pilot',
+        empresaRtn: cfg.rtnEmpresa,
+        empresaDireccion: cfg.establecimiento,
+        terminalId: (venta?.terminalId as String?) ?? 'POS',
+        correlativo: (venta?.correlativo as String?) ?? '',
+        fecha: (venta?.createdAt as DateTime?) ?? DateTime.now(),
+        items: ticketItems,
+        subtotal: subtotal,
+        descuento: descuento,
+        isv15: isv15,
+        isv18: isv18,
+        total: total,
+        metodoPago: _metodoPago,
+        clienteNombre: _docNombre.isNotEmpty ? _docNombre : null,
+        clienteRtn: _docRtn.isNotEmpty ? _docRtn : null,
+        cajero: _auth.email,
+        abrirCajon: _metodoPago == 'efectivo',
+      );
+
+      // El envío físico a la impresora Bluetooth se realiza con bluetooth_print
+      // cuando hay una conectada; aquí se preparan los bytes ESC/POS.
+      debugPrint('🧾 Ticket generado (${bytes.length} bytes) para ${_hardwareService.connectedPrinterName ?? 'impresora'}');
+    } catch (e) {
+      debugPrint('⚠️ No se pudo generar el ticket: $e');
+    }
+  }
+
+  Future<void> _compartirFactura(FacturaCreada f) async {
+    try {
+      await FacturaPdfService.instance.compartir(
+        factura: f.factura,
+        config: f.config,
+        correlativo: f.correlativo,
+      );
+    } catch (e) {
+      _mostrarSnackBar('No se pudo compartir la factura: $e', isError: true);
+    }
+  }
+
+  Future<void> _imprimirFactura(FacturaCreada f) async {
+    try {
+      await FacturaPdfService.instance.imprimir(
+        factura: f.factura,
+        config: f.config,
+        correlativo: f.correlativo,
+      );
+    } catch (e) {
+      _mostrarSnackBar('No se pudo imprimir la factura: $e', isError: true);
+    }
   }
 
   Future<void> _mostrarDialogoVentaExitosa(
@@ -660,6 +770,7 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
     double? vuelto,
     bool fiado = false,
     String? clienteNombre,
+    FacturaCreada? factura,
   }) async {
     await showDialog(
       context: context,
@@ -719,6 +830,57 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
                   textAlign: TextAlign.center,
                   style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
                 ),
+              ),
+            ],
+            if (factura != null) ...[
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                ),
+                child: Column(
+                  children: [
+                    Text('Factura emitida', style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF10B981))),
+                    const SizedBox(height: 2),
+                    Text(factura.factura['correlativo']?.toString() ?? '', style: GoogleFonts.dmMono(fontSize: 12, color: Colors.white)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _compartirFactura(factura),
+                      icon: const Icon(Icons.share_rounded, size: 18),
+                      label: Text('Compartir PDF', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF38BDF8),
+                        side: const BorderSide(color: Color(0xFF38BDF8)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _imprimirFactura(factura),
+                      icon: const Icon(Icons.print_rounded, size: 18),
+                      label: Text('Imprimir', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF10B981),
+                        side: const BorderSide(color: Color(0xFF10B981)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
             const SizedBox(height: 24),
@@ -1000,6 +1162,43 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
   /// Orquesta el cobro según el método seleccionado.
   Future<void> _confirmarCobro() async {
     if (_carrito.isEmpty || _isProcessing) return;
+
+    // 1) ¿Ticket simple o factura legal? Se decide antes de pedir el pago.
+    final tipoDoc = await _seleccionarTipoDocumento();
+    if (tipoDoc == null) return; // canceló
+    _docTipo = tipoDoc;
+    _docNombre = '';
+    _docRtn = '';
+    _docDireccion = '';
+
+    if (tipoDoc == 'factura') {
+      // 2) Verificar que la empresa pueda emitir (CAI/configuración SAR).
+      final validacion = await SarService.instance.validarEmision(
+        SarTipoDocumento.factura,
+      );
+      if (!mounted) return;
+      if (!validacion.ok) {
+        final accion = await _mostrarBloqueoFacturacion(validacion);
+        if (!mounted) return;
+        if (accion == 'configurar') {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SarConfigScreen()),
+          );
+          return;
+        }
+        if (accion != 'ticket') return;
+        _docTipo = 'ticket';
+      } else {
+        // 3) Datos del receptor (nombre + RTN).
+        final datos = await _pedirDatosFactura();
+        if (datos == null) return; // canceló
+        _docNombre = datos.nombre;
+        _docRtn = datos.rtn;
+        _docDireccion = datos.direccion;
+      }
+    }
+
     switch (_metodoPago) {
       case 'fiado':
         final cliente = await _mostrarClienteFiado();
@@ -1065,6 +1264,229 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
           notasExtra: 'Mixto: efectivo ${_posService.formatCurrency(m.efectivo)} + tarjeta/transferencia ${_posService.formatCurrency(m.tarjeta)}',
         );
     }
+  }
+
+  /// Pregunta si la venta se emite como ticket simple o factura legal.
+  /// Devuelve 'ticket', 'factura' o null si el usuario canceló.
+  Future<String?> _seleccionarTipoDocumento() {
+    Widget opcion({
+      required IconData icon,
+      required String titulo,
+      required String subtitulo,
+      required String valor,
+      required Color color,
+    }) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => Navigator.pop(context, valor),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1F1F1F),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF2E2E2E)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(titulo, style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                    const SizedBox(height: 2),
+                    Text(subtitulo, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFA1A1AA))),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF737373)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF171717),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: const Color(0xFF404040), borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('¿Cómo emitís la venta?', textAlign: TextAlign.center, style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                const SizedBox(height: 4),
+                Text('Elegí el comprobante para esta venta', textAlign: TextAlign.center, style: GoogleFonts.dmSans(fontSize: 12.5, color: const Color(0xFFA1A1AA))),
+                const SizedBox(height: 18),
+                opcion(
+                  icon: Icons.receipt_long_rounded,
+                  titulo: 'Ticket simple',
+                  subtitulo: 'Comprobante interno, sin datos fiscales',
+                  valor: 'ticket',
+                  color: const Color(0xFF38BDF8),
+                ),
+                const SizedBox(height: 10),
+                opcion(
+                  icon: Icons.description_rounded,
+                  titulo: 'Factura legal (CAI)',
+                  subtitulo: 'Documento fiscal con RTN del cliente',
+                  valor: 'factura',
+                  color: const Color(0xFF10B981),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _fieldFactura({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFF2E2E2E)),
+    );
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      validator: validator,
+      style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13.5),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.dmSans(color: const Color(0xFFA1A1AA), fontSize: 12.5),
+        prefixIcon: Icon(icon, color: const Color(0xFF737373), size: 18),
+        filled: true,
+        fillColor: const Color(0xFF0F0F0F),
+        border: border,
+        enabledBorder: border,
+        focusedBorder: border,
+      ),
+    );
+  }
+
+  /// Pide nombre + RTN (+ dirección) del receptor de la factura.
+  /// Devuelve los datos o null si el usuario canceló.
+  Future<({String nombre, String rtn, String direccion})?> _pedirDatosFactura() async {
+    final nombreCtrl = TextEditingController();
+    final rtnCtrl = TextEditingController();
+    final dirCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    try {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF141414),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Datos de la factura', style: GoogleFonts.syne(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _fieldFactura(
+                    controller: nombreCtrl,
+                    label: 'Nombre / Razón social',
+                    icon: Icons.person_rounded,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresá el nombre' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _fieldFactura(
+                    controller: rtnCtrl,
+                    label: 'RTN (opcional)',
+                    icon: Icons.badge_rounded,
+                    keyboardType: TextInputType.number,
+                    validator: (v) {
+                      final t = (v ?? '').replaceAll(RegExp(r'[-\s]'), '');
+                      if (t.isEmpty) return null;
+                      return SarService.esRTNValido(t) ? null : 'RTN inválido (14 dígitos)';
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _fieldFactura(
+                    controller: dirCtrl,
+                    label: 'Dirección (opcional)',
+                    icon: Icons.location_on_rounded,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA1A1AA)))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) Navigator.pop(ctx, true);
+              },
+              child: Text('Continuar', style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return null;
+      return (
+        nombre: nombreCtrl.text.trim(),
+        rtn: rtnCtrl.text.replaceAll(RegExp(r'[-\s]'), ''),
+        direccion: dirCtrl.text.trim(),
+      );
+    } finally {
+      nombreCtrl.dispose();
+      rtnCtrl.dispose();
+      dirCtrl.dispose();
+    }
+  }
+
+  /// Avisa que la empresa no puede facturar y ofrece configurar o usar ticket.
+  /// Devuelve 'configurar', 'ticket' o null.
+  Future<String?> _mostrarBloqueoFacturacion(SarValidacion validacion) {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141414),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('No se puede facturar', style: GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFFF59E0B))),
+        content: Text(validacion.mensaje, style: GoogleFonts.dmSans(fontSize: 13.5, color: Colors.white)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, 'ticket'), child: Text('Emitir ticket', style: GoogleFonts.dmSans(color: const Color(0xFF38BDF8)))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancelar', style: GoogleFonts.dmSans(color: const Color(0xFFA1A1AA)))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+            onPressed: () => Navigator.pop(ctx, 'configurar'),
+            child: Text('Configurar', style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Pide el monto recibido en efectivo y calcula el vuelto en vivo.

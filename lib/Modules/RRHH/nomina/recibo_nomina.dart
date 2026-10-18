@@ -1,15 +1,76 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:portal_pilot_app/Shared/services/modulos_avanzados_service.dart';
 
-class ReciboNomina extends StatelessWidget {
+class ReciboNomina extends StatefulWidget {
   final Map<String, dynamic> recibo;
 
   const ReciboNomina({super.key, required this.recibo});
+
+  @override
+  State<ReciboNomina> createState() => _ReciboNominaState();
+}
+
+class _ReciboNominaState extends State<ReciboNomina> {
+  late bool _pagado;
+  late String _fechaPago;
+  bool _pagando = false;
 
   static const List<String> _meses = [
     '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pagado = widget.recibo['pagado'] == true;
+    _fechaPago = widget.recibo['fecha_pago']?.toString() ?? '';
+  }
+
+  Map<String, dynamic> get recibo => widget.recibo;
+
+  Future<void> _marcarPagado() async {
+    if (_pagando || _pagado) return;
+    final id = recibo['id']?.toString();
+    if (id == null || id.isEmpty) {
+      _aviso('Este recibo no tiene identificador en el servidor', esError: true);
+      return;
+    }
+
+    setState(() => _pagando = true);
+    final r = await ModulosAvanzadosService.instance.pagarRecibo(id);
+    if (!mounted) return;
+    setState(() => _pagando = false);
+
+    if (r.ok) {
+      setState(() {
+        _pagado = true;
+        _fechaPago = DateTime.now().toIso8601String();
+      });
+      _aviso('Recibo marcado como pagado');
+    } else {
+      _aviso(
+        r.planLimitado
+            ? 'Este módulo no está incluido en tu plan actual.'
+            : (r.error ?? 'No se pudo marcar el recibo'),
+        esError: true,
+      );
+    }
+  }
+
+  void _aviso(String texto, {bool esError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(texto, style: GoogleFonts.dmSans()),
+      backgroundColor: esError ? const Color(0xFFC62828) : const Color(0xFF10B981),
+    ));
+  }
+
+  String get _fechaGeneracion {
+    final f = recibo['fecha_generacion']?.toString() ?? '';
+    return f.length >= 10 ? f.substring(0, 10) : '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +134,23 @@ class ReciboNomina extends StatelessWidget {
                   child: Text(
                     '${_meses[recibo['mes'] ?? 1]} ${recibo['anio']}',
                     style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF10B981)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: (_pagado ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _pagado ? 'PAGADO' : 'PENDIENTE',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                      color: _pagado ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                    ),
                   ),
                 ),
               ],
@@ -142,11 +220,47 @@ class ReciboNomina extends StatelessWidget {
           ]),
           const SizedBox(height: 20),
 
+          // Payment status
+          if (!_pagado) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: _pagando ? null : _marcarPagado,
+                icon: _pagando
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 20),
+                label: Text(
+                  _pagando ? 'Registrando...' : 'Marcar como pagado',
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  disabledBackgroundColor: const Color(0xFF262626),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+
           // Footer
           Center(
             child: Text(
-              'Generado el ${recibo['fecha_generacion']?.substring(0, 10) ?? ''}',
-              style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF525252)),
+              _pagado
+                  ? 'Pagado el ${_fechaPago.length >= 10 ? _fechaPago.substring(0, 10) : '—'}'
+                  : (_fechaGeneracion.isNotEmpty ? 'Generado el $_fechaGeneracion' : 'Pendiente de pago'),
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                color: _pagado ? const Color(0xFF10B981) : const Color(0xFF525252),
+                fontWeight: _pagado ? FontWeight.w600 : FontWeight.w400,
+              ),
             ),
           ),
           const SizedBox(height: 30),

@@ -3,28 +3,59 @@ import 'package:flutter/material.dart';
 /// Feature de plan requerida por cada módulo de la app.
 /// `null` = el módulo está disponible en todos los planes.
 /// Los valores deben coincidir con `PLAN_ENTITLEMENTS` del backend.
+///
+/// Incluye tanto IDs técnicos de la APP como IDs de marketing de la WEB (planes.html).
+/// ModuleRegistry.webToAppId mapea los IDs web a los IDs app correspondientes.
 const Map<String, String?> moduloFeatureRequerida = {
+  // IDs técnicos de la APP (fuente de verdad)
   'chat_ia': 'ia',
   'facturacion': 'facturacion_sar',
   'inventario': 'inventario',
   'contabilidad': 'operacion_completa',
-  'rrhh': 'operacion_completa',
+  'rrhh': 'rrhh_planillas',
   'crm': 'clientes',
   'pos': 'pos',
   'comercial': 'compras',
   'membresias': 'membresias',
-  'canal_moderno': 'sucursales',
+  'canal_moderno': 'canal_moderno',
   'canal_tradicional': 'canal_tradicional',
-  'cotizaciones': 'operacion_completa',
+  'cotizaciones': 'cotizaciones',
   'compras_proveedores': 'compras',
-  'sector_retail': 'operacion_completa',
-  'settings': null,
-  'analytics': 'reportes',
-  'supply_chain': 'fleet',
-  'crm_advanced': 'reportes_avanzados',
-  'fiscal_advanced': 'reportes_avanzados',
+  'sector_retail': 'canal_moderno',
+  'settings': null, // siempre visible: settings_modulos_app_base del backend
+  'analytics': 'reportes', // reportes_comerciales (feature 'reportes')
+  'supply_chain': 'rutas',
+  'crm_advanced': 'crm_avanzado',
+  'fiscal_advanced': 'fiscal_avanzado',
   'seguridad': 'seguridad_avanzada',
   'multi_empresa': 'multiempresa',
+  'reportes': 'reportes',
+  'soporte': null,
+  'estado_sistema': null,
+
+  // IDs de marketing de la WEB (planes.html) - mapean a la misma feature que su módulo app
+  // NOTA: No duplicar keys que ya existen arriba (ej: cotizaciones, facturacion_sar)
+  'pos_caja': 'pos',
+  'cuentas_por_cobrar': 'canal_tradicional',
+  'control_caja': 'pos',
+  'inventario_basico': 'inventario',
+  'retail_pasillos': 'canal_moderno',
+  'gestion_membresias': 'membresias',
+  'clientes_proveedores': 'compras',
+  'crm_clientes': 'clientes',
+  'fidelizacion_puntos': 'membresias',
+  'contabilidad_pyme': 'operacion_completa',
+  'rrhh_planillas': 'rrhh_planillas',
+  'rutas_delivery': 'rutas',
+  'transferencias_bodega': 'transferencias',
+  'multi_sucursal': 'multiempresa',
+  'chat_ia_groq': 'ia',
+  'reportes_comerciales': 'reportes',
+  'analytics_ventas': 'reportes_avanzados',
+  'seguridad_2fa': 'seguridad_avanzada',
+  'automatizacion_alertas': 'automation',
+  'crm_avanzado': 'crm_avanzado',
+  'fiscal_avanzado': 'fiscal_avanzado',
 };
 
 class Modulo {
@@ -338,6 +369,33 @@ class Modulo {
       icono: Icons.business_rounded,
       color: Color(0xFFEC4899),
       ruta: '/modules/multi_empresa',
+    ),
+    // Módulos 22 y 23 del catálogo canónico (modulos_cotizador / planes.html /
+    // MODULOS_COTIZADOR de server.js). Faltaban aquí, así que el login del trial
+    // los devolvía y `module_manager.dart` los descartaba en silencio.
+    Modulo(
+      id: 'reportes',
+      nombre: 'Reportes',
+      descripcion: 'Reportes comerciales y financieros, exportación PDF/Excel',
+      icono: Icons.insert_chart_rounded,
+      color: Color(0xFF0EA5E9),
+      ruta: '/modules/reportes',
+    ),
+    Modulo(
+      id: 'soporte',
+      nombre: 'Soporte',
+      descripcion: 'Mesa de ayuda, tickets y base de conocimiento',
+      icono: Icons.support_agent_rounded,
+      color: Color(0xFF64748B),
+      ruta: '/modules/soporte',
+    ),
+    Modulo(
+      id: 'estado_sistema',
+      nombre: 'Estado del Sistema',
+      descripcion: 'Diagnóstico de servicios, sincronización y plan',
+      icono: Icons.monitor_heart_rounded,
+      color: Color(0xFF22C55E),
+      ruta: '/modules/estado_sistema',
     ),
   ];
 }

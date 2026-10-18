@@ -167,6 +167,9 @@ class MultiAreaConfig extends ChangeNotifier {
   String _empresaCodigo = '';
   String _areaNegocio = AreasNegocio.retail;
   Set<String> _modulosActivos = {};
+  // Asignación previa del servidor, para distinguir "módulo apagado a propósito"
+  // de "módulo nuevo en la asignación" entre recargas.
+  Set<String> _asignacionPrevia = const {};
   bool _inicializado = false;
 
   String get empresaCodigo => _empresaCodigo;
@@ -180,8 +183,12 @@ class MultiAreaConfig extends ChangeNotifier {
 
   bool moduloActivo(String id) => _modulosActivos.contains(id);
 
-  /// Carga la configuración de la empresa. Si no existe, siembra los defaults
-  /// a partir de empresa.area_negocio (o de los módulos asignados).
+  /// Carga la configuración de la empresa. La fuente de verdad son los
+  /// `modulosAsignados` que el backend resuelve en el login (plan del tenant
+  /// + asignación del owner). Los flags locales solo se respetan si siguen
+  /// siendo un subconjunto válido de esa asignación — así un cambio de plan
+  /// (p. ej. de Prueba a Pulpería) no deja módulos fantasma activados ni
+  /// esconde módulos recién contratados por configuración vieja.
   Future<void> cargar({
     String? empresaCodigo,
     String? areaNegocio,
@@ -195,28 +202,47 @@ class MultiAreaConfig extends ChangeNotifier {
     final persistedArea = prefs.getString(_key('_area'));
     final persistedMods = prefs.getString(_key('_mods'));
 
-    if (persistedArea != null && persistedMods != null) {
+    // Asignación real del servidor (ids de la app, p. ej. pos, canal_tradicional).
+    final asignadosServidor = (modulosAsignados ?? AuthController.instance.modulos)
+        .where(AreasNegocio.todosModulos.contains)
+        .toSet();
+
+    if (persistedArea != null && persistedMods != null && asignadosServidor.isNotEmpty) {
       _areaNegocio = persistedArea;
-      _modulosActivos = persistedMods
+      final flags = persistedMods
           .split(',')
           .where((m) => m.isNotEmpty)
           .toSet();
-    } else {
-      _areaNegocio = area.trim().toLowerCase();
-      final defaults = AreasNegocio.modulosPorDefecto(_areaNegocio);
-      if (defaults.isNotEmpty) {
-        _modulosActivos = defaults.toSet();
-      } else {
-        final asignados = (modulosAsignados ?? AuthController.instance.modulos)
-            .where(AreasNegocio.todosModulos.contains)
-            .toSet();
-        _modulosActivos = asignados.isEmpty
-            ? AreasNegocio.todosModulos.toSet()
-            : asignados;
+      // Módulos que el usuario apagó a propósito: solo cuentan si el módulo
+      // ya venía en la asignación anterior (la primera vez todo entra activo).
+      final apagados = _asignacionPrevia.isEmpty
+          ? const <String>{}
+          : _asignacionPrevia.difference(flags);
+      // Asignación actual menos lo apagado = módulos activos.
+      _modulosActivos = asignadosServidor.difference(apagados);
+      if (_modulosActivos.isEmpty) {
+        _modulosActivos = asignadosServidor;
       }
+      await _persist(prefs);
+    } else {
+      if (asignadosServidor.isNotEmpty) {
+        _modulosActivos = asignadosServidor;
+      } else {
+        _areaNegocio = area.trim().toLowerCase();
+        final defaults = AreasNegocio.modulosPorDefecto(_areaNegocio);
+        if (defaults.isNotEmpty) {
+          _modulosActivos = defaults.toSet();
+        } else {
+          _modulosActivos = AreasNegocio.todosModulos.toSet();
+        }
+      }
+      if (persistedArea != null) _areaNegocio = persistedArea;
       await _persist(prefs);
     }
 
+    // Recuerda la asignación efectiva para la próxima recarga: es la que
+    // permite distinguir "apagado a propósito" de "módulo nuevo".
+    _asignacionPrevia = Set<String>.from(_modulosActivos);
     _inicializado = true;
     notifyListeners();
   }

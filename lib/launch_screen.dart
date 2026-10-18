@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:portal_pilot_app/Auth/login.dart';
 import 'package:portal_pilot_app/Home/home_screen.dart';
 import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
+import 'package:portal_pilot_app/Shared/services/app_update_service.dart';
 import 'package:portal_pilot_app/onboarding/onboarding_screen.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -34,9 +37,15 @@ class _SplashScreenState extends State<SplashScreen>
   static const Color textMuted = Color(0xFFA3A3A3);
   static const Color textDark = Color(0xFF525252);
 
+  /// Versión real del binario. Antes estaba fija en 'v1.0.11' y quedaba
+  /// desincronizada con pubspec (1.0.12 / 1.0.14 BETA...).
+  String _appVersion = '';
+
   @override
   void initState() {
     super.initState();
+
+    unawaited(_cargarVersion());
 
     _controller = AnimationController(
       duration: const Duration(milliseconds: 2400),
@@ -99,8 +108,25 @@ class _SplashScreenState extends State<SplashScreen>
     Timer(const Duration(milliseconds: 2800), _navigateToLogin);
   }
 
+  Future<void> _cargarVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() => _appVersion = 'v${info.version}');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _appVersion = '');
+    }
+  }
+
   Future<void> _navigateToLogin() async {
     if (!mounted) return;
+
+    // Verificar actualización en segundo plano (no bloquear splash)
+    if (Platform.isAndroid) {
+      unawaited(AppUpdateService.instance.checkForUpdate(force: true));
+    }
+
     // SESSION RESTORE: si ya hay una sesión persistida (token), se omite el
     // Login y se entra directo al Workspace. Blueprint: no pedir credenciales
     // dos veces cuando el usuario ya está autenticado.
@@ -309,7 +335,7 @@ class _SplashScreenState extends State<SplashScreen>
                               return Opacity(
                                 opacity: _versionFade.value,
 child: Text(
-                                    'v1.0.11',
+                                    _appVersion,
                                     style: GoogleFonts.spaceGrotesk(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,

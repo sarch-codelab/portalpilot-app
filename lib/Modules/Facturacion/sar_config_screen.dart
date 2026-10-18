@@ -159,8 +159,8 @@ class _SarConfigScreenState extends State<SarConfigScreen> {
           validacionRTN && fiscalSaved
               ? 'Configuración SAR guardada'
               : !fiscalSaved
-                  ? 'Se guardó en el dispositivo, pero no se pudo encolar la sincronización fiscal.'
-                  : 'Guardada. Nota: el RTN no pasó la validación de dígito verificador.',
+              ? 'Se guardó en el dispositivo, pero no se pudo encolar la sincronización fiscal.'
+              : 'Guardada. Nota: el RTN no pasó la validación de dígito verificador.',
           style: GoogleFonts.dmSans(),
         ),
         backgroundColor: validacionRTN && fiscalSaved
@@ -587,13 +587,9 @@ class _SarConfigScreenState extends State<SarConfigScreen> {
           lastDate: DateTime(2035),
           builder: (context, child) => Theme(
             data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.dark(
-                primary: Color(0xFF10B981),
-                surface: Color(0xFF1A1A1A),
-              ),
-              dialogTheme: const DialogThemeData(
-                backgroundColor: Color(0xFF1A1A1A),
-              ),
+              colorScheme: Theme.of(
+                context,
+              ).colorScheme.copyWith(primary: const Color(0xFF10B981)),
             ),
             child: child!,
           ),

@@ -76,3 +76,7 @@ app.*.map.json
 .playwright-mcp/
 reporte.html
 supabase/.temp/
+
+# Entorno local de desarrollo Windows (sandbox: TEMP y DB dentro del repo)
+/.tmp/
+/.localdata/

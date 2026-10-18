@@ -11,8 +11,6 @@ import 'package:portal_pilot_app/Shared/services/pp_module_navigator.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_notification_panel.dart';
 import 'package:portal_pilot_app/Shared/services/notification_service.dart';
-import 'package:portal_pilot_app/Shared/widgets/pp_notification_panel.dart';
-import 'package:portal_pilot_app/Shared/services/notification_service.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 
 /// Núcleo de navegación de Portal Pilot.
@@ -533,9 +531,9 @@ class _PPAppShellState extends State<PPAppShell> {
             const SizedBox(width: 8),
             _buildThemeToggle(palette),
             const SizedBox(width: 6),
-            _buildNotificationBell(palette),
-            const SizedBox(width: 6),
             const _NetworkHealthIndicator(),
+            const SizedBox(width: 6),
+            _buildNotificationBell(palette),
             const SizedBox(width: 4),
             _buildHomeButton(palette),
           ],
@@ -563,6 +561,52 @@ class _PPAppShellState extends State<PPAppShell> {
         const SizedBox(width: 8),
         Flexible(child: _buildModuleTitle(palette, title)),
       ],
+    );
+  }
+
+  Widget _buildNotificationBell(ThemePalette palette) {
+    return Tooltip(
+      message: 'Notificaciones',
+      child: InkWell(
+        onTap: () => PPNotificationPanel.show(context),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: palette.bgSecondary,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(Icons.notifications_rounded, color: palette.textMuted, size: 18),
+              Positioned(
+                top: 6,
+                right: 6,
+                child: AnimatedBuilder(
+                  animation: NotificationService.instance,
+                  builder: (_, __) {
+                    final count = NotificationService.instance.unreadCount;
+                    if (count == 0) return const SizedBox.shrink();
+                    return Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF453A),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        count > 9 ? '9+' : count.toString(),
+                        style: GoogleFonts.dmSans(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

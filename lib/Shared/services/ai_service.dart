@@ -205,7 +205,7 @@ class AIManager {
 
       if (response.statusCode != 200 || data['reply'] == null) {
         // NOTA: los endpoints /api/ai/* NUNCA validan el token del usuario —
-        // un 401/403 aquí viene del proveedor de IA (Groq/OpenRouter), no de
+        // un 401/403 aquí viene de la cadena de proveedores de IA (Groq y compañía), no de
         // nuestra sesión. Antes se llamaba SessionGuard.forceLogoutToLogin()
         // y un fallo de la key del proveedor cerraba la sesión del usuario.
         return AIResponse(text: '', modelId: modelId, provider: 'unknown',

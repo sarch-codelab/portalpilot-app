@@ -1,4 +1,4 @@
-﻿module.exports = async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
@@ -60,10 +60,10 @@
       continue;
     }
   }
-  // Respaldo automático: OpenRouter cuando Groq falla o no hay más modelos.
+  // Respaldo autom\u00e1tico: cadena de proveedores gratuitos cuando Groq falla.
   try {
-    const { openRouterComplete } = require('../_aiRouter.js');
-    const fallback = await openRouterComplete({
+    const { aiFallbackComplete } = require('../_aiRouter.js');
+    const fallback = await aiFallbackComplete({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: message },

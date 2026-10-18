@@ -343,17 +343,31 @@ class _LoginScreenState extends State<LoginScreen>
         userJson['trial_expired'] == true || userJson['read_only'] == true;
 
     final area = (loggedUser.area ?? '').toLowerCase();
-    String modulos = AreasNegocio.modulosPorDefecto(areaNegocio).join(',');
+
+    // Fuente de verdad: el servidor resuelve el plan del tenant + los módulos
+    // que el owner le asignó al usuario (usuario_modulos ∩ plan) y los devuelve
+    // ya traducidos a los ids de esta app en `modulos_app`. Los defaults por
+    // área son solo el respaldo para respuestas de un backend anterior.
+    final modulosServidor = <String>{
+      for (final m in (userJson['modulos_app'] as List?) ?? const <dynamic>[])
+        if (m is String && m.trim().isNotEmpty) m.trim(),
+    };
+
+    String modulos = modulosServidor.join(',');
     if (modulos.isEmpty) {
-      modulos = prefs.getString('onboarding_modulos') ??
-          'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
+      modulos = AreasNegocio.modulosPorDefecto(areaNegocio).join(',');
+      if (modulos.isEmpty) {
+        modulos = prefs.getString('onboarding_modulos') ??
+            'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
+      }
+      if (area == 'finanzas') {
+        modulos = 'contabilidad,facturacion';
+      } else if (area == 'salud') {
+        modulos = 'facturacion,inventario';
+      }
     }
 
-    if (area == 'finanzas') {
-      modulos = 'contabilidad,facturacion';
-    } else if (area == 'salud') {
-      modulos = 'facturacion,inventario';
-    } else if (loggedUser.isRoot) {
+    if (loggedUser.isRoot) {
       modulos =
           'facturacion,inventario,contabilidad,rrhh,crm,pos,comercial,membresias';
     }

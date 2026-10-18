@@ -7,6 +7,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
+import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 
 /// Tipos de documento fiscal autorizados por la DEI/SAR.
 class SarTipoDocumento {
@@ -284,6 +285,7 @@ class SarService {
           synced: const Value(false),
         ),
       );
+      await _encolarSarCorrelativo(existente.id);
     } else {
       final id = DateTime.now().microsecondsSinceEpoch.toString();
       await _db
@@ -302,7 +304,34 @@ class SarService {
               agotado: const Value(false),
             ),
           );
+      await _encolarSarCorrelativo(id);
     }
+  }
+
+  /// Encola el correlativo fiscal para sincronizarlo a Supabase (tabla
+  /// sar_correlativo). El backend deriva empresa_id/empresa_codigo de la sesión.
+  Future<void> _encolarSarCorrelativo(String id) async {
+    final row = await (_db.select(
+      _db.sarCorrelativo,
+    )..where((c) => c.id.equals(id))).getSingleOrNull();
+    if (row == null) return;
+    await SyncService.instance.enqueueSync(
+      tabla: 'sar_correlativo',
+      operacion: SyncOperation.insert,
+      datos: {
+        'empresa_codigo': empresaId,
+        'id': row.id,
+        'tipo_documento': row.tipoDocumento,
+        'cai': row.cai,
+        'numero_resolucion': row.numeroResolucion,
+        'rango_inicio': row.rangoInicio,
+        'rango_fin': row.rangoFin,
+        'fecha_limite_emision': row.fechaLimiteEmision?.toIso8601String(),
+        'siguiente_numero': row.siguienteNumero,
+        'agotado': row.agotado,
+      },
+      empresaId: empresaId,
+    );
   }
 
   Future<List<SarCorrelativoData>> getCorrelativos() async {
@@ -500,6 +529,7 @@ class SarService {
             agotado: const Value(false),
           ),
         );
+    await _encolarSarCorrelativo(id);
     return (await (_db.select(
       _db.sarCorrelativo,
     )..where((c) => c.id.equals(id))).getSingle());

@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ reply, model: data.model || model, provider: 'groq', usage: data.usage });
       }
       // Modelo no encontrado O key del proveedor vencida/sin créditos →
-      // probar siguiente modelo y luego el fallback OpenRouter. JAMÁS
+      // probar siguiente modelo y luego la cadena de proveedores gratuitos. JAMÁS
       // propagar 401/403 tal cual: el app lo interpreta como sesión
       // expirada y cierra la sesión del usuario (logout espurio).
       const errMsg = (data.error?.message || '').toLowerCase();
@@ -65,10 +65,10 @@ module.exports = async function handler(req, res) {
       continue;
     }
   }
-  // Respaldo automático: OpenRouter de visión cuando Groq falla.
+  // Respaldo autom\u00e1tico de visi\u00f3n cuando Groq falla.
   try {
-    const { openRouterVision } = require('../_aiRouter.js');
-    const fallback = await openRouterVision({
+    const { aiFallbackVision } = require('../_aiRouter.js');
+    const fallback = await aiFallbackVision({
       prompt,
       image,
       maxTokens: body.maxTokens || 800,

@@ -25,7 +25,12 @@ class _ReportesScreenState extends State<ReportesScreen> {
   Future<void> _cargarFacturas() async {
     final prefs = await SharedPreferences.getInstance();
     final facturasJson = prefs.getString('facturas') ?? '[]';
-    setState(() => _facturas = JsonGuard.safeListOfMaps(facturasJson, source: 'Facturacion/reportes'));
+    setState(
+      () => _facturas = JsonGuard.safeListOfMaps(
+        facturasJson,
+        source: 'Facturacion/reportes',
+      ),
+    );
   }
 
   List<Map<String, dynamic>> _facturasFiltradas() {
@@ -71,15 +76,22 @@ class _ReportesScreenState extends State<ReportesScreen> {
     final filtradas = _facturasFiltradas();
     final emitidas = filtradas.where((f) => f['estado'] == 'emitida').length;
     final anuladas = filtradas.where((f) => f['estado'] == 'anulada').length;
-    final totalVentas = filtradas.fold(0.0, (sum, f) => sum + ((f['total'] as num?)?.toDouble() ?? 0.0));
+    final totalVentas = filtradas.fold(
+      0.0,
+      (sum, f) => sum + ((f['total'] as num?)?.toDouble() ?? 0.0),
+    );
     final totalIsv = filtradas.fold(0.0, (sum, f) {
-      return sum + ((f['isv_15'] as num?)?.toDouble() ?? 0.0) + ((f['isv_18'] as num?)?.toDouble() ?? 0.0);
+      return sum +
+          ((f['isv_15'] as num?)?.toDouble() ?? 0.0) +
+          ((f['isv_18'] as num?)?.toDouble() ?? 0.0);
     });
 
     final Map<String, double> ventasPorCliente = {};
     for (final f in filtradas) {
       final cliente = f['cliente_nombre'] ?? 'Sin nombre';
-      ventasPorCliente[cliente] = (ventasPorCliente[cliente] ?? 0) + ((f['total'] as num?)?.toDouble() ?? 0.0);
+      ventasPorCliente[cliente] =
+          (ventasPorCliente[cliente] ?? 0) +
+          ((f['total'] as num?)?.toDouble() ?? 0.0);
     }
 
     final sortedClientes = ventasPorCliente.entries.toList()
@@ -91,7 +103,11 @@ class _ReportesScreenState extends State<ReportesScreen> {
         backgroundColor: const Color(0xFF080808),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF10B981), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF10B981),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -117,7 +133,9 @@ class _ReportesScreenState extends State<ReportesScreen> {
           if (sortedClientes.isEmpty)
             _buildEmptyCard()
           else
-            ...sortedClientes.take(10).map((e) => _buildClienteRow(e.key, e.value, totalVentas)),
+            ...sortedClientes
+                .take(10)
+                .map((e) => _buildClienteRow(e.key, e.value, totalVentas)),
           const SizedBox(height: 20),
           _buildSectionTitle('Detalle ISV por Período'),
           const SizedBox(height: 10),
@@ -129,7 +147,14 @@ class _ReportesScreenState extends State<ReportesScreen> {
   }
 
   Widget _buildPeriodoSelector() {
-    final periodos = ['Hoy', 'Ayer', 'Esta Semana', 'Este Mes', 'Últimos 30 Días', 'Rango'];
+    final periodos = [
+      'Hoy',
+      'Ayer',
+      'Esta Semana',
+      'Este Mes',
+      'Últimos 30 Días',
+      'Rango',
+    ];
     return SizedBox(
       height: 36,
       child: ListView(
@@ -144,12 +169,19 @@ class _ReportesScreenState extends State<ReportesScreen> {
                 if (p == 'Rango') _seleccionarRango();
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: selected ? const Color(0xFF10B981).withValues(alpha: 0.15) : const Color(0xFF141414),
+                  color: selected
+                      ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                      : const Color(0xFF141414),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: selected ? const Color(0xFF10B981) : const Color(0xFF262626),
+                    color: selected
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFF262626),
                   ),
                 ),
                 child: Text(
@@ -157,7 +189,9 @@ class _ReportesScreenState extends State<ReportesScreen> {
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    color: selected ? const Color(0xFF10B981) : const Color(0xFF737373),
+                    color: selected
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFF737373),
                   ),
                 ),
               ),
@@ -177,11 +211,9 @@ class _ReportesScreenState extends State<ReportesScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF10B981),
-              surface: Color(0xFF1A1A1A),
-            ),
-            dialogTheme: const DialogThemeData(backgroundColor: Color(0xFF1A1A1A)),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: const Color(0xFF10B981)),
           ),
           child: child!,
         );
@@ -197,11 +229,9 @@ class _ReportesScreenState extends State<ReportesScreen> {
         builder: (context, child) {
           return Theme(
             data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.dark(
-                primary: Color(0xFF10B981),
-                surface: Color(0xFF1A1A1A),
-              ),
-              dialogTheme: const DialogThemeData(backgroundColor: Color(0xFF1A1A1A)),
+              colorScheme: Theme.of(
+                context,
+              ).colorScheme.copyWith(primary: const Color(0xFF10B981)),
             ),
             child: child!,
           );
@@ -217,7 +247,12 @@ class _ReportesScreenState extends State<ReportesScreen> {
     }
   }
 
-  Widget _buildStatsCards(int emitidas, int anuladas, double totalVentas, double totalIsv) {
+  Widget _buildStatsCards(
+    int emitidas,
+    int anuladas,
+    double totalVentas,
+    double totalIsv,
+  ) {
     final wide = MediaQuery.of(context).size.width >= 600;
     return GridView.count(
       crossAxisCount: wide ? 4 : 2,
@@ -229,8 +264,16 @@ class _ReportesScreenState extends State<ReportesScreen> {
       children: [
         _buildMiniStat('Facturas', '$emitidas', const Color(0xFF10B981)),
         _buildMiniStat('Anuladas', '$anuladas', const Color(0xFFEF4444)),
-        _buildMiniStat('Ventas', 'L.${totalVentas.toStringAsFixed(2)}', const Color(0xFF3B82F6)),
-        _buildMiniStat('ISV Total', 'L.${totalIsv.toStringAsFixed(2)}', const Color(0xFFF59E0B)),
+        _buildMiniStat(
+          'Ventas',
+          'L.${totalVentas.toStringAsFixed(2)}',
+          const Color(0xFF3B82F6),
+        ),
+        _buildMiniStat(
+          'ISV Total',
+          'L.${totalIsv.toStringAsFixed(2)}',
+          const Color(0xFFF59E0B),
+        ),
       ],
     );
   }
@@ -260,7 +303,10 @@ class _ReportesScreenState extends State<ReportesScreen> {
           const SizedBox(height: 2),
           Text(
             label,
-            style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF737373)),
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: const Color(0xFF737373),
+            ),
           ),
         ],
       ),
@@ -327,7 +373,11 @@ class _ReportesScreenState extends State<ReportesScreen> {
               children: [
                 Text(
                   nombre,
-                  style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 LinearProgressIndicator(
@@ -346,11 +396,18 @@ class _ReportesScreenState extends State<ReportesScreen> {
             children: [
               Text(
                 'L.${monto.toStringAsFixed(2)}',
-                style: GoogleFonts.dmMono(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                style: GoogleFonts.dmMono(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
               ),
               Text(
                 '${porcentaje.toStringAsFixed(1)}%',
-                style: GoogleFonts.dmSans(fontSize: 10, color: const Color(0xFF737373)),
+                style: GoogleFonts.dmSans(
+                  fontSize: 10,
+                  color: const Color(0xFF737373),
+                ),
               ),
             ],
           ),
@@ -360,8 +417,14 @@ class _ReportesScreenState extends State<ReportesScreen> {
   }
 
   Widget _buildISVDetalle(List<Map<String, dynamic>> facturas) {
-    final isv15 = facturas.fold(0.0, (sum, f) => sum + ((f['isv_15'] as num?)?.toDouble() ?? 0.0));
-    final isv18 = facturas.fold(0.0, (sum, f) => sum + ((f['isv_18'] as num?)?.toDouble() ?? 0.0));
+    final isv15 = facturas.fold(
+      0.0,
+      (sum, f) => sum + ((f['isv_15'] as num?)?.toDouble() ?? 0.0),
+    );
+    final isv18 = facturas.fold(
+      0.0,
+      (sum, f) => sum + ((f['isv_18'] as num?)?.toDouble() ?? 0.0),
+    );
     final totalIsv = isv15 + isv18;
 
     return Container(
@@ -373,16 +436,30 @@ class _ReportesScreenState extends State<ReportesScreen> {
       ),
       child: Column(
         children: [
-          _buildISVRow('ISV 15% (Bienes gravados)', isv15, totalIsv > 0 ? isv15 / totalIsv : 0, const Color(0xFF3B82F6)),
+          _buildISVRow(
+            'ISV 15% (Bienes gravados)',
+            isv15,
+            totalIsv > 0 ? isv15 / totalIsv : 0,
+            const Color(0xFF3B82F6),
+          ),
           const SizedBox(height: 12),
-          _buildISVRow('ISV 18% (Bebidas/Tabaco)', isv18, totalIsv > 0 ? isv18 / totalIsv : 0, const Color(0xFFF59E0B)),
+          _buildISVRow(
+            'ISV 18% (Bebidas/Tabaco)',
+            isv18,
+            totalIsv > 0 ? isv18 / totalIsv : 0,
+            const Color(0xFFF59E0B),
+          ),
           const Divider(color: Color(0xFF262626), height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Total ISV a declarar',
-                style: GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
+                style: GoogleFonts.syne(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
               ),
               Text(
                 'L.${totalIsv.toStringAsFixed(2)}',
@@ -399,7 +476,12 @@ class _ReportesScreenState extends State<ReportesScreen> {
     );
   }
 
-  Widget _buildISVRow(String label, double monto, double porcentaje, Color color) {
+  Widget _buildISVRow(
+    String label,
+    double monto,
+    double porcentaje,
+    Color color,
+  ) {
     return Row(
       children: [
         Container(
@@ -415,7 +497,13 @@ class _ReportesScreenState extends State<ReportesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFFA3A3A3))),
+              Text(
+                label,
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: const Color(0xFFA3A3A3),
+                ),
+              ),
               const SizedBox(height: 4),
               LinearProgressIndicator(
                 value: porcentaje,
@@ -430,7 +518,11 @@ class _ReportesScreenState extends State<ReportesScreen> {
         const SizedBox(width: 12),
         Text(
           'L.${monto.toStringAsFixed(2)}',
-          style: GoogleFonts.dmMono(fontSize: 13, fontWeight: FontWeight.w600, color: color),
+          style: GoogleFonts.dmMono(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
         ),
       ],
     );

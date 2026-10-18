@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'auth_controller.dart';
 
 const String _defaultApiRoot = String.fromEnvironment(
   'WEB_DOMAIN',
@@ -11,6 +12,15 @@ const String _defaultApiRoot = String.fromEnvironment(
 class ImageService {
   ImageService._();
   static final ImageService instance = ImageService._();
+
+  /// La API exige sesión JWT válida para escribir/borrar en Storage.
+  Map<String, String> _storageHeaders() {
+    final token = AuthController.instance.token;
+    return {
+      'Content-Type': 'application/json',
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
 
   /// Sube una imagen (base64 o ruta de archivo) a Supabase Storage vía el API.
   /// Retorna únicamente la URL pública creada en Supabase Storage.
@@ -62,7 +72,7 @@ class ImageService {
       final response = await http
           .post(
             Uri.parse('$_defaultApiRoot/api/storage'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _storageHeaders(),
             body: jsonEncode({
               'action': 'delete',
               'bucket': bucketName,
@@ -90,7 +100,7 @@ class ImageService {
       final response = await http
           .post(
             Uri.parse('$_defaultApiRoot/api/storage'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _storageHeaders(),
             body: jsonEncode({
               'action': 'upload',
               'bucket': bucketName,

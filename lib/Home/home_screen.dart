@@ -3,9 +3,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Auth/login.dart';
 import 'package:portal_pilot_app/Shared/models/modulo.dart';
+import 'package:portal_pilot_app/Modules/module_manager.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/utils/modulo_icons.dart';
 import 'package:portal_pilot_app/Modules/Contabilidad/contabilidad_home.dart';
 import 'package:portal_pilot_app/Modules/Facturacion/facturacion_home.dart';
 import 'package:portal_pilot_app/Modules/Inventario/inventario_home.dart';
@@ -23,6 +26,7 @@ import 'package:portal_pilot_app/Modules/Settings/settings_home.dart';
 import 'package:portal_pilot_app/Modules/Analytics/analytics_home.dart';
 import 'package:portal_pilot_app/Modules/ChatIA/chat_ia_home.dart';
 import 'package:portal_pilot_app/Modules/Soporte/soporte_home.dart';
+import 'package:portal_pilot_app/Modules/Sistema/estado_sistema_home.dart';
 import 'package:portal_pilot_app/Modules/SupplyChain/supply_chain_home.dart';
 import 'package:portal_pilot_app/Modules/CRMAdvanced/crm_advanced_home.dart';
 import 'package:portal_pilot_app/Modules/FiscalAdvanced/fiscal_advanced_home.dart';
@@ -39,7 +43,7 @@ import 'package:portal_pilot_app/Shared/widgets/page_transitions.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_notifications.dart';
 import 'package:portal_pilot_app/Shared/widgets/portal_pilot_logo.dart';
 import 'package:portal_pilot_app/Home/multi_area_config_screen.dart';
-import 'package:portal_pilot_app/Shared/utils/modulo_icons.dart';
+import 'package:portal_pilot_app/Modules/GoogleSheets/google_sheets_home.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -57,8 +61,11 @@ class _HomeScreenState extends State<HomeScreen>
   String _userName = '';
   String _empresaCodigo = '';
   String _empresaNombre = '';
-  List<String> _modulosAsignados = [];
   List<Modulo> _modulosDisponibles = [];
+  Set<String> _favoriteModuleIds = {};
+  Set<String> _hiddenModuleIds = {};
+  List<String> _moduleOrder = [];
+  List<String> _recentModuleIds = [];
   final TextEditingController _moduleSearchController = TextEditingController();
   int _mobileNavIndex = 0;
   Timer? _clockTimer;
@@ -66,6 +73,11 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isOnline = true;
   StreamSubscription<bool>? _connectivitySubscription;
   StreamSubscription<SyncStatus>? _syncStatusSubscription;
+
+  String get _modulePreferencesKey {
+    final auth = AuthController.instance;
+    return 'home_modules_${auth.empresaCodigo}_${auth.email}'.toLowerCase();
+  }
 
   // ── Foto de perfil (Supabase Storage vía login) ───────────────
   bool get _fotoPerfilEsValida {
@@ -104,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen>
     _fadeController.forward();
     AuthController.instance.addListener(_onAuthChanged);
     MultiAreaConfig.instance.addListener(_onMultiAreaChanged);
+    ModuleManager.instance.addListener(_onModulesChanged);
     // Redibuja el panel cuando cambia el tema (claro/oscuro/sistema).
     appThemeNotifier.addListener(_onThemeChanged);
     _loadUserData();
@@ -114,13 +127,14 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() => _currentTime = now);
       }
     });
-    
+
     // Escuchar cambios de conectividad
-    _connectivitySubscription = ConnectivityService.instance.connectivityStream.listen((online) {
-      if (mounted) {
-        setState(() => _isOnline = online);
-      }
-    });
+    _connectivitySubscription = ConnectivityService.instance.connectivityStream
+        .listen((online) {
+          if (mounted) {
+            setState(() => _isOnline = online);
+          }
+        });
   }
 
   void _onThemeChanged() {
@@ -131,14 +145,15 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       await HapticService.instance.initialize();
       await OfflineSyncService.instance.initialize();
-      
+
       // Escuchar estado de sincronización
-      _syncStatusSubscription = OfflineSyncService.instance.syncStatusStream.listen((status) {
-        if (mounted) {
-          // Mostrar indicador de sincronización si es necesario
-          debugPrint('🔄 Sync status: ${status.message}');
-        }
-      });
+      _syncStatusSubscription = OfflineSyncService.instance.syncStatusStream
+          .listen((status) {
+            if (mounted) {
+              // Mostrar indicador de sincronización si es necesario
+              debugPrint('🔄 Sync status: ${status.message}');
+            }
+          });
     } catch (e) {
       debugPrint('⚠️ Error inicializando servicios: $e');
     }
@@ -146,10 +161,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _refreshData() async {
     HapticService.instance.lightImpact();
-    
+
     // Cargar datos frescos
     await _loadUserData();
-    
+
     // Forzar sincronización si hay operaciones pendientes
     if (OfflineSyncService.instance.hasPendingSync) {
       try {
@@ -165,6 +180,7 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     AuthController.instance.removeListener(_onAuthChanged);
     MultiAreaConfig.instance.removeListener(_onMultiAreaChanged);
+    ModuleManager.instance.removeListener(_onModulesChanged);
     appThemeNotifier.removeListener(_onThemeChanged);
     _fadeController.dispose();
     _moduleSearchController.dispose();
@@ -179,6 +195,10 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onMultiAreaChanged() {
+    if (mounted) setState(() => _applySession());
+  }
+
+  void _onModulesChanged() {
     if (mounted) setState(() => _applySession());
   }
 
@@ -226,9 +246,33 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _loadUserData() async {
     await AuthController.instance.restore();
     await MultiAreaConfig.instance.cargar();
+    await ModuleManager.instance.initialize();
     if (mounted) {
       setState(() => _applySession());
     }
+    await _loadModulePreferences();
+  }
+
+  Future<void> _loadModulePreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _modulePreferencesKey;
+    if (!mounted) return;
+    setState(() {
+      _favoriteModuleIds =
+          prefs.getStringList('${key}_favorites')?.toSet() ?? {};
+      _hiddenModuleIds = prefs.getStringList('${key}_hidden')?.toSet() ?? {};
+      _moduleOrder = prefs.getStringList('${key}_order') ?? [];
+      _recentModuleIds = prefs.getStringList('${key}_recent') ?? [];
+    });
+  }
+
+  Future<void> _saveModulePreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _modulePreferencesKey;
+    await prefs.setStringList('${key}_favorites', _favoriteModuleIds.toList());
+    await prefs.setStringList('${key}_hidden', _hiddenModuleIds.toList());
+    await prefs.setStringList('${key}_order', _moduleOrder);
+    await prefs.setStringList('${key}_recent', _recentModuleIds);
   }
 
   void _applySession() {
@@ -237,45 +281,41 @@ class _HomeScreenState extends State<HomeScreen>
     _empresaNombre = AuthController.instance.empresaNombre.isNotEmpty
         ? AuthController.instance.empresaNombre
         : _empresaCodigo;
-    if (AuthController.instance.esRoot) {
-      _modulosAsignados = Modulo.modulosDisponibles.map((m) => m.id).toList();
-    } else {
-      _modulosAsignados = AuthController.instance.modulos.isNotEmpty
-          ? AuthController.instance.modulos
-          : ['facturacion', 'inventario', 'crm'];
-    }
 
-    _modulosDisponibles = Modulo.modulosDisponibles
-        .where((m) => _modulosAsignados.contains(m.id))
-        .toList();
-
-    if (_modulosDisponibles.isEmpty) {
-      _modulosDisponibles = Modulo.modulosDisponibles
-          .where((m) => m.id == 'chat_ia')
-          .toList();
-    }
+    // Los tenants solo reciben módulos asignados por su suscripción; ROOT
+    // conserva el catálogo completo para administración y soporte interno.
+    _modulosDisponibles = AuthController.instance.esRoot
+        ? List<Modulo>.from(Modulo.modulosDisponibles)
+        : ModuleManager.instance.getActiveModulesForHome();
 
     // Multi-área: filtra por feature flags de la empresa (configuración admin).
     if (MultiAreaConfig.instance.inicializado) {
-      final visibles = Modulo.modulosDisponibles.where((m) {
-        return _modulosAsignados.contains(m.id) &&
+      _modulosDisponibles = _modulosDisponibles.where((m) {
+        return _isSystemModuleId(m.id) ||
             MultiAreaConfig.instance.moduloActivo(m.id);
       }).toList();
-      _modulosDisponibles = visibles;
     }
 
-    // Gateo por plan: oculta módulos cuya feature no esté contratada.
+    // El módulo debe estar asignado y su feature debe estar habilitada.
     _modulosDisponibles = _modulosDisponibles.where((m) {
       final required = moduloFeatureRequerida[m.id];
-      return required == null || AuthController.instance.tieneFeature(required);
+      return ModuleManager.instance.isAppModuleAllowed(m.id) &&
+          (required == null || AuthController.instance.tieneFeature(required));
     }).toList();
 
-    if (_modulosDisponibles.isEmpty) {
-      _modulosDisponibles = Modulo.modulosDisponibles
-          .where((m) => m.id == 'chat_ia')
-          .toList();
+    // Herramientas de sistema accesibles en todos los planes, sin mostrar IA
+    // como fallback cuando el usuario no la contrató.
+    final idsActuales = _modulosDisponibles.map((m) => m.id).toSet();
+    for (final m in Modulo.modulosDisponibles) {
+      if (!_isSystemModuleId(m.id)) continue;
+      if (!idsActuales.contains(m.id)) {
+        _modulosDisponibles.add(m);
+      }
     }
   }
+
+  bool _isSystemModuleId(String id) =>
+      const {'settings', 'soporte', 'estado_sistema'}.contains(id);
 
   @override
   Widget build(BuildContext context) {
@@ -287,15 +327,16 @@ class _HomeScreenState extends State<HomeScreen>
       autofocus: true,
       child: CallbackShortcuts(
         bindings: <ShortcutActivator, VoidCallback>{
-          const SingleActivator(LogicalKeyboardKey.keyR, control: true):
-              () => _refreshData(),
-            const SingleActivator(LogicalKeyboardKey.f5): () => _refreshData(),
+          const SingleActivator(LogicalKeyboardKey.keyR, control: true): () =>
+              _refreshData(),
+          const SingleActivator(LogicalKeyboardKey.f5): () => _refreshData(),
           const SingleActivator(LogicalKeyboardKey.f1): _openSupport,
           for (var index = 0; index < 9; index++)
             SingleActivator(
               LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + index),
               control: true,
-            ): () => _openModuleByShortcut(index),
+            ): () =>
+                _openModuleByShortcut(index),
         },
         child: Scaffold(
           key: _scaffoldKey,
@@ -344,11 +385,132 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<Modulo> get _filteredModules {
     final query = _moduleSearchController.text.trim().toLowerCase();
-    if (query.isEmpty) return _modulosDisponibles;
-    return _modulosDisponibles.where((modulo) {
+    if (query.isEmpty) return _homeModules;
+    return _homeModules.where((modulo) {
       return modulo.nombre.toLowerCase().contains(query) ||
           modulo.descripcion.toLowerCase().contains(query);
     }).toList();
+  }
+
+  List<Modulo> get _homeModules {
+    final modules = _modulosDisponibles
+        .where((module) => !_hiddenModuleIds.contains(module.id))
+        .toList();
+    final originalOrder = {
+      for (var index = 0; index < _modulosDisponibles.length; index++)
+        _modulosDisponibles[index].id: index,
+    };
+    modules.sort((a, b) {
+      final aFavorite = _favoriteModuleIds.contains(a.id);
+      final bFavorite = _favoriteModuleIds.contains(b.id);
+      if (aFavorite != bFavorite) return bFavorite ? 1 : -1;
+      final aOrder = _moduleOrder.indexOf(a.id);
+      final bOrder = _moduleOrder.indexOf(b.id);
+      final aPosition = aOrder < 0
+          ? _moduleOrder.length + originalOrder[a.id]!
+          : aOrder;
+      final bPosition = bOrder < 0
+          ? _moduleOrder.length + originalOrder[b.id]!
+          : bOrder;
+      return aPosition.compareTo(bPosition);
+    });
+    return modules;
+  }
+
+  List<Modulo> get _recentModules {
+    final available = {
+      for (final module in _modulosDisponibles) module.id: module,
+    };
+    return _recentModuleIds
+        .map((id) => available[id])
+        .whereType<Modulo>()
+        .where((module) => !_hiddenModuleIds.contains(module.id))
+        .toList();
+  }
+
+  void _recordRecentModule(String id) {
+    setState(() {
+      _recentModuleIds = [
+        id,
+        ..._recentModuleIds.where((recentId) => recentId != id),
+      ].take(5).toList();
+    });
+    _saveModulePreferences();
+  }
+
+  void _toggleFavorite(String id) {
+    setState(() {
+      if (!_favoriteModuleIds.add(id)) _favoriteModuleIds.remove(id);
+    });
+    _saveModulePreferences();
+  }
+
+  void _moveModule(String id, int offset) {
+    final ids = _homeModules.map((module) => module.id).toList();
+    final index = ids.indexOf(id);
+    final target = index + offset;
+    if (index < 0 || target < 0 || target >= ids.length) return;
+    ids.insert(target, ids.removeAt(index));
+    setState(() => _moduleOrder = ids);
+    _saveModulePreferences();
+  }
+
+  void _hideModule(String id) {
+    setState(() => _hiddenModuleIds.add(id));
+    _saveModulePreferences();
+  }
+
+  Future<void> _showHiddenModulesDialog() async {
+    final hidden = _modulosDisponibles
+        .where((module) => _hiddenModuleIds.contains(module.id))
+        .toList();
+    final selected = <String>{};
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Módulos ocultos'),
+          content: SizedBox(
+            width: 360,
+            child: hidden.isEmpty
+                ? const Text('No hay módulos ocultos.')
+                : ListView(
+                    shrinkWrap: true,
+                    children: hidden
+                        .map(
+                          (module) => CheckboxListTile(
+                            value: selected.contains(module.id),
+                            title: Text(module.nombre),
+                            secondary: Icon(module.icono, color: module.color),
+                            onChanged: (show) => setDialogState(() {
+                              if (show == true) {
+                                selected.add(module.id);
+                              } else {
+                                selected.remove(module.id);
+                              }
+                            }),
+                          ),
+                        )
+                        .toList(),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                setState(() => _hiddenModuleIds.removeAll(selected));
+                _saveModulePreferences();
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Mostrar seleccionados'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildModuleSearch(bool isMobile) {
@@ -360,12 +522,20 @@ class _HomeScreenState extends State<HomeScreen>
       decoration: InputDecoration(
         hintText: 'Buscar módulos...',
         hintStyle: GoogleFonts.dmSans(fontSize: 13, color: palette.textDim),
-        prefixIcon: Icon(Icons.search_rounded, color: palette.brandOnSurface, size: 20),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          color: palette.brandOnSurface,
+          size: 20,
+        ),
         suffixIcon: _moduleSearchController.text.isEmpty
             ? null
             : IconButton(
                 tooltip: 'Limpiar búsqueda',
-                icon: Icon(Icons.close_rounded, color: palette.textMuted, size: 18),
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: palette.textMuted,
+                  size: 18,
+                ),
                 onPressed: () {
                   _moduleSearchController.clear();
                   setState(() {});
@@ -373,7 +543,10 @@ class _HomeScreenState extends State<HomeScreen>
               ),
         filled: true,
         fillColor: palette.cardColor.withValues(alpha: 0.85),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: palette.borderLight),
@@ -390,6 +563,88 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildRecentModules() {
+    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
+    final recent = _recentModules;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text(
+            'RECIENTES',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: palette.textMuted,
+              letterSpacing: 1.3,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 62,
+          child: recent.isEmpty
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Los módulos que abras aparecerán aquí.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: palette.textDim,
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: recent.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final module = recent[index];
+                    return Material(
+                      color: palette.cardColor,
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => _openModule(module),
+                        child: Container(
+                          constraints: const BoxConstraints(
+                            minWidth: 130,
+                            maxWidth: 220,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: palette.borderLight),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(module.icono, color: module.color, size: 18),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  module.nombre,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: palette.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeader(bool isMobile) {
     final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     final hour = _currentTime.hour;
@@ -397,7 +652,10 @@ class _HomeScreenState extends State<HomeScreen>
     if (hour >= 12 && hour < 19) greeting = 'Buenas tardes';
     if (hour >= 19) greeting = 'Buenas noches';
     // Círculo de perfil adaptativo: escala según la pantalla (móvil y PC).
-    final avatarSize = (MediaQuery.sizeOf(context).shortestSide * 0.22).clamp(76.0, 108.0);
+    final avatarSize = (MediaQuery.sizeOf(context).shortestSide * 0.22).clamp(
+      76.0,
+      108.0,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,8 +678,12 @@ class _HomeScreenState extends State<HomeScreen>
                     PortalPilotLogo(height: 16),
                     _headerPill(
                       palette: palette,
-                      color: _isOnline ? palette.successGreen : palette.errorRed,
-                      icon: _isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
+                      color: _isOnline
+                          ? palette.successGreen
+                          : palette.errorRed,
+                      icon: _isOnline
+                          ? Icons.wifi_rounded
+                          : Icons.wifi_off_rounded,
                       label: _isOnline ? 'Online' : 'Offline',
                     ),
                   ],
@@ -464,7 +726,9 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     PortalPilotLogo(height: 22),
                     Text(
-                      _empresaNombre.isNotEmpty ? _empresaNombre : _empresaCodigo,
+                      _empresaNombre.isNotEmpty
+                          ? _empresaNombre
+                          : _empresaCodigo,
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
                         color: palette.textMuted,
@@ -540,7 +804,9 @@ class _HomeScreenState extends State<HomeScreen>
                 child: _fotoPerfilEsValida
                     ? null
                     : Text(
-                        _userName.trim().isEmpty ? 'U' : _userName.trim()[0].toUpperCase(),
+                        _userName.trim().isEmpty
+                            ? 'U'
+                            : _userName.trim()[0].toUpperCase(),
                         style: GoogleFonts.syne(
                           fontSize: avatarSize * 0.38,
                           fontWeight: FontWeight.w900,
@@ -669,6 +935,10 @@ class _HomeScreenState extends State<HomeScreen>
               ],
               const SizedBox(height: 24),
               _buildModuleSearch(isMobile),
+              if (_moduleSearchController.text.isEmpty) ...[
+                const SizedBox(height: 22),
+                _buildRecentModules(),
+              ],
               const SizedBox(height: 32),
               _buildModulosHeader(isMobile),
             ]),
@@ -688,26 +958,19 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) =>
-                    _buildModuleCard(_filteredModules[index], isMobile),
-                  childCount: _filteredModules.length,
+                  _buildModuleCard(_filteredModules[index], isMobile),
+              childCount: _filteredModules.length,
             ),
           ),
         ),
         SliverPadding(
           padding: EdgeInsets.fromLTRB(
             isMobile ? 20 : 48,
-            20,
-            isMobile ? 20 : 48,
-            0,
-          ),
-          sliver: SliverToBoxAdapter(child: _buildQuickActions(isMobile)),
-        ),
-        SliverPadding(
-          padding: EdgeInsets.fromLTRB(
-            isMobile ? 20 : 48,
             40,
             isMobile ? 20 : 48,
-            isMobile ? 100 : 40, // Más espacio en móvil para la barra de navegación
+            isMobile
+                ? 100
+                : 40, // Más espacio en móvil para la barra de navegación
           ),
           sliver: SliverToBoxAdapter(child: _buildFooter()),
         ),
@@ -729,7 +992,9 @@ class _HomeScreenState extends State<HomeScreen>
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFCA5A5).withValues(alpha: 0.4)),
+        border: Border.all(
+          color: const Color(0xFFFCA5A5).withValues(alpha: 0.4),
+        ),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF7F1D1D).withValues(alpha: 0.35),
@@ -785,83 +1050,93 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildModulosHeader(bool isMobile) {
     final palette = ThemePalette(isDark: appThemeNotifier.isDark);
     return Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: palette.brand.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.apps_rounded,
-                color: palette.brandOnSurface,
-                size: 18,
-              ),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: palette.brand.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.apps_rounded,
+            color: palette.brandOnSurface,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            'TUS MÓDULOS',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: palette.textMuted,
+              letterSpacing: 1.5,
             ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                'TUS MÓDULOS',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: palette.textMuted,
-                  letterSpacing: 1.5,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: palette.successGreen.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '${_filteredModules.length} visibles',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: palette.isDark
+                  ? palette.successGreen
+                  : palette.successGreenDeep,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (MultiAreaConfig.instance.inicializado)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: MultiAreaConfig.instance.areaInfo.color.withValues(
+                alpha: 0.15,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  MultiAreaConfig.instance.areaInfo.icono,
+                  color: MultiAreaConfig.instance.areaInfo.color,
+                  size: 11,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: palette.successGreen.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${_filteredModules.length} visibles',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: palette.isDark
-                      ? palette.successGreen
-                      : palette.successGreenDeep,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (MultiAreaConfig.instance.inicializado)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: MultiAreaConfig.instance.areaInfo.color.withValues(
-                    alpha: 0.15,
+                const SizedBox(width: 4),
+                Text(
+                  MultiAreaConfig.instance.areaInfo.nombre,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: MultiAreaConfig.instance.areaInfo.color,
                   ),
-                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      MultiAreaConfig.instance.areaInfo.icono,
-                      color: MultiAreaConfig.instance.areaInfo.color,
-                      size: 11,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      MultiAreaConfig.instance.areaInfo.nombre,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: MultiAreaConfig.instance.areaInfo.color,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        );
+              ],
+            ),
+          ),
+        IconButton(
+          tooltip: 'Mostrar módulos ocultos',
+          visualDensity: VisualDensity.compact,
+          icon: Icon(
+            Icons.visibility_rounded,
+            color: palette.textMuted,
+            size: 18,
+          ),
+          onPressed: _showHiddenModulesDialog,
+        ),
+      ],
+    );
   }
 
   Widget _buildModuleCard(Modulo modulo, bool isMobile) {
@@ -869,6 +1144,11 @@ class _HomeScreenState extends State<HomeScreen>
       child: ModuleCard(
         modulo: modulo,
         isMobile: isMobile,
+        isFavorite: _favoriteModuleIds.contains(modulo.id),
+        onToggleFavorite: () => _toggleFavorite(modulo.id),
+        onMoveUp: () => _moveModule(modulo.id, -1),
+        onMoveDown: () => _moveModule(modulo.id, 1),
+        onHide: () => _hideModule(modulo.id),
         onTap: () => _openModule(modulo),
       ),
     );
@@ -889,6 +1169,15 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _openModule(Modulo modulo) {
+    if (!ModuleManager.instance.isAppModuleAllowed(modulo.id)) {
+      PPNotifications.info(
+        context,
+        'Este módulo no está incluido en tu plan.',
+        title: 'Módulo no disponible',
+      );
+      return;
+    }
+    _recordRecentModule(modulo.id);
     // Haptic feedback
     HapticService.instance.mediumImpact();
 
@@ -958,6 +1247,15 @@ class _HomeScreenState extends State<HomeScreen>
       case 'multi_empresa':
         destination = const MultiEmpresaHome();
         break;
+      case 'google_sheets':
+        destination = const GoogleSheetsHome();
+        break;
+      case 'soporte':
+        destination = const SoporteHome();
+        break;
+      case 'estado_sistema':
+        destination = const EstadoSistemaHome();
+        break;
       default:
         HapticService.instance.error();
         PPNotifications.info(
@@ -968,111 +1266,7 @@ class _HomeScreenState extends State<HomeScreen>
         return;
     }
 
-    Navigator.of(context).push(
-      SlideFromRightTransition(child: destination),
-    );
-  }
-
-  Widget _buildQuickActions(bool isMobile) {
-    final palette = ThemePalette(isDark: appThemeNotifier.isDark);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'ACCESO RÁPIDO',
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: palette.textMuted,
-            letterSpacing: 1.5,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildQuickActionCard(
-                palette,
-                'Estado del Sistema',
-                'Todos los módulos operativos',
-                Icons.check_circle_rounded,
-                palette.successGreen,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildQuickActionCard(
-                palette,
-                'Soporte',
-                'Centro de ayuda con IA',
-                Icons.help_outline_rounded,
-                palette.infoBlue,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SoporteHome()),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActionCard(
-    ThemePalette palette,
-    String title,
-    String subtitle,
-    IconData icon,
-    Color color, {
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: palette.cardColor.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: palette.borderLight),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: palette.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      color: palette.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    Navigator.of(context).push(SlideFromRightTransition(child: destination));
   }
 
   Widget _buildFooter() {
@@ -1116,6 +1310,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildMobileBottomNav() {
     final palette = ThemePalette(isDark: appThemeNotifier.isDark);
+    final canUseAi = ModuleManager.instance.isAppModuleAllowed('chat_ia');
     return Material(
       color: Colors.transparent,
       child: SafeArea(
@@ -1138,11 +1333,62 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           child: Row(
             children: [
-              Expanded(child: _buildMobileNavButton(palette, icon: Icons.home_rounded, label: 'Inicio', isSelected: _mobileNavIndex == 0, onTap: () => setState(() => _mobileNavIndex = 0))),
-              Expanded(child: _buildMobileNavButton(palette, icon: Icons.settings_rounded, label: 'Config', isSelected: _mobileNavIndex == 1, onTap: () { setState(() => _mobileNavIndex = 1); _openSettings(); })),
+              Expanded(
+                child: _buildMobileNavButton(
+                  palette,
+                  icon: Icons.home_rounded,
+                  label: 'Inicio',
+                  isSelected: _mobileNavIndex == 0,
+                  onTap: () => setState(() => _mobileNavIndex = 0),
+                ),
+              ),
+              Expanded(
+                child: _buildMobileNavButton(
+                  palette,
+                  icon: Icons.settings_rounded,
+                  label: 'Config',
+                  isSelected: _mobileNavIndex == 1,
+                  onTap: () {
+                    setState(() => _mobileNavIndex = 1);
+                    _openSettings();
+                  },
+                ),
+              ),
               _buildPortalCoreButton(palette),
-              Expanded(child: _buildMobileNavButton(palette, icon: Icons.support_agent_rounded, label: 'Soporte', isSelected: _mobileNavIndex == 2, onTap: () { setState(() => _mobileNavIndex = 2); Navigator.push(context, MaterialPageRoute(builder: (_) => const SoporteHome())); })),
-              Expanded(child: _buildMobileNavButton(palette, icon: Icons.auto_awesome_rounded, label: 'Navi', isSelected: _mobileNavIndex == 3, onTap: () { setState(() => _mobileNavIndex = 3); _openModule(Modulo.modulosDisponibles.firstWhere((m) => m.id == 'chat_ia')); })),
+              Expanded(
+                child: _buildMobileNavButton(
+                  palette,
+                  icon: Icons.support_agent_rounded,
+                  label: 'Soporte',
+                  isSelected: _mobileNavIndex == 2,
+                  onTap: () {
+                    setState(() => _mobileNavIndex = 2);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SoporteHome()),
+                    );
+                  },
+                ),
+              ),
+              Expanded(
+                child: _buildMobileNavButton(
+                  palette,
+                  icon: canUseAi
+                      ? Icons.auto_awesome_rounded
+                      : Icons.monitor_heart_rounded,
+                  label: canUseAi ? 'Navi' : 'Estado',
+                  isSelected: _mobileNavIndex == 3,
+                  onTap: () {
+                    setState(() => _mobileNavIndex = 3);
+                    final moduleId = canUseAi ? 'chat_ia' : 'estado_sistema';
+                    _openModule(
+                      Modulo.modulosDisponibles.firstWhere(
+                        (m) => m.id == moduleId,
+                      ),
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
@@ -1151,7 +1397,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _openSettings() {
-    Navigator.of(context).push(SlideFromRightTransition(child: const SettingsHome()));
+    Navigator.of(
+      context,
+    ).push(SlideFromRightTransition(child: const SettingsHome()));
   }
 
   /// Botón central del nav móvil: abre el Núcleo (drawer con todos los módulos).
@@ -1167,9 +1415,22 @@ class _HomeScreenState extends State<HomeScreen>
           margin: const EdgeInsets.symmetric(horizontal: 6),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFD16BF0), Color(0xFF5C1A7E)]),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.75), width: 2),
-            boxShadow: const [BoxShadow(color: Color(0x99B94DDC), blurRadius: 16, spreadRadius: 1)],
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFD16BF0), Color(0xFF5C1A7E)],
+            ),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.75),
+              width: 2,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x99B94DDC),
+                blurRadius: 16,
+                spreadRadius: 1,
+              ),
+            ],
           ),
           child: const Icon(Icons.hub_rounded, color: Colors.white, size: 25),
         ),
@@ -1242,11 +1503,11 @@ class _HomeScreenState extends State<HomeScreen>
                   Row(
                     children: [
                       Image.asset(
-                          'assets/img/robot_logo.png',
-                          width: 32,
-                          height: 32,
-                          fit: BoxFit.contain,
-                        ),
+                        'assets/img/robot_logo.png',
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.contain,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -1254,7 +1515,9 @@ class _HomeScreenState extends State<HomeScreen>
                           children: [
                             const PortalPilotLogo(height: 18, forceWhite: true),
                             Text(
-                              _empresaNombre.isNotEmpty ? _empresaNombre : _empresaCodigo,
+                              _empresaNombre.isNotEmpty
+                                  ? _empresaNombre
+                                  : _empresaCodigo,
                               style: GoogleFonts.dmSans(
                                 fontSize: 12,
                                 color: Colors.white.withValues(alpha: 0.8),
@@ -1289,14 +1552,17 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
             ),
-            
+
             // Lista de módulos
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
                     child: Text(
                       'MÓDULOS',
                       style: GoogleFonts.spaceGrotesk(
@@ -1307,21 +1573,28 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                   ),
-                  ..._modulosDisponibles.map((modulo) => _buildDrawerItem(
-                    icon: modulo.icono,
-                    title: modulo.nombre,
-                    color: modulo.color,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _openModule(modulo);
-                    },
-                  )),
+                  ..._modulosDisponibles
+                      .where((modulo) => !_isSystemModuleId(modulo.id))
+                      .map(
+                        (modulo) => _buildDrawerItem(
+                          icon: modulo.icono,
+                          title: modulo.nombre,
+                          color: modulo.color,
+                          onTap: () {
+                            Navigator.pop(context);
+                            _openModule(modulo);
+                          },
+                        ),
+                      ),
 
                   Divider(height: 32, color: palette.borderLight),
 
                   // Opciones adicionales
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
                     child: Text(
                       'SISTEMA',
                       style: GoogleFonts.spaceGrotesk(
@@ -1338,10 +1611,12 @@ class _HomeScreenState extends State<HomeScreen>
                     color: palette.brand,
                     onTap: () {
                       Navigator.pop(context);
-                      _openModule(_modulosDisponibles.firstWhere(
-                        (m) => m.id == 'settings',
-                        orElse: () => _modulosDisponibles.first,
-                      ));
+                      _openModule(
+                        _modulosDisponibles.firstWhere(
+                          (m) => m.id == 'settings',
+                          orElse: () => _modulosDisponibles.first,
+                        ),
+                      );
                     },
                   ),
                   _buildDrawerItem(
@@ -1353,6 +1628,19 @@ class _HomeScreenState extends State<HomeScreen>
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const SoporteHome()),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.monitor_heart_rounded,
+                    title: 'Estado del sistema',
+                    color: palette.successGreen,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _openModule(
+                        Modulo.modulosDisponibles.firstWhere(
+                          (m) => m.id == 'estado_sistema',
+                        ),
                       );
                     },
                   ),
@@ -1369,7 +1657,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
             ),
-            
+
             // Footer con logout
             Container(
               padding: const EdgeInsets.all(20),
@@ -1379,10 +1667,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
               child: ListTile(
-                leading: Icon(
-                  Icons.logout_rounded,
-                  color: palette.errorRed,
-                ),
+                leading: Icon(Icons.logout_rounded, color: palette.errorRed),
                 title: Text(
                   'Cerrar sesión',
                   style: GoogleFonts.dmSans(
@@ -1439,12 +1724,22 @@ class _HomeScreenState extends State<HomeScreen>
 class ModuleCard extends StatefulWidget {
   final Modulo modulo;
   final bool isMobile;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
+  final VoidCallback onMoveUp;
+  final VoidCallback onMoveDown;
+  final VoidCallback onHide;
   final VoidCallback onTap;
 
   const ModuleCard({
     super.key,
     required this.modulo,
     required this.isMobile,
+    required this.isFavorite,
+    required this.onToggleFavorite,
+    required this.onMoveUp,
+    required this.onMoveDown,
+    required this.onHide,
     required this.onTap,
   });
 
@@ -1459,19 +1754,19 @@ class _ModuleCardState extends State<ModuleCard> {
 
   TextStyle _getTitleStyle(double fontSize, ThemePalette palette) {
     final key = (fontSize.toInt() << 1) | (palette.isDark ? 1 : 0);
-    return _titleCache.putIfAbsent(key, () => GoogleFonts.syne(
-      fontSize: fontSize,
-      fontWeight: FontWeight.w800,
-      color: palette.textPrimary,
-      letterSpacing: -0.3,
-    ));
+    return _titleCache.putIfAbsent(
+      key,
+      () => GoogleFonts.syne(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w800,
+        color: palette.textPrimary,
+        letterSpacing: -0.3,
+      ),
+    );
   }
 
-  TextStyle _descStyle(ThemePalette palette) => GoogleFonts.dmSans(
-    fontSize: 12,
-    color: palette.textMuted,
-    height: 1.4,
-  );
+  TextStyle _descStyle(ThemePalette palette) =>
+      GoogleFonts.dmSans(fontSize: 12, color: palette.textMuted, height: 1.4);
 
   TextStyle _getActionStyle(Color color) {
     return GoogleFonts.dmSans(
@@ -1485,12 +1780,7 @@ class _ModuleCardState extends State<ModuleCard> {
   Widget _buildModuleGlyph(Color accent) {
     final asset = moduloIconAsset(widget.modulo.id);
     if (asset != null) {
-      return Image.asset(
-        asset,
-        width: 34,
-        height: 34,
-        fit: BoxFit.contain,
-      );
+      return Image.asset(asset, width: 34, height: 34, fit: BoxFit.contain);
     }
     return Icon(widget.modulo.icono, color: Colors.white, size: 22);
   }
@@ -1507,7 +1797,12 @@ class _ModuleCardState extends State<ModuleCard> {
     };
     final file = assets[widget.modulo.id.toLowerCase()];
     if (file == null) {
-      return Text(widget.modulo.nombre, style: _getTitleStyle(widget.isMobile ? 16 : 18, palette), maxLines: 1, overflow: TextOverflow.ellipsis);
+      return Text(
+        widget.modulo.nombre,
+        style: _getTitleStyle(widget.isMobile ? 16 : 18, palette),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
     }
     return Image.asset(
       'img/texto/$file',
@@ -1517,7 +1812,12 @@ class _ModuleCardState extends State<ModuleCard> {
       fit: BoxFit.contain,
       color: palette.isDark ? Colors.white : Colors.black,
       colorBlendMode: BlendMode.srcIn,
-      errorBuilder: (_, __, ___) => Text(widget.modulo.nombre, style: _getTitleStyle(widget.isMobile ? 16 : 18, palette), maxLines: 1, overflow: TextOverflow.ellipsis),
+      errorBuilder: (_, __, ___) => Text(
+        widget.modulo.nombre,
+        style: _getTitleStyle(widget.isMobile ? 16 : 18, palette),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 
@@ -1554,12 +1854,16 @@ class _ModuleCardState extends State<ModuleCard> {
                     end: Alignment.bottomRight,
                     colors: palette.isDark
                         ? [
-                            pressed ? const Color(0xFF1B1B22) : const Color(0xFF141219),
+                            pressed
+                                ? const Color(0xFF1B1B22)
+                                : const Color(0xFF141219),
                             const Color(0xFF0C0A12),
                           ]
                         : [
                             Colors.white,
-                            pressed ? const Color(0xFFF7F2FC) : const Color(0xFFFBF9FE),
+                            pressed
+                                ? const Color(0xFFF7F2FC)
+                                : const Color(0xFFFBF9FE),
                           ],
                   ),
                   borderRadius: BorderRadius.circular(20),
@@ -1590,10 +1894,7 @@ class _ModuleCardState extends State<ModuleCard> {
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [
-                                accent,
-                                accent.withValues(alpha: 0.75),
-                              ],
+                              colors: [accent, accent.withValues(alpha: 0.75)],
                             ),
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: [
@@ -1606,23 +1907,49 @@ class _ModuleCardState extends State<ModuleCard> {
                           ),
                           child: _buildModuleGlyph(accent),
                         ),
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: palette.isDark
-                                ? palette.successGreen
-                                : palette.successGreenDeep,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: (palette.isDark
-                                        ? palette.successGreen
-                                        : palette.successGreenDeep)
-                                    .withValues(alpha: 0.4),
-                                blurRadius: 6,
+                        PopupMenuButton<String>(
+                          tooltip: 'Opciones del módulo',
+                          padding: EdgeInsets.zero,
+                          onSelected: (action) {
+                            if (action == 'favorite') widget.onToggleFavorite();
+                            if (action == 'up') widget.onMoveUp();
+                            if (action == 'down') widget.onMoveDown();
+                            if (action == 'hide') widget.onHide();
+                          },
+                          itemBuilder: (_) => [
+                            PopupMenuItem(
+                              value: 'favorite',
+                              child: Text(
+                                widget.isFavorite
+                                    ? 'Quitar de favoritos'
+                                    : 'Fijar en favoritos',
                               ),
-                            ],
+                            ),
+                            const PopupMenuItem(
+                              value: 'up',
+                              child: Text('Mover arriba'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'down',
+                              child: Text('Mover abajo'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'hide',
+                              child: Text('Ocultar módulo'),
+                            ),
+                          ],
+                          child: SizedBox(
+                            width: 34,
+                            height: 34,
+                            child: Icon(
+                              widget.isFavorite
+                                  ? Icons.star_rounded
+                                  : Icons.more_vert_rounded,
+                              color: widget.isFavorite
+                                  ? const Color(0xFFF59E0B)
+                                  : palette.textMuted,
+                              size: 19,
+                            ),
                           ),
                         ),
                       ],
@@ -1644,7 +1971,11 @@ class _ModuleCardState extends State<ModuleCard> {
                       children: [
                         Text('Abrir', style: _getActionStyle(accent)),
                         const SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_rounded, color: accent, size: 16),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          color: accent,
+                          size: 16,
+                        ),
                       ],
                     ),
                   ],

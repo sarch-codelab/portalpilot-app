@@ -18,11 +18,13 @@ import 'package:portal_pilot_app/Modules/Inventario/inventario_home.dart';
 import 'package:portal_pilot_app/Modules/Membresias/membresia_home.dart';
 import 'package:portal_pilot_app/Modules/MultiEmpresa/multi_empresa_home.dart';
 import 'package:portal_pilot_app/Modules/POS/pos_home.dart';
+import 'package:portal_pilot_app/Modules/Reportes/historial_reportes_screen.dart';
 import 'package:portal_pilot_app/Modules/RRHH/rrhh_home.dart';
 import 'package:portal_pilot_app/Modules/SectorRetail/sector_retail_home.dart';
 import 'package:portal_pilot_app/Modules/Seguridad/seguridad_home.dart';
 import 'package:portal_pilot_app/Modules/Settings/settings_home.dart';
 import 'package:portal_pilot_app/Modules/Soporte/soporte_home.dart';
+import 'package:portal_pilot_app/Modules/Sistema/estado_sistema_home.dart';
 import 'package:portal_pilot_app/Modules/SupplyChain/supply_chain_home.dart';
 
 /// Navegador central de módulos de Portal Pilot.
@@ -77,6 +79,13 @@ class PPModuleNavigator {
         return const MultiEmpresaHome();
       case 'soporte':
         return const SoporteHome();
+      case 'estado_sistema':
+        return const EstadoSistemaHome();
+      // El backend y la web (cotizador de 23 módulos) ofrecen `reportes` como
+      // módulo propio; la app lo tenía solo como pantalla dentro de Facturación
+      // y el ModuleManager descartaba el id en silencio.
+      case 'reportes':
+        return const HistorialReportesScreen();
       default:
         return null;
     }

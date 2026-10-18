@@ -349,8 +349,13 @@ class PortalPilotDB {
         'rows': rows,
       });
       if (!_responseAccepted(result) || result is! Map) return false;
-      final confirmed = result['ok'];
-      return confirmed is num && confirmed.toInt() == rows.length;
+      // El backend actual responde { sincronizadas: N, tabla, data } (y la
+      // versión anterior respondía { ok: N }). Aceptamos ambos formatos para
+      // que la cola de sincronización no quede reintentando para siempre.
+      final confirmed = result['ok'] ?? result['sincronizadas'];
+      if (confirmed is num) return confirmed.toInt() == rows.length;
+      // Respuesta 2xx sin contador: se considera aceptada (best-effort).
+      return true;
     } catch (e) {
       debugPrint('❌ syncRows ($tabla) sync: $e');
       return false;
@@ -627,10 +632,15 @@ class UserModel {
     );
   }
 
-  bool get isRoot =>
-      empresaCodigo == 'ROOT' ||
-      rol.toLowerCase().contains('root') ||
-      rol.toLowerCase().contains('admin');
+  /// ROOT = cuenta interna de la plataforma (empresa_codigo 'ROOT').
+  /// NO se deduce de "admin": el owner/administrador de un TENANT también lleva
+  /// ese rol, y tratarlo como ROOT le mostraría todos los módulos del catálogo
+  /// saltándose la asignación de módulos que hizo su plan.
+  bool get isRoot {
+    if (empresaCodigo.toUpperCase() == 'ROOT') return true;
+    final r = rol.toLowerCase();
+    return r.contains('root') || r.contains('superadmin') || r.contains('ceo');
+  }
 
   bool get isActive {
     final s = status.toLowerCase();

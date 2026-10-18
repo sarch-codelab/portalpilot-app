@@ -45,7 +45,7 @@ class _PPNotificationPanelState extends State<PPNotificationPanel> {
             border: Border.all(color: palette.borderLight),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha:(palette.isDark ? 0.5 : 0.12),
+                color: Colors.black.withValues(alpha: palette.isDark ? 0.5 : 0.12),
                 blurRadius: 40,
                 offset: const Offset(0, 20),
               ),
@@ -68,7 +68,7 @@ class _PPNotificationPanelState extends State<PPNotificationPanel> {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 14, 8),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: palette.borderLight.withValues(alpha:(0.4))),
+        border: Border(bottom: BorderSide(color: palette.borderLight.withValues(alpha: 0.4))),
       ),
       child: Row(
         children: [
@@ -119,7 +119,7 @@ class _PPNotificationPanelState extends State<PPNotificationPanel> {
         return ListView.separated(
           padding: const EdgeInsets.symmetric(vertical: 8),
           itemCount: items.length,
-          separatorBuilder: (_, __) => Divider(height: 1, color: palette.borderLight.withValues(alpha:(0.4)),
+          separatorBuilder: (_, __) => Divider(height: 1, color: palette.borderLight.withValues(alpha: 0.4)),
           itemBuilder: (_, i) => _buildItem(items[i], palette),
         );
       },
@@ -173,7 +173,7 @@ class _PPNotificationPanelState extends State<PPNotificationPanel> {
         }
       },
       child: Container(
-        color: unread ? palette.bgSecondary.withValues(alpha:(0.4) : Colors.transparent,
+        color: unread ? palette.bgSecondary.withValues(alpha: 0.4) : Colors.transparent,
         padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,7 +182,7 @@ class _PPNotificationPanelState extends State<PPNotificationPanel> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: n.color.withValues(alpha:(0.12),
+                color: n.color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(n.icon, color: n.color, size: 20),
@@ -261,7 +261,7 @@ class _PPNotificationPanelState extends State<PPNotificationPanel> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: palette.borderLight.withValues(alpha:(0.4))),
+        border: Border(top: BorderSide(color: palette.borderLight.withValues(alpha: 0.4))),
       ),
       child: SizedBox(
         width: double.infinity,

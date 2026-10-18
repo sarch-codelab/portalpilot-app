@@ -1,9 +1,10 @@
-﻿// Despachador Ãºnico de la API mÃ³vil (plan Hobby: mÃ¡x 12 funciones).
+// Despachador Ãºnico de la API mÃ³vil (plan Hobby: mÃ¡x 12 funciones).
 // El handler de login estÃ¡ integrado directamente para evitar problemas de despliegue.
 
 const routes = {
   'login': loginHandler,
   'me': meHandler,
+  'app-version': require('./app-version.js'),
   'ai/groq': aiGroqHandler,
   'ai/chat': aiChatHandler,
   'ai/vision': aiVisionHandler,
@@ -28,6 +29,7 @@ const routes = {
   'productos': productosHandler,
   'proveedores': proveedoresHandler,
   'storage': storageHandler,
+  'system': systemHandler,
   'sync': syncHandler,
   'transacciones': transaccionesHandler,
   'bodegas': bodegasHandler,
@@ -68,9 +70,25 @@ module.exports = async function handler(req, res) {
   return route(req, res);
 };
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 // Handler de Login (integrado para evitar problemas de despliegue)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
+
+// ── Aislamiento multi-tenant ───────────────────────────────
+// Devuelve los claims de la sesión o null si el request NO trae un JWT
+// válido firmado con JWT_SECRET. Es la única fuente de verdad del tenant:
+// lo que envíe el cliente en body/query (empresaCodigo, empresa_codigo)
+// jamás acredita identidad.
+function requireTenantClaims(req) {
+  const auth = String(req.headers?.authorization || '');
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!token || !process.env.JWT_SECRET) return null;
+  try {
+    return require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
+  } catch (_) {
+    return null;
+  }
+}
 
 function loginHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -135,6 +153,12 @@ function loginHandler(req, res) {
         return res.status(401).json({ error: 'Credenciales invÃ¡lidas. Usuario no registrado.' });
       }
 
+      // Aislamiento multi-tenant: sin empresa_codigo real no se emite sesión
+      // (antes el fallback a 'ROOT' permitía sesiones sin empresa asignada).
+      if (!user.empresa_codigo || !String(user.empresa_codigo).trim()) {
+        return res.status(403).json({ error: 'La cuenta no tiene una empresa asignada. Contacta al soporte de Portal Pilot.' });
+      }
+
       let isMatch = false;
       const storedHash = user.password_hash || user.password;
       if (storedHash) {
@@ -172,7 +196,7 @@ function loginHandler(req, res) {
           sub: user.id,
           email: user.email,
           rol: user.rol || 'admin',
-          empresa_codigo: user.empresa_codigo || 'ROOT'
+          empresa_codigo: user.empresa_codigo
         },
         jwtSecret,
         { expiresIn: '30d' }
@@ -187,8 +211,8 @@ function loginHandler(req, res) {
           apellido: user.apellido || '',
           email: user.email,
           rol: user.rol || 'admin',
-          empresa_codigo: user.empresa_codigo || 'ROOT',
-          tenant: user.empresa_codigo || 'ROOT',
+          empresa_codigo: user.empresa_codigo,
+          tenant: user.empresa_codigo,
           area: userArea,
           plan: userPlan,
           status: user.estado || 'activo',
@@ -203,9 +227,9 @@ function loginHandler(req, res) {
     });
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ------------------------------------------------------------------
 // ComparaciÃ³n de contraseÃ±as: soporta bcrypt y texto plano
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ------------------------------------------------------------------
 // ============================================================
 // GET /api/me - datos vivos del usuario autenticado (incluida la foto de
 // perfil) para refrescar la sesion del app sin volver a hacer login.
@@ -276,8 +300,8 @@ async function meHandler(req, res) {
         apellido: user.apellido || '',
         email: user.email,
         rol: user.rol || 'admin',
-        empresa_codigo: user.empresa_codigo || 'ROOT',
-        tenant: user.empresa_codigo || 'ROOT',
+        empresa_codigo: user.empresa_codigo || '',
+        tenant: user.empresa_codigo || '',
         area: tenantData?.area || user.area || '',
         plan: tenantData?.plan || 'pro',
         status: user.estado || 'activo',
@@ -310,9 +334,9 @@ async function comparePassword(inputPassword, storedPassword) {
   return inputPassword === storedPassword;
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 // Helper functions para Supabase
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 
 const { pickModels } = require('./_modelPicker.js');
 
@@ -367,9 +391,9 @@ function fail(res, err) {
   res.status(code).json({ error: err?.message || 'Error interno del servidor.' });
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 // AI Groq Handler
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 
 function aiGroqHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -435,9 +459,9 @@ function aiGroqHandler(req, res) {
     });
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 // AI Gateway handlers (vision, chat, barcode, dashboard...)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 
 async function aiChatHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -451,6 +475,9 @@ async function aiChatHandler(req, res) {
   const message = body.message || body.prompt || body.query || '';
   const systemPrompt = body.systemPrompt || 'Eres un asistente Ãºtil de Portal Pilot.';
   if (!message) return res.status(400).json({ error: 'Falta message', reply: null });
+  // La pasarela de IA consume créditos del proveedor: exige sesión JWT válida
+  // (antes cualquier usuario anónimo podía gastarla sin autenticación).
+  if (!requireTenantClaims(req)) return res.status(401).json({ error: 'Token requerido.', reply: null });
   const requested = body.model || body.modelId || '';
   let chatModels;
   try {
@@ -483,7 +510,7 @@ async function aiChatHandler(req, res) {
       const msg = data.error?.message || '';
       // Model not found/decommissioned -> siguiente modelo
       // 401/403 = key del proveedor vencida/sin créditos → siguiente modelo
-      // y fallback OpenRouter. JAMÁS propagar el código tal cual: el app
+      // y la cadena de proveedores gratuitos. JAMÁS propagar el código tal cual: el app
       // interpreta 401 como sesión expirada y cierra la sesión (bug).
       if (r.status === 404 || r.status === 401 || r.status === 403 ||
           msg.includes('does not exist') || msg.includes('model_not_found') ||
@@ -500,10 +527,10 @@ async function aiChatHandler(req, res) {
       continue;
     }
   }
-  // Respaldo automático: OpenRouter cuando Groq falla o no hay más modelos.
+  // Respaldo autom\u00e1tico: cadena de proveedores gratuitos cuando Groq falla.
   try {
-    const { openRouterComplete } = require('./_aiRouter.js');
-    const fallback = await openRouterComplete({
+    const { aiFallbackComplete } = require('./_aiRouter.js');
+    const fallback = await aiFallbackComplete({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: message },
@@ -526,6 +553,7 @@ async function aiVisionHandler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'MÃ©todo no permitido', reply: null });
   const key = process.env.GROQ_API_KEY;
   if (!key) return res.status(500).json({ error: 'Falta GROQ_API_KEY en Vercel', reply: null });
+  if (!requireTenantClaims(req)) return res.status(401).json({ error: 'Token requerido.', reply: null });
   const body = parseBody(req);
   let image = body.image || body.base64 || '';
   const prompt = body.prompt || 'Identifica este producto y devuelve un JSON con: nombre, marca, categoria, descripcion, presentacion, unidad_medida, confianza (0-1). Si no puedes determinar algo, deja el campo como null. Responde SOLO con el JSON.';
@@ -579,10 +607,10 @@ async function aiVisionHandler(req, res) {
       continue;
     }
   }
-  // Respaldo automático: OpenRouter de visión cuando Groq falla.
+  // Respaldo autom\u00e1tico de visi\u00f3n cuando Groq falla.
   try {
-    const { openRouterVision } = require('./_aiRouter.js');
-    const fallback = await openRouterVision({ prompt, image, maxTokens: body.maxTokens || 800 });
+    const { aiFallbackVision } = require('./_aiRouter.js');
+    const fallback = await aiFallbackVision({ prompt, image, maxTokens: body.maxTokens || 800 });
     return res.status(200).json({ reply: fallback.reply, model: fallback.model, provider: fallback.provider, usage: fallback.usage });
   } catch (fallbackErr) {
     return res.status(502).json({ error: lastError || fallbackErr.message || 'Todos los modelos de visión fallaron', reply: null });
@@ -602,15 +630,20 @@ async function aiBarcodeHandler(req, res) {
   if (!code || code === 'barcode') code = (req.query?.code || '').toString();
   code = decodeURIComponent((code || '').toString().trim());
   if (!code) return res.status(400).json({ found: false, products: [], source: 'error', message: 'Falta cÃ³digo de barras' });
+  // Sesión obligatoria: el lookup se ejecuta contra el catálogo del tenant
+  // del JWT (nunca global), así un negocio no puede leer el inventario de otro.
+  const claimsBc = requireTenantClaims(req);
+  if (!claimsBc) return res.status(401).json({ found: false, products: [], source: 'error', message: 'Token requerido.' });
+  const empresaBarcode = String(claimsBc.empresa_codigo || claimsBc.tenant || '').trim();
+  if (!empresaBarcode) return res.status(403).json({ found: false, products: [], source: 'error', message: 'La sesión no tiene empresa asignada.' });
   try {
-    const result = await supabaseRequest(`/productos?codigo=eq.${encodeURIComponent(code)}&select=*&limit=10`);
+    const result = await supabaseRequest(`/productos?empresa_codigo=eq.${encodeURIComponent(empresaBarcode)}&codigo=eq.${encodeURIComponent(code)}&select=*&limit=10`);
     if (result.status >= 400) return res.status(502).json({ found: false, products: [], source: 'supabase', message: result.body });
     const rows = JSON.parse(result.body || '[]');
     if (Array.isArray(rows) && rows.length > 0) {
       return ok(res, { found: true, products: rows, source: 'supabase' });
     }
-    // Fallback sin empresa_codigo: busca global
-    return ok(res, { found: false, products: [], source: 'supabase', message: 'No encontrado en catÃ¡logo' });
+    return ok(res, { found: false, products: [], source: 'supabase', message: 'No encontrado en tu catálogo' });
   } catch (e) {
     return res.status(500).json({ found: false, products: [], source: 'error', message: e.message });
   }
@@ -621,6 +654,12 @@ function aiDashboardHandler(req, res) { return aiChatHandler(req, res); }
 // Análisis de caja POS: enriquece el mensaje con el rango de fechas, el rol
 // especializado y los datos reales de ventas (facturas) de Supabase.
 async function aiPosAnalyzeHandler(req, res) {
+  // El análisis POS enriquece el prompt con facturas reales del tenant:
+  // exige sesión y SIEMPRE usa el empresa_codigo del JWT.
+  const claimsPos = requireTenantClaims(req);
+  if (!claimsPos) return res.status(401).json({ error: 'Token requerido.', reply: null });
+  const tenantPos = String(claimsPos.empresa_codigo || claimsPos.tenant || '').trim();
+  if (!tenantPos) return res.status(403).json({ error: 'La sesión no tiene empresa asignada.', reply: null });
   const body = parseBody(req);
   const dateRange = body.dateRange || {};
   const desde = dateRange.desde || dateRange.from || body.desde || null;
@@ -630,7 +669,7 @@ async function aiPosAnalyzeHandler(req, res) {
   // Datos reales de la nube (facturas de venta) para enriquecer el análisis
   let datosNube = null;
   let consultaNubeOk = false;
-  const empresaCodigo = body.empresaCodigo || body.empresa_codigo || '';
+  const empresaCodigo = tenantPos;
   if (configured() && empresaCodigo) {
     try {
       let path = `/facturas?empresa_codigo=eq.${encodeURIComponent(empresaCodigo)}&select=*&order=created_at.desc&limit=2000`;
@@ -812,9 +851,9 @@ module.exports.aiPosAnalyzeHandler = aiPosAnalyzeHandler;
 function aiCrmHandler(req, res) { return aiChatHandler(req, res); }
 function aiSupportHandler(req, res) { return aiChatHandler(req, res); }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 // Placeholder handlers para otros endpoints
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 
 async function clientesHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1600,9 +1639,9 @@ async function procesarVentaSync(empresaCodigo, empresaId, ventas) {
   return { ok, errores, decrementados, correlativos };
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 // Sync genÃ©rico por tabla (upsert idempotente fila por fila)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 
 // Tablas sincronizables desde la app (nombres de tabla locales = Supabase).
 const TABLAS_SYNC = new Set([
@@ -1696,7 +1735,8 @@ async function syncHandler(req, res) {
       const results = [];
       const errores = [];
       for (const raw of rows) {
-        const codigo = String(raw?.codigo || raw?.empresa_codigo || empresaCodigo);
+        // El onboarding solo puede tocar SU empresa: se reescribe al código del token.
+        const codigo = tenantClaim;
         const tenant = { codigo, nombre: String(raw?.nombre || 'Portal Pilot Empresa'), area: raw?.area || raw?.area_negocio || null, plan: raw?.plan || 'Prueba' };
         const current = await supabaseRequest(`/tenants?codigo=eq.${encodeURIComponent(codigo)}&select=codigo`);
         let found = [];
@@ -1899,9 +1939,9 @@ async function syncHandler(req, res) {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 // Handler de Storage (Supabase Storage: upload y delete de imÃ¡genes)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------
 
 const MIME_EXT = {
   'image/jpeg': 'jpg',
@@ -1923,6 +1963,11 @@ async function storageHandler(req, res) {
   try {
     const body = parseBody(req);
     const action = body.action === 'delete' ? 'delete' : 'upload';
+    // El Storage escribe/borra objetos reales: exige sesión JWT válida.
+    const claimsSt = requireTenantClaims(req);
+    if (!claimsSt) return res.status(401).json({ error: 'Token requerido.' });
+    const tenantSt = String(claimsSt.empresa_codigo || claimsSt.tenant || '').trim().toUpperCase();
+    if (!tenantSt) return res.status(403).json({ error: 'La sesión no tiene empresa asignada.' });
 
     // â”€â”€ Eliminar imagen a partir de su URL pÃºblica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (action === 'delete') {
@@ -1963,7 +2008,10 @@ async function storageHandler(req, res) {
 
     const ext = MIME_EXT[mime] || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
-    const objectPath = folder ? `${folder}/${fileName}` : fileName;
+    // Prefijo por tenant: las imágenes quedan separadas por empresa dentro del bucket.
+    const objectPath = folder
+      ? `${tenantSt}/${folder}/${fileName}`
+      : `${tenantSt}/${fileName}`;
 
     // Asegurar que el bucket exista y sea pÃºblico (ignorar si ya existe).
     await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
@@ -1998,5 +2046,241 @@ async function storageHandler(req, res) {
     });
   } catch (e) {
     return fail(res, { message: `Error en storage: ${(e && e.message) || e}`, status: 500 });
+  }
+}
+
+// ------------------------------------------------------------------
+// System / Diagnostics handler
+// ------------------------------------------------------------------
+// Diagnóstico en vivo del tenant contra Supabase: conexión a la BD, plan y
+// límites, almacenamiento real (uso vs límite), uso de IA del mes, recuento
+// de datos por módulo y estado de onboarding.
+function systemJsonGet(path, headers = {}) {
+  const url = `${SUPABASE_URL}/rest/v1${path}`;
+  return fetch(url, {
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+  }).then(async (r) => ({ status: r.status, body: await r.text() }));
+}
+
+async function systemCount(table, filter) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?${filter}&select=id`;
+  const r = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      Prefer: 'count=exact',
+      Accept: 'application/json',
+    },
+  });
+  if (r.status >= 400) return null;
+  const range = r.headers.get('content-range') || '';
+  const m = /^\d+-\d+\/(\d+)$/.exec(range);
+  return m ? Number(m[2]) : null;
+}
+
+// Recorre Storage (la API de listado solo devuelve carpetas, hay que bajar)
+// y suma tamaño/nº de archivos bajo el prefijo del tenant.
+async function systemStorageWalk(bucket, tenant) {
+  const result = { bytes: 0, files: 0 };
+  const listDirectory = async (prefix) => {
+    let offset = 0;
+    for (let i = 0; i < 10; i++) {
+      const r = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/list/${bucket}`,
+        {
+          method: 'POST',
+          headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prefix, limit: 200, offset }),
+        }
+      );
+      if (r.status !== 200) return;
+      const rows = await r.json();
+      if (!Array.isArray(rows) || rows.length === 0) break;
+      for (const o of rows) {
+        const full = prefix ? `${prefix}/${o.name}` : o.name;
+        if (o.metadata && o.metadata.size) {
+          if (full.startsWith(`${tenant}/`)) {
+            result.bytes += Number(o.metadata.size) || 0;
+            result.files += 1;
+          }
+        } else if (full === tenant || full.startsWith(`${tenant}/`)) {
+          await listDirectory(full);
+        }
+      }
+      offset += rows.length;
+      if (rows.length < 200) break;
+    }
+  };
+  await listDirectory('');
+  return result;
+}
+
+async function systemHandler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Metodo no permitido' });
+  const claims = requireTenantClaims(req);
+  if (!claims) return res.status(401).json({ error: 'Token requerido.' });
+  const tenant = String(claims.empresa_codigo || claims.tenant || '').trim().toUpperCase();
+  if (!tenant) return res.status(403).json({ error: 'La sesión no tiene empresa asignada.' });
+  if (!configured()) return fail(res, { message: 'Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en Vercel.' });
+
+  const started = Date.now();
+  const out = {
+    api: 'ok',
+    fecha_servidor: new Date().toISOString(),
+    db: { ok: false, latencia_ms: 0 },
+    tenant: { codigo: tenant },
+    plan: null,
+    suscripcion: { modulos_tenant: [], modulos_plan: [] },
+    almacenamiento: { bytes: 0, archivos: 0, limite_bytes: null, limite_unidad: 'GB', buckets: {} },
+    ia_mes: { llamadas: 0, exitosas: 0, fallidas: 0, tokens: 0, costo_usd: 0, ultima: null, proveedores: {} },
+    uso_mes: {},
+    datos: {},
+    documentos: { total: 0, pendientes: 0 },
+  };
+
+  try {
+    // â€”â€” Empresa y base de datos â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    const tResult = await systemJsonGet(
+      `/tenants?codigo=eq.${encodeURIComponent(tenant)}&select=codigo,nombre_empresa,plan,estado,created_at,updated_at`
+    );
+    let tRow = null;
+    if (tResult.status < 400) {
+      const rows = JSON.parse(tResult.body || '[]');
+      tRow = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    }
+    out.db.ok = Boolean(tRow);
+    out.db.latencia_ms = Date.now() - started;
+    if (!tRow) return ok(res, out);
+
+    out.tenant.codigo = tRow.codigo || tenant;
+    out.tenant.nombre = tRow.nombre_empresa || '';
+    out.tenant.plan = tRow.plan || '';
+    out.tenant.estado = tRow.estado || '';
+    out.tenant.creado = tRow.created_at || null;
+    out.tenant.actualizado = tRow.updated_at || null;
+
+    // â€”â€” Plan y lÃ­mites â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    const planClave = tRow.plan || '';
+    let planId = null;
+    const planResult = planClave
+      ? await systemJsonGet(`/planes?clave=eq.${encodeURIComponent(planClave)}&select=id,nombre,clave`)
+      : null;
+    let planNombre = null;
+    if (planResult && planResult.status < 400) {
+      const pRows = JSON.parse(planResult.body || '[]');
+      const pRow = pRows[0];
+      if (pRow) {
+        planId = pRow.id || null;
+        planNombre = pRow.nombre || null;
+      }
+    }
+    out.plan = { clave: planClave || null, nombre: planNombre, limites: {} };
+    if (planId) {
+      const limResult = await systemJsonGet(`/plan_limits?plan_id=eq.${planId}&select=recurso,maximo,unidad`);
+      if (limResult.status < 400) {
+        for (const l of JSON.parse(limResult.body || '[]')) {
+          out.plan.limites[l.recurso] = { maximo: Number(l.maximo), unidad: l.unidad || '' };
+        }
+      }
+      const pmResult = await systemJsonGet(`/plan_modulos?plan_id=eq.${planId}&incluido=eq.true&select=modulo_clave`);
+      if (pmResult.status < 400) {
+        out.suscripcion.modulos_plan = (JSON.parse(pmResult.body || '[]')).map((m) => m.modulo_clave);
+      }
+    }
+
+    // â€”â€” MÃ³dulos activos del tenant â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    const tmResult = await systemJsonGet(`/tenant_modulos?empresa_codigo=eq.${encodeURIComponent(tenant)}&activo=eq.true&select=modulo_clave`);
+    if (tmResult.status < 400) {
+      out.suscripcion.modulos_tenant = (JSON.parse(tmResult.body || '[]')).map((m) => m.modulo_clave);
+    }
+
+    // â€”â€” Uso IA del mes (agregaciÃ³n cliente: no hay RPC) â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    const mesActual = new Date().toISOString().slice(0, 7);
+    const aResult = await systemJsonGet(
+      `/ai_usage_log?empresa_codigo=eq.${encodeURIComponent(tenant)}&created_at=gte.${mesActual}-01&select=tokens_total,cost_estimated,success,created_at,provider,funcion`
+    );
+    if (aResult.status < 400) {
+      const logs = JSON.parse(aResult.body || '[]');
+      const ia = out.ia_mes;
+      ia.llamadas = logs.length;
+      for (const l of logs) {
+        ia.tokens += Number(l.tokens_total) || 0;
+        ia.costo_usd += Number(l.cost_estimated) || 0;
+        if (l.success) ia.exitosas += 1; else ia.fallidas += 1;
+        if (l.created_at && (!ia.ultima || l.created_at > ia.ultima)) ia.ultima = l.created_at;
+        const prov = l.provider || 'otro';
+        ia.proveedores[prov] = (ia.proveedores[prov] || 0) + 1;
+      }
+      ia.costo_usd = Math.round(ia.costo_usd * 1000000) / 1000000;
+    }
+
+    // â€”â€” Uso mensual del tenant (plan_limits) â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    const uResult = await systemJsonGet(
+      `/tenant_usage?empresa_codigo=eq.${encodeURIComponent(tenant)}&periodo=eq.${mesActual}&select=recurso,cantidad`
+    );
+    if (uResult.status < 400) {
+      const rows = JSON.parse(uResult.body || '[]');
+      for (const r of rows) out.uso_mes[r.recurso] = Number(r.cantidad) || 0;
+      out.uso_mes.periodo = mesActual;
+    }
+
+    // â€”â€” Almacenamiento real (Storage) â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    const limStorage = out.plan.limites.storage;
+    if (limStorage) {
+      out.almacenamiento.limite_bytes = Math.round(Number(limStorage.maximo) * 1024 * 1024 * 1024);
+      out.almacenamiento.limite_unidad = limStorage.unidad || 'GB';
+    }
+    const bucketsResult = await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
+      method: 'GET',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    });
+    const buckets = bucketsResult.status === 200 ? await bucketsResult.json() : [];
+    for (const b of Array.isArray(buckets) ? buckets : []) {
+      if (!b.id) continue;
+      const uso = await systemStorageWalk(String(b.id), tenant);
+      out.almacenamiento.buckets[String(b.id)] = { bytes: uso.bytes, archivos: uso.files };
+      out.almacenamiento.bytes += uso.bytes;
+      out.almacenamiento.archivos += uso.files;
+    }
+
+    // â€”â€” Datos por mÃ³dulo (conteos) â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    const filtro = `empresa_codigo=eq.${encodeURIComponent(tenant)}`;
+    const tablasDatos = {
+      productos: null, clientes: null, facturas: null, ventas_pos: null,
+      empleados: null, bodegas: null, proveedores: null, crm_leads: null,
+    };
+    const resultados = await Promise.allSettled(
+      Object.keys(tablasDatos).map(async (claveTabla) => {
+        const n = await systemCount(claveTabla === 'crm_leads' ? 'crm_leads' : claveTabla === 'ventas_pos' ? 'pos_ventas' : claveTabla, filtro);
+        return { claveTabla, n };
+      })
+    );
+    for (const r of resultados) {
+      if (r.status === 'fulfilled') out.datos[r.value.claveTabla] = r.value.n;
+    }
+
+    const dResult = await systemJsonGet(
+      `/documentos_tenant?empresa_codigo=eq.${encodeURIComponent(tenant)}&select=id,estado`
+    );
+    if (dResult.status < 400) {
+      const docs = JSON.parse(dResult.body || '[]');
+      out.documentos.total = docs.length;
+      out.documentos.pendientes = docs.filter((d) => String(d.estado || 'pendiente').toLowerCase() !== 'validado').length;
+    }
+
+    return ok(res, out);
+  } catch (err) {
+    console.error('[system] Error:', err && err.message);
+    if (out.db.ok) return ok(res, out);
+    return fail(res, { message: 'Error consultando el estado del sistema.', status: 500 });
   }
 }

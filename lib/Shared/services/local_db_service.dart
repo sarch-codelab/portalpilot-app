@@ -49,9 +49,9 @@ class LocalDatabaseService {
   }
 
   Future<Empresa?> getEmpresaByCodigo(String codigo) async {
-    return await (_db.select(_db.empresas)
-          ..where((e) => e.codigo.equals(codigo)))
-        .getSingleOrNull();
+    return await (_db.select(
+      _db.empresas,
+    )..where((e) => e.codigo.equals(codigo))).getSingleOrNull();
   }
 
   Future<void> upsertEmpresa(EmpresasCompanion empresa) async {
@@ -59,7 +59,10 @@ class LocalDatabaseService {
   }
 
   // Helper to create EmpresasCompanion from onboarding selections
-  EmpresasCompanion empresaFromOnboarding(String areaNegocio, String empresaCodigo) {
+  EmpresasCompanion empresaFromOnboarding(
+    String areaNegocio,
+    String empresaCodigo,
+  ) {
     return EmpresasCompanion(
       id: const Value.absent(), // Let DB generate UUID
       codigo: Value(empresaCodigo),
@@ -84,9 +87,9 @@ class LocalDatabaseService {
   // ═══════════════════════════════════════════════════════════════
 
   Future<List<Usuario>> getUsuarios(String empresaId) async {
-    return await (_db.select(_db.usuarios)
-          ..where((u) => u.empresaId.equals(empresaId)))
-        .get();
+    return await (_db.select(
+      _db.usuarios,
+    )..where((u) => u.empresaId.equals(empresaId))).get();
   }
 
   Future<void> upsertUsuario(UsuariosCompanion usuario) async {
@@ -105,16 +108,24 @@ class LocalDatabaseService {
   }
 
   Future<Factura?> getFacturaById(String id) async {
-    return await (_db.select(_db.facturas)
-          ..where((f) => f.id.equals(id)))
-        .getSingleOrNull();
+    return await (_db.select(
+      _db.facturas,
+    )..where((f) => f.id.equals(id))).getSingleOrNull();
   }
 
-  Future<Factura?> getFacturaByCorrelativo(String empresaId, String correlativo) async {
-    final rows = await (_db.select(_db.facturas)
-          ..where((f) => f.empresaId.equals(empresaId) & f.correlativo.equals(correlativo))
-          ..orderBy([(f) => OrderingTerm.desc(f.updatedAt)]))
-        .get();
+  Future<Factura?> getFacturaByCorrelativo(
+    String empresaId,
+    String correlativo,
+  ) async {
+    final rows =
+        await (_db.select(_db.facturas)
+              ..where(
+                (f) =>
+                    f.empresaId.equals(empresaId) &
+                    f.correlativo.equals(correlativo),
+              )
+              ..orderBy([(f) => OrderingTerm.desc(f.updatedAt)]))
+            .get();
     return rows.firstOrNull;
   }
 
@@ -211,7 +222,9 @@ class LocalDatabaseService {
   }
 
   Future<void> updateFacturaLocal(String id, FacturasCompanion factura) async {
-    await (_db.update(_db.facturas)..where((f) => f.id.equals(id))).write(factura);
+    await (_db.update(
+      _db.facturas,
+    )..where((f) => f.id.equals(id))).write(factura);
 
     final existing = await getFacturaById(id);
     if (existing != null) {
@@ -325,9 +338,18 @@ class LocalDatabaseService {
   // PRODUCTOS
   // ═══════════════════════════════════════════════════════════════
 
-  Future<List<Producto>> getProductos(String empresaId) async {
+  Future<List<Producto>> getProductos(
+    String empresaId, {
+    bool includeInactive = false,
+  }) async {
     return await (_db.select(_db.productos)
-          ..where((p) => p.empresaId.equals(empresaId) & p.activo.equals(true))
+          ..where(
+            (p) =>
+                p.empresaId.equals(empresaId) &
+                (includeInactive
+                    ? const Constant(true)
+                    : p.activo.equals(true)),
+          )
           ..orderBy([(p) => OrderingTerm.asc(p.nombre)]))
         .get();
   }
@@ -349,24 +371,34 @@ class LocalDatabaseService {
       // reutiliza su id para no crear filas duplicadas en la BD local.
       Producto? existing;
       if (codigo != null && codigo.isNotEmpty) {
-        existing = await (_db.select(_db.productos)
-              ..where((x) => x.empresaId.equals(empresaId) &
-                  x.codigo.equals(codigo) & x.bodega.equals(bodega)))
-            .getSingleOrNull();
+        existing =
+            await (_db.select(_db.productos)..where(
+                  (x) =>
+                      x.empresaId.equals(empresaId) &
+                      x.codigo.equals(codigo) &
+                      x.bodega.equals(bodega),
+                ))
+                .getSingleOrNull();
       }
       if (barcode != null && barcode.isNotEmpty) {
-        final barcodeMatches = await (_db.select(_db.productos)
-              ..where((x) => x.empresaId.equals(empresaId) & x.barcode.equals(barcode)))
-            .get();
-        final conflictingBarcode = barcodeMatches.any((x) =>
-            x.codigo != codigo && x.id != (p['id'] as String?));
+        final barcodeMatches =
+            await (_db.select(_db.productos)..where(
+                  (x) =>
+                      x.empresaId.equals(empresaId) & x.barcode.equals(barcode),
+                ))
+                .get();
+        final conflictingBarcode = barcodeMatches.any(
+          (x) => x.codigo != codigo && x.id != (p['id'] as String?),
+        );
         if (conflictingBarcode) {
-          throw StateError('El código de barras $barcode ya pertenece a otro producto.');
+          throw StateError(
+            'El código de barras $barcode ya pertenece a otro producto.',
+          );
         }
         existing ??= barcodeMatches.cast<Producto?>().firstWhere(
-              (x) => x?.codigo == codigo && x?.bodega == bodega,
-              orElse: () => null,
-            );
+          (x) => x?.codigo == codigo && x?.bodega == bodega,
+          orElse: () => null,
+        );
       }
 
       if (existing != null) {
@@ -397,7 +429,7 @@ class LocalDatabaseService {
         exento: Value(p['exento'] as bool? ?? false),
         isPerishable: Value(p['is_perishable'] as bool? ?? false),
         imagenUrl: Value(p['imagen_url'] as String?),
-        activo: const Value(true),
+        activo: Value(p['activo'] as bool? ?? true),
         synced: Value(!enqueueSync),
         updatedAt: Value(DateTime.now()),
       );
@@ -409,10 +441,7 @@ class LocalDatabaseService {
       await _syncService.enqueueSync(
         tabla: 'productos',
         operacion: SyncOperation.insert,
-        datos: {
-          'empresa_codigo': empresaId,
-          'productos': productos,
-        },
+        datos: {'empresa_codigo': empresaId, 'productos': productos},
         empresaId: empresaId,
       );
     }
@@ -438,7 +467,10 @@ class LocalDatabaseService {
       // descontaría o sumaría existencias por segunda vez.
       final movimientoId = const Uuid().v4();
       final prefs = await SharedPreferences.getInstance();
-      final kardex = JsonGuard.safeListOfMaps(prefs.getString('kardex'), source: 'Inventario/kardex/auto');
+      final kardex = JsonGuard.safeListOfMaps(
+        prefs.getString('kardex'),
+        source: 'Inventario/kardex/auto',
+      );
       kardex.insert(0, {
         'id': movimientoId,
         'empresa_codigo': empresaCodigo,
@@ -482,25 +514,34 @@ class LocalDatabaseService {
     late int stockResultante;
     late String nombreProducto;
     await _db.transaction(() async {
-      final producto = await (_db.select(_db.productos)
-            ..where((p) => p.empresaId.equals(empresaCodigo) & p.id.equals(productoId)))
-          .getSingleOrNull();
-      if (producto == null) throw StateError('El producto ya no existe en este negocio.');
+      final producto =
+          await (_db.select(_db.productos)..where(
+                (p) =>
+                    p.empresaId.equals(empresaCodigo) & p.id.equals(productoId),
+              ))
+              .getSingleOrNull();
+      if (producto == null)
+        throw StateError('El producto ya no existe en este negocio.');
       final nuevoStock = tipo == 'entrada'
           ? producto.stockActual + cantidad
           : producto.stockActual - cantidad;
       stockResultante = nuevoStock;
       nombreProducto = producto.nombre;
       if (nuevoStock < 0) {
-        throw StateError('No hay existencias suficientes de ${producto.nombre}.');
+        throw StateError(
+          'No hay existencias suficientes de ${producto.nombre}.',
+        );
       }
-      await (_db.update(_db.productos)
-            ..where((p) => p.empresaId.equals(empresaCodigo) & p.id.equals(productoId)))
-      .write(ProductosCompanion(
-        stockActual: Value(nuevoStock),
-        synced: const Value(false),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await (_db.update(_db.productos)..where(
+            (p) => p.empresaId.equals(empresaCodigo) & p.id.equals(productoId),
+          ))
+          .write(
+            ProductosCompanion(
+              stockActual: Value(nuevoStock),
+              synced: const Value(false),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
 
       await _syncService.enqueueSync(
         tabla: 'kardex',
@@ -526,7 +567,10 @@ class LocalDatabaseService {
 
     final prefs = await SharedPreferences.getInstance();
     for (final key in ['productos', 'productos_pos']) {
-      final cached = JsonGuard.safeListOfMaps(prefs.getString(key), source: 'Inventario/kardex/$key');
+      final cached = JsonGuard.safeListOfMaps(
+        prefs.getString(key),
+        source: 'Inventario/kardex/$key',
+      );
       for (final row in cached) {
         if (row['id']?.toString() == productoId ||
             row['codigo']?.toString() == productoCodigo.trim()) {
@@ -535,7 +579,10 @@ class LocalDatabaseService {
       }
       await prefs.setString(key, jsonEncode(cached));
     }
-    final kardex = JsonGuard.safeListOfMaps(prefs.getString('kardex'), source: 'Inventario/kardex/local');
+    final kardex = JsonGuard.safeListOfMaps(
+      prefs.getString('kardex'),
+      source: 'Inventario/kardex/local',
+    );
     kardex.insert(0, {
       'id': movimientoId,
       'producto_id': productoId,
@@ -561,6 +608,83 @@ class LocalDatabaseService {
     );
   }
 
+  Future<void> setProductosActivos({
+    required String empresaId,
+    required Iterable<String> ids,
+    required bool activo,
+  }) async {
+    final uniqueIds = ids.toSet();
+    if (uniqueIds.isEmpty) return;
+
+    final productos =
+        await (_db.select(_db.productos)..where(
+              (p) => p.empresaId.equals(empresaId) & p.id.isIn(uniqueIds),
+            ))
+            .get();
+    if (productos.isEmpty) return;
+
+    final updatedAt = DateTime.now();
+    final syncRows = productos
+        .map(
+          (p) => <String, dynamic>{
+            'id': p.id,
+            'codigo': p.codigo,
+            'barcode': p.barcode,
+            'marca': p.marca,
+            'presentacion': p.presentacion,
+            'nombre': p.nombre,
+            'descripcion': p.descripcion,
+            'categoria': p.categoria,
+            'unidad_medida': p.unidadMedida,
+            'precio_compra': p.precioCompra,
+            'precio_venta': p.precioVenta,
+            'stock_minimo': p.stockMinimo,
+            'stock_actual': p.stockActual,
+            'bodega': p.bodega,
+            'isv_rate': p.isvRate,
+            'exento': p.exento,
+            'is_perishable': p.isPerishable,
+            'imagen_url': p.imagenUrl,
+            'activo': activo,
+            'updated_at': updatedAt.toIso8601String(),
+          },
+        )
+        .toList();
+
+    await _db.transaction(() async {
+      await (_db.update(
+            _db.productos,
+          )..where((p) => p.empresaId.equals(empresaId) & p.id.isIn(uniqueIds)))
+          .write(
+            ProductosCompanion(
+              activo: Value(activo),
+              updatedAt: Value(updatedAt),
+              synced: const Value(false),
+            ),
+          );
+      await _syncService.enqueueSync(
+        tabla: 'productos',
+        operacion: SyncOperation.update,
+        datos: {'empresa_codigo': empresaId, 'productos': syncRows},
+        empresaId: empresaId,
+        triggerSync: false,
+      );
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in ['productos', 'productos_pos', 'productos_api_cache']) {
+      final cached = JsonGuard.safeListOfMaps(
+        prefs.getString(key),
+        source: 'Inventario/estado/$key',
+      );
+      for (final row in cached) {
+        if (uniqueIds.contains(row['id']?.toString())) row['activo'] = activo;
+      }
+      await prefs.setString(key, jsonEncode(cached));
+    }
+    _syncService.syncNowIfOnline();
+  }
+
   Future<void> deleteProductoLocal({
     required String empresaId,
     required String codigo,
@@ -570,11 +694,14 @@ class LocalDatabaseService {
 
     final exp = _db.productos;
     if (id != null && id.isNotEmpty) {
-      await (_db.delete(exp)..where((p) => p.empresaId.equals(empresaId) & p.id.equals(id))).go();
+      await (_db.delete(
+        exp,
+      )..where((p) => p.empresaId.equals(empresaId) & p.id.equals(id))).go();
       return;
     }
-    await (_db.delete(exp)
-          ..where((p) => p.empresaId.equals(empresaId) & p.codigo.equals(codigo)))
+    await (_db.delete(exp)..where(
+          (p) => p.empresaId.equals(empresaId) & p.codigo.equals(codigo),
+        ))
         .go();
   }
 
@@ -585,7 +712,9 @@ class LocalDatabaseService {
     required String empresaId,
     required Map<String, dynamic> producto,
   }) async {
-    final id = (producto['id'] as String?)?.isNotEmpty == true ? producto['id'] as String : '';
+    final id = (producto['id'] as String?)?.isNotEmpty == true
+        ? producto['id'] as String
+        : '';
     final codigo = (producto['codigo'] ?? '').toString();
 
     await deleteProductoLocal(empresaId: empresaId, codigo: codigo, id: id);
@@ -593,24 +722,30 @@ class LocalDatabaseService {
     final prefs = await SharedPreferences.getInstance();
 
     final json = prefs.getString('productos') ?? '[]';
-    final List<dynamic> productos = JsonGuard.safeListOfMaps(json, source: 'Inventario/eliminar');
-    productos.removeWhere((p) => (p['codigo'] ?? '') == codigo || (id.isNotEmpty && p['id'] == id));
+    final List<dynamic> productos = JsonGuard.safeListOfMaps(
+      json,
+      source: 'Inventario/eliminar',
+    );
+    productos.removeWhere(
+      (p) => (p['codigo'] ?? '') == codigo || (id.isNotEmpty && p['id'] == id),
+    );
     await prefs.setString('productos', jsonEncode(productos));
 
     final productosPosJson = prefs.getString('productos_pos') ?? '[]';
-    final List<dynamic> productosPos = JsonGuard.safeListOfMaps(productosPosJson, source: 'Inventario/eliminar_pos');
-    productosPos.removeWhere((p) => (p['codigo'] ?? '') == codigo || (id.isNotEmpty && p['id'] == id));
+    final List<dynamic> productosPos = JsonGuard.safeListOfMaps(
+      productosPosJson,
+      source: 'Inventario/eliminar_pos',
+    );
+    productosPos.removeWhere(
+      (p) => (p['codigo'] ?? '') == codigo || (id.isNotEmpty && p['id'] == id),
+    );
     await prefs.setString('productos_pos', jsonEncode(productosPos));
 
     if (id.isNotEmpty || codigo.isNotEmpty) {
       await _syncService.enqueueSync(
         tabla: 'productos',
         operacion: SyncOperation.delete,
-        datos: {
-          'empresa_codigo': empresaId,
-          'id': id,
-          'codigo': codigo,
-        },
+        datos: {'empresa_codigo': empresaId, 'id': id, 'codigo': codigo},
         empresaId: empresaId,
       );
     }
@@ -686,9 +821,9 @@ class LocalDatabaseService {
   // ═══════════════════════════════════════════════════════════════
 
   Future<List<Empleado>> getEmpleados(String empresaId) async {
-    return await (_db.select(_db.empleados)
-          ..where((e) => e.empresaId.equals(empresaId)))
-        .get();
+    return await (_db.select(
+      _db.empleados,
+    )..where((e) => e.empresaId.equals(empresaId))).get();
   }
 
   Future<void> upsertEmpleadoLocal({
@@ -720,15 +855,41 @@ class LocalDatabaseService {
     );
 
     await _db.into(_db.empleados).insertOnConflictUpdate(empleado);
+
+    await _syncService.enqueueSync(
+      tabla: 'empleados',
+      operacion: SyncOperation.insert,
+      datos: {
+        'empresa_codigo': empresaId,
+        'id': id,
+        'nombre': nombre,
+        'identidad': identidad,
+        'rtn': rtn,
+        'puesto': puesto,
+        'departamento': departamento,
+        'salario_base': salarioBase ?? 0.0,
+        'fecha_ingreso': fechaIngreso?.toIso8601String(),
+        'estado': estado ?? 'activo',
+      },
+      empresaId: empresaId,
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
   // NOMINA
   // ═══════════════════════════════════════════════════════════════
 
-  Future<List<NominaData>> getNomina(String empresaId, int mes, int anio) async {
-    return await (_db.select(_db.nomina)
-          ..where((n) => n.empresaId.equals(empresaId) & n.mes.equals(mes) & n.anio.equals(anio)))
+  Future<List<NominaData>> getNomina(
+    String empresaId,
+    int mes,
+    int anio,
+  ) async {
+    return await (_db.select(_db.nomina)..where(
+          (n) =>
+              n.empresaId.equals(empresaId) &
+              n.mes.equals(mes) &
+              n.anio.equals(anio),
+        ))
         .get();
   }
 
@@ -768,28 +929,58 @@ class LocalDatabaseService {
     );
 
     await _db.into(_db.nomina).insertOnConflictUpdate(nomina);
+
+    await _syncService.enqueueSync(
+      tabla: 'nomina',
+      operacion: SyncOperation.insert,
+      datos: {
+        'empresa_codigo': empresaId,
+        'id': id,
+        'empleado_id': empleadoId,
+        'mes': mes,
+        'anio': anio,
+        'salario_base': salarioBase,
+        'bonificaciones': bonificaciones,
+        'deducciones': deducciones,
+        'isss': isss,
+        'rtn': rtn,
+        'ihss': ihss,
+        'neta': neta,
+        'pagado': pagado,
+        'fecha_pago': fechaPago?.toIso8601String(),
+      },
+      empresaId: empresaId,
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
   // DRAFTS (borradores de formularios)
   // ═══════════════════════════════════════════════════════════════
 
-  Future<void> saveDraft(String pantalla, String clave, Map<String, dynamic> datos) async {
-    await _db.into(_db.drafts).insertOnConflictUpdate(
-      DraftsCompanion.insert(
-        id: '$pantalla|$clave',
-        pantalla: pantalla,
-        clave: clave,
-        datos: Uint8List.fromList(utf8.encode(jsonEncode(datos))),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+  Future<void> saveDraft(
+    String pantalla,
+    String clave,
+    Map<String, dynamic> datos,
+  ) async {
+    await _db
+        .into(_db.drafts)
+        .insertOnConflictUpdate(
+          DraftsCompanion.insert(
+            id: '$pantalla|$clave',
+            pantalla: pantalla,
+            clave: clave,
+            datos: Uint8List.fromList(utf8.encode(jsonEncode(datos))),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
   }
 
   Future<Map<String, dynamic>?> getDraft(String pantalla, String clave) async {
-    final draft = await (_db.select(_db.drafts)
-          ..where((d) => d.pantalla.equals(pantalla) & d.clave.equals(clave)))
-        .getSingleOrNull();
+    final draft =
+        await (_db.select(_db.drafts)..where(
+              (d) => d.pantalla.equals(pantalla) & d.clave.equals(clave),
+            ))
+            .getSingleOrNull();
 
     if (draft != null) {
       final decoded = JsonGuard.tryDecode(utf8.decode(draft.datos));
@@ -801,9 +992,9 @@ class LocalDatabaseService {
   }
 
   Future<void> clearDraft(String pantalla, String clave) async {
-    await (_db.delete(_db.drafts)
-          ..where((d) => d.pantalla.equals(pantalla) & d.clave.equals(clave)))
-        .go();
+    await (_db.delete(
+      _db.drafts,
+    )..where((d) => d.pantalla.equals(pantalla) & d.clave.equals(clave))).go();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -821,9 +1012,11 @@ class LocalDatabaseService {
   }
 
   Future<bool> hasPendingSyncFor(String tabla, String empresaId) async {
-    final rows = await (_db.select(_db.syncQueue)
-          ..where((s) => s.tabla.equals(tabla) & s.empresaId.equals(empresaId)))
-        .get();
+    final rows =
+        await (_db.select(_db.syncQueue)..where(
+              (s) => s.tabla.equals(tabla) & s.empresaId.equals(empresaId),
+            ))
+            .get();
     return rows.isNotEmpty;
   }
 

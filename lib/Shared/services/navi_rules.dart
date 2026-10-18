@@ -256,11 +256,32 @@ Después del JSON, añade un texto breve para el usuario explicando que estás p
 - Límites de uso generosos pero razonables para una empresa mediana.
 ''';
     }
+    if (p.contains('club') || p.contains('membres')) {
+      return '''
+- Plan **Club / Membresía**: IA completa para socios, cuotas y accesos.
+- Respuestas claras y análisis de membresías, cobros y asistencia.
+- Uso amplio dentro de lo contratado.
+''';
+    }
+    if (p.contains('tienda') || p.contains('supermercado')) {
+      return '''
+- Plan **Tienda / Supermercado**: IA con uso amplio.
+- Análisis de ventas, inventario, pasillos y reportes del negocio.
+- Límites de uso amplios pero razonables para una tienda.
+''';
+    }
+    if (p.contains('pulper') || p.contains('personalizado') || p == 'custom') {
+      return '''
+- Plan **Pulpería / Mercadito** (y planes personalizados): IA con uso diario.
+- Respuestas prácticas para caja, fiado, inventario y facturación.
+- Límites de uso pensados para el negocio de barrio.
+''';
+    }
     // Prueba (gratis 15 días)
     return '''
 - Plan **Prueba** (gratis 15 días): IA con uso básico.
 - Respuestas concisas y funcionalidades esenciales del ERP.
-- Acceso limitado a análisis avanzados. Sugiere actualizar a Business/Enterprise si se necesita más.
+- Acceso limitado a análisis avanzados. Sugiere actualizar si se necesita más.
 ''';
   }
 
@@ -270,6 +291,9 @@ Después del JSON, añade un texto breve para el usuario explicando que estás p
     final base = capacidadesPorRol[rolUsuario.toLowerCase()] ?? capacidadesPorRol['admin']!;
     final isEnterprise = p.contains('enterprise') || p == 'enterprise';
     final isBusiness = p.contains('business') || p == 'business';
+    final isClub = p.contains('club') || p.contains('membres');
+    final isTienda = p.contains('tienda') || p.contains('supermercado');
+    final isPulperia = p.contains('pulper') || p.contains('personalizado') || p == 'custom';
     final list = <String>[...base];
     if (isEnterprise) {
       list.addAll([
@@ -278,11 +302,23 @@ Después del JSON, añade un texto breve para el usuario explicando que estás p
         'Personalización avanzada del asistente',
         'Reportes financieros profundos y multi-empresa',
       ]);
-    } else if (isBusiness) {
+    } else if (isClub) {
+      list.addAll([
+        'Análisis de socios, cuotas y asistencia',
+        'Reportes de membresías y fidelización',
+        'Recomendaciones para retener clientes',
+      ]);
+    } else if (isBusiness || isTienda) {
       list.addAll([
         'Análisis de ventas y márgenes estándar',
         'Reportes de inventario y stock',
         'Recomendaciones de productos',
+      ]);
+    } else if (isPulperia) {
+      list.addAll([
+        'Resumen de caja y ventas del día',
+        'Control de fiado y cuentas por cobrar',
+        'Alertas de inventario y productos por agotarse',
       ]);
     } else {
       list.addAll([
@@ -297,6 +333,9 @@ Después del JSON, añade un texto breve para el usuario explicando que estás p
     final p = plan.toLowerCase();
     if (p.contains('enterprise') || p == 'enterprise') return 800;
     if (p.contains('business') || p == 'business') return 500;
+    if (p.contains('club') || p.contains('membres')) return 600;
+    if (p.contains('tienda') || p.contains('supermercado')) return 500;
+    if (p.contains('pulper') || p.contains('personalizado') || p == 'custom') return 400;
     return 300;
   }
 

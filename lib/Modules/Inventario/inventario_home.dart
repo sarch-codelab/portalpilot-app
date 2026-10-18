@@ -24,6 +24,10 @@ import 'package:portal_pilot_app/Shared/widgets/pp_context_menu.dart';
 const _inventarioColor = Color(0xFFF59E0B);
 const _inventarioIcon = Icons.inventory_2_rounded;
 
+// Refresco automático en vivo: los productos registrados desde otro equipo
+// (celular/POS o una segunda tienda) aparecen solos, sin recargar la app.
+const _liveRefreshInterval = Duration(seconds: 12);
+
 class InventarioHome extends StatefulWidget {
   const InventarioHome({super.key});
 
@@ -45,6 +49,11 @@ class _InventarioHomeState extends State<InventarioHome> {
   Timer? _kpiCycleTimer;
   bool _kpiMostrandoAgotados = false;
 
+  // Refresco "en vivo": mientras esta pantalla esté abierta, consulta el API
+  // en segundo plano sin skeletons ni tocar nada.
+  Timer? _liveRefreshTimer;
+  bool _refrescoEnCurso = false;
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +62,11 @@ class _InventarioHomeState extends State<InventarioHome> {
     _kpiCycleTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (mounted && _stockBajo > 0 && _agotados > 0) {
         setState(() => _kpiMostrandoAgotados = !_kpiMostrandoAgotados);
+      }
+    });
+    _liveRefreshTimer = Timer.periodic(_liveRefreshInterval, (_) {
+      if (mounted) {
+        unawaited(_cargarDatos());
       }
     });
   }
@@ -64,62 +78,69 @@ class _InventarioHomeState extends State<InventarioHome> {
   @override
   void dispose() {
     _kpiCycleTimer?.cancel();
+    _liveRefreshTimer?.cancel();
     appThemeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
   Future<void> _cargarDatos() async {
-    if (mounted && _productos.isEmpty) setState(() => _cargando = true);
-
-    // 1. Carga local inmediata: la UI se pinta al instante y no se queda
-    //    en skeleton mientras la API responde.
-    await _cargarLocales();
-
-    // 2. Refresco con la API en segundo plano (actualiza el dashboard cuando
-    //    llega, sin bloquear la primera pintada).
+    if (_refrescoEnCurso) return;
+    _refrescoEnCurso = true;
     try {
-      // Productos y bodegas en paralelo para cargar el dashboard más rápido.
-      final results = await Future.wait([_fetchProductos(), _fetchBodegas()]);
-      final productos = results[0];
-      final bodegas = results[1];
+      if (mounted && _productos.isEmpty) setState(() => _cargando = true);
 
-      int stockBajo = 0;
-      int agotados = 0;
-      double valor = 0.0;
+      // 1. Carga local inmediata: la UI se pinta al instante y no se queda
+      //    en skeleton mientras la API responde.
+      await _cargarLocales();
 
-      for (final p in productos) {
-        final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
-        final minimo = (p['stock_minimo'] as num?)?.toInt() ?? 0;
-        final precio = (p['precio_venta'] as num?)?.toDouble() ?? 0.0;
-        if (stock <= 0) {
-          agotados++;
-        } else if (minimo > 0 && stock <= minimo) {
-          stockBajo++;
-        }
-        valor += stock * precio;
-      }
-
-      if (mounted) {
-        setState(() {
-          _productos = productos;
-          _bodegas = bodegas;
-          _totalProductos = productos.length;
-          _stockBajo = stockBajo;
-          _agotados = agotados;
-          _valorInventario = valor;
-          _cargando = false;
-        });
-      }
-      // Cache de la ÚLTIMA respuesta real del API: la próxima apertura pinta
-      // esto al instante (idéntico a lo que mostrará el refresh) y ya no se
-      // ven "datos viejos que se actualizan de la nada".
+      // 2. Refresco con la API en segundo plano (actualiza el dashboard cuando
+      //    llega, sin bloquear la primera pintada).
       try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('productos_api_cache', jsonEncode(productos));
-      } catch (_) {}
-    } catch (e) {
-      debugPrint('[Inventario] Error cargando datos: $e');
-      if (mounted) setState(() => _cargando = false);
+        // Productos y bodegas en paralelo para cargar el dashboard más rápido.
+        final results = await Future.wait([_fetchProductos(), _fetchBodegas()]);
+        final productos = results[0];
+        final bodegas = results[1];
+
+        int stockBajo = 0;
+        int agotados = 0;
+        double valor = 0.0;
+
+        for (final p in productos) {
+          final stock = (p['stock_actual'] as num?)?.toInt() ?? 0;
+          final minimo = (p['stock_minimo'] as num?)?.toInt() ?? 0;
+          final precio = (p['precio_venta'] as num?)?.toDouble() ?? 0.0;
+          if (stock <= 0) {
+            agotados++;
+          } else if (minimo > 0 && stock <= minimo) {
+            stockBajo++;
+          }
+          valor += stock * precio;
+        }
+
+        if (mounted) {
+          setState(() {
+            _productos = productos;
+            _bodegas = bodegas;
+            _totalProductos = productos.length;
+            _stockBajo = stockBajo;
+            _agotados = agotados;
+            _valorInventario = valor;
+            _cargando = false;
+          });
+        }
+        // Cache de la ÚLTIMA respuesta real del API: la próxima apertura pinta
+        // esto al instante (idéntico a lo que mostrará el refresh) y ya no se
+        // ven "datos viejos que se actualizan de la nada".
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('productos_api_cache', jsonEncode(productos));
+        } catch (_) {}
+      } catch (e) {
+        debugPrint('[Inventario] Error cargando datos: $e');
+        if (mounted) setState(() => _cargando = false);
+      }
+    } finally {
+      _refrescoEnCurso = false;
     }
   }
 
@@ -213,8 +234,11 @@ class _InventarioHomeState extends State<InventarioHome> {
         final local = JsonGuard.tryDecode(prefs.getString('bodegas'));
         bodegas = JsonGuard.toListOfMaps(local);
         if (bodegas.isEmpty) {
+          // Tipo explícito: sin él el `.toList()` infiere List<Map<String,String>>
+          // y el `insert` de la bodega General revienta en runtime con
+          // "type '_Map<String, dynamic>' is not a subtype of type 'Map<String, String>'".
           bodegas = JsonGuard.toListOfStrings(local)
-              .map((nombre) => {'nombre': nombre})
+              .map((nombre) => <String, dynamic>{'nombre': nombre})
               .toList();
         }
       } catch (_) {}

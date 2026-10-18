@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:portal_pilot_app/Modules/RRHH/empleados/empleado_form.dart';
 import 'package:portal_pilot_app/Modules/RRHH/empleados/empleado_list.dart';
 import 'package:portal_pilot_app/Modules/RRHH/nomina/nomina_home.dart';
-import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
+import 'package:portal_pilot_app/Modules/RRHH/rrhh_datos.dart';
+import 'package:portal_pilot_app/Shared/services/modulos_avanzados_service.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_empty_state.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_module_scaffold.dart';
 import 'package:portal_pilot_app/Shared/widgets/pp_stats_card.dart';
 
@@ -22,6 +23,9 @@ class _RrhhHomeState extends State<RrhhHome> {
   int _activos = 0;
   int _inactivos = 0;
   double _nominaMensual = 0.0;
+  bool _cargando = true;
+  String? _error;
+  bool _sinPermiso = false;
 
   @override
   void initState() {
@@ -41,15 +45,25 @@ class _RrhhHomeState extends State<RrhhHome> {
   }
 
   Future<void> _cargarDatos() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('empleados') ?? '[]';
-    final List<dynamic> empleados = JsonGuard.safeListOfMaps(json, source: 'RRHH/home');
+    setState(() {
+      _cargando = true;
+      _error = null;
+      _sinPermiso = false;
+    });
+
+    // Primera apertura después de la migración: sube los empleados que
+    // estaban guardados solo en este dispositivo. Es no-op cuando ya se hizo.
+    final subidos = await MigracionRRHHLocal.importarSiPendiente();
+
+    final r = await ModulosAvanzadosService.instance.empleados();
+    if (!mounted) return;
 
     int activos = 0, inactivos = 0;
     double nomina = 0.0;
 
+    final empleados = r.ok ? (r.datos ?? <Map<String, dynamic>>[]) : <Map<String, dynamic>>[];
     for (final e in empleados) {
-      final activo = e['activo'] ?? true;
+      final activo = e['activo'] == true;
       final salario = (e['salario'] as num?)?.toDouble() ?? 0.0;
       if (activo) {
         activos++;
@@ -60,12 +74,33 @@ class _RrhhHomeState extends State<RrhhHome> {
     }
 
     setState(() {
-      _empleados = List<Map<String, dynamic>>.from(empleados);
-      _totalEmpleados = empleados.length;
-      _activos = activos;
-      _inactivos = inactivos;
-      _nominaMensual = nomina;
+      _cargando = false;
+      if (r.ok) {
+        _empleados = List<Map<String, dynamic>>.from(empleados);
+        _totalEmpleados = empleados.length;
+        _activos = activos;
+        _inactivos = inactivos;
+        _nominaMensual = nomina;
+      } else {
+        _sinPermiso = r.planLimitado;
+        _error = r.error;
+        _empleados = <Map<String, dynamic>>[];
+        _totalEmpleados = 0;
+        _activos = 0;
+        _inactivos = 0;
+        _nominaMensual = 0.0;
+      }
     });
+
+    if (subidos != null && subidos > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          '$subidos empleado${subidos == 1 ? '' : 's'} sincronizado${subidos == 1 ? '' : 's'} con tu empresa',
+          style: GoogleFonts.dmSans(),
+        ),
+        backgroundColor: const Color(0xFF2E7D32),
+      ));
+    }
   }
 
   @override
@@ -75,9 +110,10 @@ class _RrhhHomeState extends State<RrhhHome> {
       screenTitle: 'RRHH / Nomina',
       moduleIcon: Icons.people_rounded,
       moduleColor: const Color(0xFFEC4899),
-      onNew: _nuevoEmpleado,
+      loading: _cargando,
+      onNew: _error == null ? _nuevoEmpleado : null,
       onRefresh: _cargarDatos,
-      child: ListView(
+      child: _error != null ? _estadoError() : ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
             _buildDashboardHeader(),
@@ -94,6 +130,27 @@ class _RrhhHomeState extends State<RrhhHome> {
             const SizedBox(height: 30),
           ],
         ),
+    );
+  }
+
+  Widget _estadoError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: PPEmptyState(
+          icon: _sinPermiso
+              ? Icons.lock_outline_rounded
+              : Icons.cloud_off_rounded,
+          accentColor: const Color(0xFFEC4899),
+          title: _sinPermiso ? 'No disponible en tu plan' : 'No se pudo cargar RRHH',
+          message: _error ?? 'Error desconocido',
+          action: FilledButton.icon(
+            onPressed: _cargarDatos,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Reintentar'),
+          ),
+        ),
+      ),
     );
   }
 

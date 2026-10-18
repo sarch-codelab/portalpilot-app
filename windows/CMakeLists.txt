@@ -41,9 +41,27 @@ function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_17)
   target_compile_options(${TARGET} PRIVATE /W4 /WX /wd"4100")
   target_compile_options(${TARGET} PRIVATE /EHsc)
+  # Force serialized writes to the compiler PDB. Without /FS, parallel CL.exe
+  # instances fail with C1041 ("cannot open program database ... use /FS").
+  target_compile_options(${TARGET} PRIVATE /FS)
   target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=0")
   target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
 endfunction()
+
+# Keep NuGet's scratch files and caches out of the user profile, where access
+# to the default cache may be restricted by the Windows environment.
+set(PORTAL_PILOT_NUGET_TEMP_DIR "${CMAKE_BINARY_DIR}/nuget-temp")
+set(PORTAL_PILOT_NUGET_HTTP_CACHE "${CMAKE_BINARY_DIR}/nuget-http-cache")
+set(PORTAL_PILOT_NUGET_PACKAGES "${CMAKE_BINARY_DIR}/nuget-global-packages")
+file(MAKE_DIRECTORY
+  "${PORTAL_PILOT_NUGET_TEMP_DIR}"
+  "${PORTAL_PILOT_NUGET_HTTP_CACHE}"
+  "${PORTAL_PILOT_NUGET_PACKAGES}"
+)
+set(ENV{TEMP} "${PORTAL_PILOT_NUGET_TEMP_DIR}")
+set(ENV{TMP} "${PORTAL_PILOT_NUGET_TEMP_DIR}")
+set(ENV{NUGET_HTTP_CACHE_PATH} "${PORTAL_PILOT_NUGET_HTTP_CACHE}")
+set(ENV{NUGET_PACKAGES} "${PORTAL_PILOT_NUGET_PACKAGES}")
 
 # Flutter library and tool build rules.
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")

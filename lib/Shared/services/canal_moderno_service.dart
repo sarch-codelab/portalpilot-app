@@ -10,6 +10,7 @@
 import 'package:drift/drift.dart';
 import 'package:portal_pilot_app/Shared/database/app_database.dart';
 import 'package:portal_pilot_app/Shared/services/local_db_service.dart';
+import 'package:portal_pilot_app/Shared/services/sync_service.dart';
 
 /// Estados del ciclo de una transferencia.
 class EstadoTransferencia {
@@ -346,7 +347,51 @@ class CanalModernoService {
     }
 
     final q = _db.select(_db.transferencias)..where((t) => t.id.equals(id));
-    return await q.getSingle();
+    final creada = await q.getSingle();
+    await _encolarTransferencia(creada.id);
+    return creada;
+  }
+
+  /// Encola la transferencia (encabezado + items) para sincronizarla a la nube.
+  /// El backend genera el UUID y resuelve la sucursal por `codigo`.
+  Future<void> _encolarTransferencia(String id) async {
+    final detalle = await getTransferencia(id);
+    if (detalle == null) return;
+    final t = detalle.transferencia;
+    final origen = await getSucursal(t.origenId);
+    final destino = await getSucursal(t.destinoId);
+    await SyncService.instance.enqueueSync(
+      tabla: 'transferencias',
+      operacion: SyncOperation.insert,
+      empresaId: empresaId,
+      datos: {
+        'empresa_codigo': empresaId,
+        'id': t.id,
+        'correlativo': t.correlativo,
+        'numero': t.correlativo,
+        'origen_id': t.origenId,
+        'origen_nombre': t.origenNombre,
+        'origen_codigo': origen?.codigo,
+        'destino_id': t.destinoId,
+        'destino_nombre': t.destinoNombre,
+        'destino_codigo': destino?.codigo,
+        'estado': t.estado,
+        'observaciones': t.observaciones,
+        'usuario_id': t.usuarioId,
+        'fecha_envio': t.fechaEnvio?.toIso8601String(),
+        'fecha_recepcion': t.fechaRecepcion?.toIso8601String(),
+        'created_at': t.createdAt.toIso8601String(),
+        'updated_at': t.updatedAt.toIso8601String(),
+        'items': detalle.items
+            .map((i) => {
+                  'producto_id': i.productoId,
+                  'producto_codigo': i.productoCodigo,
+                  'producto_nombre': i.productoNombre,
+                  'cantidad': i.cantidad,
+                })
+            .toList(),
+      },
+    );
   }
 
   /// Envía la transferencia: sale del inventario de la sucursal de origen.
@@ -403,6 +448,7 @@ class CanalModernoService {
         ),
       );
     });
+    await _encolarTransferencia(id);
   }
 
   /// Recibe la transferencia: el inventario entra a la sucursal de destino.
@@ -437,6 +483,7 @@ class CanalModernoService {
         ),
       );
     });
+    await _encolarTransferencia(id);
   }
 
   /// Cancela la transferencia. Si ya estaba en tránsito, devuelve el stock
@@ -487,6 +534,7 @@ class CanalModernoService {
         ),
       );
     });
+    await _encolarTransferencia(id);
   }
 
   Future<void> _incrementarStockEnBodega({

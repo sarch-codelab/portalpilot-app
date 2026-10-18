@@ -1,25 +1,159 @@
 package com.example.portal_pilot_app
 
+import android.app.Activity
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.Uri
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.util.Log
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.MethodChannel.Result
+import java.io.File
 
 class MainActivity : FlutterActivity() {
 
     private val channelName = "portal_pilot/nfc_card"
-    private var nfcAdapter: NfcAdapter? = null
+    private val updateChannelName = "portal_pilot/app_update"
+    private var nfcAdapter: android.nfc.NfcAdapter? = null
     private var pendingResult: MethodChannel.Result? = null
+    private var updateResult: Result? = null
+    private var downloadReceiver: BroadcastReceiver? = null
+    private var downloadId: Long = -1
 
-    private val readerFlags = (
-            NfcAdapter.FLAG_READER_NFC_A or
-                    NfcAdapter.FLAG_READER_NFC_B or
-                    NfcAdapter.FLAG_READER_NFC_F or
-                    NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS or
-                    NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK)
+    // ═══ AUTO-ACTUALIZACIÓN APK ═══
+    private fun downloadAndInstallApk(apkUrl: String, versionName: String, versionCode: Int, result: Result) {
+        updateResult = result
+
+        // Verificar permiso de instalación (Android 8+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val packageInstaller = packageManager
+            val canInstall = packageInstaller.canRequestPackageInstalls()
+            if (!canInstall) {
+                result.error("PERMISO_DENEGADO", "La app no tiene permiso para instalar paquetes. Ve a Ajustes > Apps > Acceso especial > Instalar apps desconocidas.", null)
+                updateResult = null
+                return
+            }
+        }
+
+        // Crear archivo destino en directorio privado de la app
+        val apkFile = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "PortalPilot_v${versionName}_${versionCode}.apk")
+        apkFile.parentFile?.mkdirs()
+
+        // Configurar descarga con DownloadManager
+        val request = DownloadManager.Request(Uri.parse(apkUrl))
+            .setTitle("Portal Pilot v$versionName")
+            .setDescription("Descargando actualización...")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationUri(Uri.fromFile(apkFile))
+            .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
+            .setAllowedOverRoaming(false)
+            .setRequiresCharging(false)
+
+        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        downloadId = downloadManager.enqueue(request)
+
+        // Registrar receiver para cuando termine la descarga
+        downloadReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val action = intent.action
+                if (action == DownloadManager.ACTION_DOWNLOAD_COMPLETE) {
+                    val query = DownloadManager.Query().setFilterById(downloadId)
+                    val cursor = downloadManager.query(query)
+                    if (cursor.moveToFirst()) {
+                        val columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                        val status = cursor.getInt(columnIndex)
+                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                            // Descarga completada, iniciar instalación
+                            installApk(apkFile)
+                        } else if (status == DownloadManager.STATUS_FAILED) {
+                            val reasonIndex = cursor.getColumnIndex(DownloadManager.COLUMN_REASON)
+                            val reason = cursor.getInt(reasonIndex)
+                            updateResult?.error("DESCARGA_FALLIDA", "Error descargando APK (código: $reason)", null)
+                            updateResult = null
+                        }
+                    }
+                    cursor.close()
+                    unregisterDownloadReceiver()
+                }
+            }
+        }
+
+        val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(downloadReceiver!!, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(downloadReceiver!!, filter)
+        }
+
+        result.success("Descarga iniciada")
+    }
+
+    private fun installApk(apkFile: File) {
+        if (!apkFile.exists()) {
+            updateResult?.error("ARCHIVO_NO_EXISTE", "El APK descargado no se encuentra", null)
+            updateResult = null
+            return
+        }
+
+        val apkUri: Uri
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            apkUri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                apkFile
+            )
+        } else {
+            apkUri = Uri.fromFile(apkFile)
+        }
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(apkUri, "application/vnd.android.package-archive")
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        }
+
+        try {
+            // Para Android 12+, usar startActivityForResult no está disponible desde FlutterActivity
+            // Usamos un intent directo que el usuario debe confirmar
+            startActivity(intent)
+            updateResult?.success("Instalador abierto - confirma la instalación")
+        } catch (e: Exception) {
+            updateResult?.error("ERROR_INSTALACION", "No se pudo abrir el instalador: ${e.message}", null)
+        }
+        updateResult = null
+    }
+
+    private fun unregisterDownloadReceiver() {
+        downloadReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
+            downloadReceiver = null
+        }
+    }
+
+    override fun onDestroy() {
+        unregisterDownloadReceiver()
+        super.onDestroy()
+    }
+
+    // ═══ NFC EXISTENTE ═══
+    private val readerFlags: Int = NfcAdapter.FLAG_READER_NFC_A or
+            NfcAdapter.FLAG_READER_NFC_B or
+            NfcAdapter.FLAG_READER_NFC_F or
+            NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS or
+            NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK
 
     private val readerModeExtras = Bundle().apply {
         putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 200)
@@ -37,11 +171,12 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         nfcAdapter = try {
-            NfcAdapter.getDefaultAdapter(this)
+            android.nfc.NfcAdapter.getDefaultAdapter(this)
         } catch (e: Exception) {
             null
         }
 
+        // Canal NFC existente
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -67,6 +202,20 @@ class MainActivity : FlutterActivity() {
                         pendingResult?.error("CANCELADO", "Lectura cancelada.", null)
                         pendingResult = null
                         result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        // Canal para auto-actualización
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, updateChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "downloadAndInstall" -> {
+                        val apkUrl = call.argument<String>("apkUrl") ?: return@setMethodCallHandler result.error("URL_INVALIDA", "URL del APK requerida", null)
+                        val versionName = call.argument<String>("versionName") ?: "desconocida"
+                        val versionCode = call.argument<Int>("versionCode") ?: 0
+                        downloadAndInstallApk(apkUrl, versionName, versionCode, result)
                     }
                     else -> result.notImplemented()
                 }

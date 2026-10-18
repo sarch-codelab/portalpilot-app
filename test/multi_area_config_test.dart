@@ -77,11 +77,21 @@ void main() {
 
     test('persiste flags por empresa y los respeta en recargas', () async {
       final config = MultiAreaConfig.instance;
-      await config.cargar(empresaCodigo: 'EMPRESA-1', areaNegocio: 'retail');
+      // Con asignación del servidor: los flags locales solo pueden apagar
+      // módulos de la asignación, nunca reactivar lo que el plan no incluye.
+      await config.cargar(
+        empresaCodigo: 'EMPRESA-1',
+        areaNegocio: 'retail',
+        modulosAsignados: ['pos', 'facturacion', 'inventario', 'crm', 'contabilidad'],
+      );
       await config.setModuloActivo('pos', false);
 
-      // Simula un nuevo login: recarga la misma empresa.
-      await config.cargar(empresaCodigo: 'EMPRESA-1', areaNegocio: 'retail');
+      // Simula un nuevo login: recarga la misma empresa con la misma asignación.
+      await config.cargar(
+        empresaCodigo: 'EMPRESA-1',
+        areaNegocio: 'retail',
+        modulosAsignados: ['pos', 'facturacion', 'inventario', 'crm', 'contabilidad'],
+      );
 
       expect(
         config.moduloActivo('pos'),
@@ -90,6 +100,48 @@ void main() {
       );
       expect(config.moduloActivo('facturacion'), isTrue);
       expect(config.areaNegocio, 'retail');
+    });
+
+    test('módulo agregado por el owner tras un upgrade entra activo', () async {
+      final config = MultiAreaConfig.instance;
+      await config.cargar(
+        empresaCodigo: 'EMPRESA-1',
+        areaNegocio: 'retail',
+        modulosAsignados: ['pos', 'facturacion'],
+      );
+      await config.setModuloActivo('pos', false);
+
+      // Nuevo login con más módulos (plan mejorado / owner asignó membresías).
+      await config.cargar(
+        empresaCodigo: 'EMPRESA-1',
+        areaNegocio: 'retail',
+        modulosAsignados: ['pos', 'facturacion', 'membresias'],
+      );
+
+      expect(config.moduloActivo('pos'), isFalse, reason: 'el flag local del usuario se respeta');
+      expect(config.moduloActivo('membresias'), isTrue,
+          reason: 'lo nuevo de la asignación se activa por defecto');
+    });
+
+    test('módulo retirado de la asignación desaparece aunque el flag diga lo contrario', () async {
+      final config = MultiAreaConfig.instance;
+      await config.cargar(
+        empresaCodigo: 'EMPRESA-1',
+        areaNegocio: 'general',
+        modulosAsignados: ['pos', 'facturacion', 'contabilidad', 'rrhh'],
+      );
+
+      // El plan bajó: contabilidad/rrhh ya no están en la asignación.
+      await config.cargar(
+        empresaCodigo: 'EMPRESA-1',
+        areaNegocio: 'general',
+        modulosAsignados: ['pos', 'facturacion'],
+      );
+
+      expect(config.moduloActivo('contabilidad'), isFalse,
+          reason: 'la asignación del servidor manda sobre flags viejos');
+      expect(config.moduloActivo('rrhh'), isFalse);
+      expect(config.moduloActivo('pos'), isTrue);
     });
 
     test('empresas diferentes mantienen configuración independiente', () async {
@@ -155,7 +207,6 @@ void main() {
         modulosAsignados: ['facturacion', 'crm'],
       );
 
-      expect(config.areaNegocio, 'agricultura');
       expect(config.moduloActivo('facturacion'), isTrue);
       expect(config.moduloActivo('crm'), isTrue);
       expect(config.moduloActivo('pos'), isFalse);

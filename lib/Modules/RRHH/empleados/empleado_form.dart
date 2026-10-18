@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
+import 'package:portal_pilot_app/Modules/RRHH/rrhh_datos.dart';
+import 'package:portal_pilot_app/Shared/services/modulos_avanzados_service.dart';
 
 class EmpleadoForm extends StatefulWidget {
   final Map<String, dynamic>? empleadoExistente;
@@ -26,6 +25,7 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
   final _contactoEmergenciaCtrl = TextEditingController();
   String _estado = 'Activo';
   DateTime? _fechaIngreso;
+  bool _guardando = false;
 
   @override
   void initState() {
@@ -62,13 +62,13 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
 
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_guardando) return;
+    setState(() => _guardando = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('empleados') ?? '[]';
-    final List<dynamic> empleados = JsonGuard.safeListOfMaps(json, source: 'RRHH/empleado_form');
-
-    final empleado = {
-      'id': widget.empleadoExistente?['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+    // Campos que este formulario no edita: se reenvían tal cual para no
+    // borrarlos al guardar.
+    final existente = widget.empleadoExistente ?? const <String, dynamic>{};
+    final pantalla = <String, dynamic>{
       'nombre': _nombreCtrl.text.trim(),
       'apellido': _apellidoCtrl.text.trim(),
       'email': _emailCtrl.text.trim(),
@@ -76,22 +76,43 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
       'cargo': _cargoCtrl.text.trim(),
       'departamento': _departamentoCtrl.text.trim(),
       'salario': double.tryParse(_salarioCtrl.text) ?? 0.0,
-      'telefono_emergencia': _telefonoEmergenciaCtrl.text.trim(),
       'contacto_emergencia': _contactoEmergenciaCtrl.text.trim(),
+      'telefono_emergencia': _telefonoEmergenciaCtrl.text.trim(),
       'activo': _estado == 'Activo',
-      'fecha_ingreso': _fechaIngreso?.toIso8601String() ?? DateTime.now().toIso8601String(),
-      'created_at': widget.empleadoExistente?['created_at'] ?? DateTime.now().toIso8601String(),
+      'fecha_ingreso': (_fechaIngreso ?? DateTime.now()).toIso8601String(),
+      'banco': existente['banco'] ?? '',
+      'cuenta_bancaria': existente['cuenta_bancaria'] ?? '',
+      'direccion': existente['direccion'] ?? '',
+      'identidad': existente['identidad'] ?? '',
+      'rtn': existente['rtn'] ?? '',
+      'notas': existente['notas'] ?? '',
     };
 
-    if (widget.empleadoExistente != null) {
-      final idx = empleados.indexWhere((e) => e['id'] == empleado['id']);
-      if (idx != -1) empleados[idx] = empleado;
-    } else {
-      empleados.add(empleado);
-    }
+    final payload = empleadoParaServidor(pantalla);
+    final svc = ModulosAvanzadosService.instance;
+    final id = widget.empleadoExistente?['id']?.toString();
+    final r = (id != null && id.isNotEmpty)
+        ? await svc.actualizarEmpleado(id, payload)
+        : await svc.guardarEmpleado(payload);
 
-    await prefs.setString('empleados', jsonEncode(empleados));
-    if (mounted) Navigator.pop(context);
+    if (!mounted) return;
+    setState(() => _guardando = false);
+
+    if (r.ok) {
+      Navigator.pop(context);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          r.planLimitado
+              ? 'Este módulo no está incluido en tu plan actual.'
+              : (r.error ?? 'No se pudo guardar el empleado'),
+          style: GoogleFonts.dmSans(),
+        ),
+        backgroundColor: const Color(0xFFC62828),
+      ),
+    );
   }
 
   @override
@@ -104,12 +125,21 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
         backgroundColor: const Color(0xFF080808),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFFEC4899), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFFEC4899),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           esEdicion ? 'EDITAR EMPLEADO' : 'NUEVO EMPLEADO',
-          style: GoogleFonts.syne(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5),
+          style: GoogleFonts.syne(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: 1.5,
+          ),
         ),
         centerTitle: true,
       ),
@@ -124,17 +154,36 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
             const SizedBox(height: 10),
             _buildTextField(_apellidoCtrl, 'Apellido *', Icons.person_rounded),
             const SizedBox(height: 10),
-            _buildTextField(_emailCtrl, 'Email *', Icons.email_rounded, keyboardType: TextInputType.emailAddress),
+            _buildTextField(
+              _emailCtrl,
+              'Email *',
+              Icons.email_rounded,
+              keyboardType: TextInputType.emailAddress,
+            ),
             const SizedBox(height: 10),
-            _buildTextField(_telefonoCtrl, 'Teléfono', Icons.phone_rounded, keyboardType: TextInputType.phone),
+            _buildTextField(
+              _telefonoCtrl,
+              'Teléfono',
+              Icons.phone_rounded,
+              keyboardType: TextInputType.phone,
+            ),
             const SizedBox(height: 20),
             _buildSectionHeader('Información Laboral'),
             const SizedBox(height: 12),
             _buildTextField(_cargoCtrl, 'Cargo *', Icons.work_rounded),
             const SizedBox(height: 10),
-            _buildTextField(_departamentoCtrl, 'Departamento', Icons.business_rounded),
+            _buildTextField(
+              _departamentoCtrl,
+              'Departamento',
+              Icons.business_rounded,
+            ),
             const SizedBox(height: 10),
-            _buildTextField(_salarioCtrl, 'Salario Mensual (L.)', Icons.attach_money_rounded, keyboardType: TextInputType.number),
+            _buildTextField(
+              _salarioCtrl,
+              'Salario Mensual (L.)',
+              Icons.attach_money_rounded,
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: 10),
             _buildDatePicker(),
             const SizedBox(height: 10),
@@ -142,9 +191,18 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
             const SizedBox(height: 20),
             _buildSectionHeader('Contacto de Emergencia'),
             const SizedBox(height: 12),
-            _buildTextField(_contactoEmergenciaCtrl, 'Nombre del contacto', Icons.contact_phone_rounded),
+            _buildTextField(
+              _contactoEmergenciaCtrl,
+              'Nombre del contacto',
+              Icons.contact_phone_rounded,
+            ),
             const SizedBox(height: 10),
-            _buildTextField(_telefonoEmergenciaCtrl, 'Teléfono de emergencia', Icons.emergency_rounded, keyboardType: TextInputType.phone),
+            _buildTextField(
+              _telefonoEmergenciaCtrl,
+              'Teléfono de emergencia',
+              Icons.emergency_rounded,
+              keyboardType: TextInputType.phone,
+            ),
             const SizedBox(height: 30),
             _buildSaveButton(esEdicion),
             const SizedBox(height: 20),
@@ -157,25 +215,46 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
-      style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFFEC4899), letterSpacing: 0.8),
+      style: GoogleFonts.syne(
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+        color: const Color(0xFFEC4899),
+        letterSpacing: 0.8,
+      ),
     );
   }
 
-  Widget _buildTextField(TextEditingController ctrl, String label, IconData icon, {TextInputType keyboardType = TextInputType.text}) {
+  Widget _buildTextField(
+    TextEditingController ctrl,
+    String label,
+    IconData icon, {
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return TextFormField(
       controller: ctrl,
       keyboardType: keyboardType,
       style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
-      validator: label.contains('*') ? (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null : null,
+      validator: label.contains('*')
+          ? (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null
+          : null,
       decoration: InputDecoration(
         labelText: label.replaceAll(' *', ''),
         labelStyle: GoogleFonts.dmSans(color: const Color(0xFF737373)),
         prefixIcon: Icon(icon, color: const Color(0xFF737373), size: 18),
         filled: true,
         fillColor: const Color(0xFF141414),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF262626))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFEC4899))),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF262626)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF262626)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFEC4899)),
+        ),
       ),
     );
   }
@@ -189,7 +268,14 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
           firstDate: DateTime(2000),
           lastDate: DateTime.now(),
           builder: (context, child) {
-            return Theme(data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: Color(0xFFEC4899))), child: child!);
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: Theme.of(
+                  context,
+                ).colorScheme.copyWith(primary: const Color(0xFFEC4899)),
+              ),
+              child: child!,
+            );
           },
         );
         if (picked != null) setState(() => _fechaIngreso = picked);
@@ -203,11 +289,22 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_rounded, color: Color(0xFF737373), size: 18),
+            const Icon(
+              Icons.calendar_today_rounded,
+              color: Color(0xFF737373),
+              size: 18,
+            ),
             const SizedBox(width: 12),
             Text(
-              _fechaIngreso != null ? '${_fechaIngreso!.day}/${_fechaIngreso!.month}/${_fechaIngreso!.year}' : 'Fecha de ingreso',
-              style: GoogleFonts.dmSans(color: _fechaIngreso != null ? Colors.white : const Color(0xFF737373), fontSize: 14),
+              _fechaIngreso != null
+                  ? '${_fechaIngreso!.day}/${_fechaIngreso!.month}/${_fechaIngreso!.year}'
+                  : 'Fecha de ingreso',
+              style: GoogleFonts.dmSans(
+                color: _fechaIngreso != null
+                    ? Colors.white
+                    : const Color(0xFF737373),
+                fontSize: 14,
+              ),
             ),
           ],
         ),
@@ -225,32 +322,50 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.toggle_on_rounded, color: Color(0xFF737373), size: 18),
+          const Icon(
+            Icons.toggle_on_rounded,
+            color: Color(0xFF737373),
+            size: 18,
+          ),
           const SizedBox(width: 12),
-          Text('Estado', style: GoogleFonts.dmSans(color: const Color(0xFF737373), fontSize: 14)),
+          Text(
+            'Estado',
+            style: GoogleFonts.dmSans(
+              color: const Color(0xFF737373),
+              fontSize: 14,
+            ),
+          ),
           const SizedBox(width: 12),
           Flexible(
             child: Align(
               alignment: Alignment.centerRight,
               child: SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'Activo', label: Text('Activo', style: TextStyle(fontSize: 11))),
-              ButtonSegment(value: 'Inactivo', label: Text('Inactivo', style: TextStyle(fontSize: 11))),
-            ],
-            selected: {_estado},
-            onSelectionChanged: (v) => setState(() => _estado = v.first),
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) return const Color(0xFFEC4899).withValues(alpha: 0.2);
-                return Colors.transparent;
-              }),
-              foregroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) return const Color(0xFFEC4899);
-                return const Color(0xFF737373);
-              }),
-              side: WidgetStateProperty.all(BorderSide.none),
-            ),
-          ),
+                segments: const [
+                  ButtonSegment(
+                    value: 'Activo',
+                    label: Text('Activo', style: TextStyle(fontSize: 11)),
+                  ),
+                  ButtonSegment(
+                    value: 'Inactivo',
+                    label: Text('Inactivo', style: TextStyle(fontSize: 11)),
+                  ),
+                ],
+                selected: {_estado},
+                onSelectionChanged: (v) => setState(() => _estado = v.first),
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.selected))
+                      return const Color(0xFFEC4899).withValues(alpha: 0.2);
+                    return Colors.transparent;
+                  }),
+                  foregroundColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.selected))
+                      return const Color(0xFFEC4899);
+                    return const Color(0xFF737373);
+                  }),
+                  side: WidgetStateProperty.all(BorderSide.none),
+                ),
+              ),
             ),
           ),
         ],
@@ -263,15 +378,39 @@ class _EmpleadoFormState extends State<EmpleadoForm> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton.icon(
-        onPressed: _guardar,
-        icon: Icon(esEdicion ? Icons.save_rounded : Icons.person_add_rounded, color: Colors.white, size: 20),
+        onPressed: _guardando ? null : _guardar,
+        icon: _guardando
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Icon(
+                esEdicion ? Icons.save_rounded : Icons.person_add_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
         label: Text(
-          esEdicion ? 'Guardar Cambios' : 'Registrar Empleado',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15),
+          _guardando
+              ? 'Guardando...'
+              : esEdicion
+              ? 'Guardar Cambios'
+              : 'Registrar Empleado',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            fontSize: 15,
+          ),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFEC4899),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          disabledBackgroundColor: const Color(0xFF262626),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           elevation: 0,
         ),
       ),

@@ -60,16 +60,21 @@ class AuthController extends ChangeNotifier {
     return a.isEmpty ? n : '$n $a';
   }
 
-  bool get esRoot =>
-      _empresaCodigo.toUpperCase() == 'ROOT' ||
-      _rol.toLowerCase().contains('root') ||
-      _rol.toLowerCase().contains('admin');
+  /// ROOT = cuenta interna de la plataforma. Un owner/administrador de tenant
+  /// NO es ROOT: sus módulos siguenSaliendo de su plan y de lo que le
+  /// asignó el owner (usuario_modulos).
+  bool get esRoot {
+    if (_empresaCodigo.toUpperCase() == 'ROOT') return true;
+    final r = _rol.toLowerCase();
+    return r.contains('root') || r.contains('superadmin') || r.contains('ceo');
+  }
 
   /// Devuelve `true` si el tenant tiene la feature indicada en su plan.
   /// ROOT siempre tiene acceso a todo.
   bool tieneFeature(String feature) {
     if (esRoot) return true;
-    if (_features.isEmpty) return true; // sesión antigua sin features cargadas → no bloquear
+    if (_features.isEmpty)
+      return true; // sesión antigua sin features cargadas → no bloquear
     return _features.contains(feature);
   }
 
@@ -95,7 +100,7 @@ class AuthController extends ChangeNotifier {
               .map((m) => m.trim())
               .where((m) => m.isNotEmpty)
               .toList()
-        : const ['facturacion', 'inventario', 'contabilidad', 'rrhh', 'crm', 'pos', 'comercial', 'membresias'];
+        : const [];
     final featuresRaw = prefs.getString('empresa_features') ?? '';
     _features = featuresRaw.isNotEmpty
         ? featuresRaw
@@ -128,7 +133,8 @@ class AuthController extends ChangeNotifier {
       final user = res['user'];
       if (user is! Map<String, dynamic>) return;
 
-      final foto = (user['foto_perfil_url'] ?? user['avatar_url'] ?? '') as String;
+      final foto =
+          (user['foto_perfil_url'] ?? user['avatar_url'] ?? '') as String;
       final nombre = (user['nombre'] ?? '') as String;
       final apellido = (user['apellido'] ?? '') as String;
       final plan = (user['plan'] ?? '') as String;
@@ -138,8 +144,14 @@ class AuthController extends ChangeNotifier {
         _fotoPerfilUrl = foto.trim();
         await prefs.setString('user_foto_perfil', _fotoPerfilUrl);
       }
-      if (nombre.isNotEmpty) { _nombre = nombre; await prefs.setString('user_nombre', nombre); }
-      if (apellido.isNotEmpty) { _apellido = apellido; await prefs.setString('user_apellido', apellido); }
+      if (nombre.isNotEmpty) {
+        _nombre = nombre;
+        await prefs.setString('user_nombre', nombre);
+      }
+      if (apellido.isNotEmpty) {
+        _apellido = apellido;
+        await prefs.setString('user_apellido', apellido);
+      }
       if (plan.isNotEmpty) _empresaPlan = normalizarPlan(plan);
       notifyListeners();
     } catch (e) {
@@ -210,24 +222,45 @@ class AuthController extends ChangeNotifier {
     );
   }
 
-  /// Normaliza el nombre del plan a uno de los planes conocidos
-  /// (Prueba | Business | Enterprise). Desconocidos → Prueba.
+  /// Normaliza el plan a una de las claves conocidas del catálogo vigente
+  /// (Prueba | Pulpería | Tienda | Club | Personalizado | Business | Enterprise).
+  /// DebeAcceptar los mismos alias que `normalizePlan` del backend
+  /// (PP Web\backend\server.js). Desconocidos → Prueba.
   static String normalizarPlan(String plan) {
     final p = plan.trim().toLowerCase();
-    if (p.contains('business') || p == 'business' || p == 'comercial') return 'Business';
-    if (p.contains('enterprise') || p == 'enterprise' || p == 'empresa') return 'Enterprise';
+    if (p.contains('pulper') || p == 'mercadito' || p == 'abarroteria') {
+      return 'Pulpería';
+    }
+    if (p.contains('tienda') || p.contains('supermercado') || p == 'retail') {
+      return 'Tienda';
+    }
+    if (p.contains('club') || p.contains('membres')) return 'Club';
+    if (p.contains('personalizado') || p == 'custom' || p == 'cotizador') {
+      return 'Personalizado';
+    }
+    if (p.contains('enterprise') || p == 'empresa') return 'Enterprise';
+    if (p.contains('business') || p == 'comercial') return 'Business';
     return 'Prueba';
   }
 
+  /// True solo para el plan de prueba. Todo plan de pago (Pulpería, Tienda,
+  /// Club, Personalizado, Business, Enterprise) queda fuera de solo lectura.
+  bool get esPlanPago => _empresaPlan.isNotEmpty && _empresaPlan != 'Prueba';
+
   /// Actualiza el nombre/rol de la sesión en memoria y en disco (perfil).
-  Future<void> updateProfile({String? nombre, String? apellido, String? fotoPerfilUrl}) async {
+  Future<void> updateProfile({
+    String? nombre,
+    String? apellido,
+    String? fotoPerfilUrl,
+  }) async {
     if (nombre != null) _nombre = nombre;
     if (apellido != null) _apellido = apellido;
     if (fotoPerfilUrl != null) _fotoPerfilUrl = fotoPerfilUrl.trim();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_nombre', _nombre);
     await prefs.setString('user_apellido', _apellido);
-    if (fotoPerfilUrl != null) await prefs.setString('user_foto_perfil', _fotoPerfilUrl);
+    if (fotoPerfilUrl != null)
+      await prefs.setString('user_foto_perfil', _fotoPerfilUrl);
     notifyListeners();
   }
 
@@ -235,7 +268,7 @@ class AuthController extends ChangeNotifier {
   Future<void> setPlan(String plan) async {
     _empresaPlan = normalizarPlan(plan);
     // Un plan pagado sale del modo solo lectura.
-    if (_empresaPlan != 'Prueba' && _soloLectura) {
+    if (esPlanPago && _soloLectura) {
       await marcarSoloLectura(activo: false);
     }
     final prefs = await SharedPreferences.getInstance();
@@ -287,12 +320,6 @@ class AuthController extends ChangeNotifier {
     await prefs.remove('empresa_features');
     await prefs.remove('empresa_solo_lectura');
     notifyListeners();
-    Logger().audit(
-      'logout',
-      'usuario',
-      email,
-      userId: email,
-      module: 'auth',
-    );
+    Logger().audit('logout', 'usuario', email, userId: email, module: 'auth');
   }
 }

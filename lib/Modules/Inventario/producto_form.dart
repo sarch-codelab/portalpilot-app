@@ -16,6 +16,7 @@ import 'package:portal_pilot_app/Shared/services/auth_controller.dart';
 import 'package:portal_pilot_app/Shared/services/ai_service.dart';
 import 'package:portal_pilot_app/Shared/services/api_service.dart';
 import 'package:portal_pilot_app/Shared/services/connectivity_service.dart';
+import 'package:portal_pilot_app/Shared/services/catalogos_service.dart';
 import 'package:portal_pilot_app/Shared/utils/logger.dart';
 import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
@@ -61,10 +62,51 @@ class _ProductoFormState extends State<ProductoForm> {
 
   List<String> _bodegas = ['General'];
 
-  final List<String> _categorias = [
+  // Catalogos maestro del tenant. `_categoriasReservadas` es la lista fija que
+  // existia antes: se conserva como semilla para que el formulario siga siendo
+  // usable sin conexion, pero en cuanto el servidor responde pasa a mandar su
+  // catalogo. `_categorias` es la union de ambos para no romper selecciones.
+  static const List<String> _categoriasSemilla = [
     'General', 'Electrónica', 'Ropa', 'Alimentos', 'Bebidas', 'Farmacia',
     'Herramientas', 'Materiales', 'Papelería', 'Limpieza', 'Otros'
   ];
+
+  List<OpcionCatalogo> _catalogoCategorias = const [];
+  List<OpcionCatalogo> _catalogoMarcas = const [];
+  List<OpcionCatalogo> _catalogoPasillos = const [];
+
+  String? _pasilloId;
+  String? _pasilloNombre;
+
+  /// Nombres de categoria utilizables: la semilla offline mas lo que devuelve
+  /// el servidor. Es un getter para que las selecciones hechas antes de cargar
+  /// los catalogos sigan siendo validas cuando lleguen.
+  List<String> get _categorias {
+    final nombres = <String>[..._categoriasSemilla];
+    for (final c in _catalogoCategorias) {
+      if (!nombres.contains(c.nombre)) nombres.add(c.nombre);
+    }
+    return nombres;
+  }
+
+  /// Resuelve el UUID de la categoria elegida por nombre. Si el nombre no existe
+  /// en el catalogo del servidor se envia null: el backend lo aceptara como
+  /// categoria suelta en vez de inventar una FK invalida.
+  String? _idDeCategoria(String nombre) {
+    for (final c in _catalogoCategorias) {
+      if (c.nombre == nombre) return c.id;
+    }
+    return null;
+  }
+
+  String? _idDeMarca(String nombre) {
+    final limpio = nombre.trim();
+    if (limpio.isEmpty) return null;
+    for (final m in _catalogoMarcas) {
+      if (m.nombre.toLowerCase() == limpio.toLowerCase()) return m.id;
+    }
+    return null;
+  }
 
   final List<String> _unidades = [
     'Unidad', 'Pieza', 'Kilogramo', 'Libra', 'Litro', 'Metro',
@@ -75,6 +117,7 @@ class _ProductoFormState extends State<ProductoForm> {
   void initState() {
     super.initState();
     _cargarBodegas();
+    _cargarCatalogos();
     if (widget.productoExistente != null) {
       _cargarProducto();
     } else {
@@ -114,9 +157,13 @@ class _ProductoFormState extends State<ProductoForm> {
         'precio_venta': _precioVentaController.text,
         'stock_actual': _stockActualController.text,
         'stock_minimo': _stockMinimoController.text,
-        'marca': _marcaController.text,
+'marca': _marcaController.text,
+      'marca_id': _idDeMarca(_marcaController.text),
+      'pasillo_id': _pasilloId,
+      'pasillo': _pasilloNombre,
         'presentacion': _presentacionController.text,
-        'categoria': _categoria,
+'categoria': _categoria,
+      'categoria_id': _idDeCategoria(_categoria),
         'unidad_medida': _unidadMedida,
         'bodega': _bodega,
         'isv_rate': _isvRate,
@@ -208,6 +255,86 @@ class _ProductoFormState extends State<ProductoForm> {
     } catch (_) {}
     if (!bodegas.contains('General')) bodegas.insert(0, 'General');
     if (mounted) setState(() => _bodegas = bodegas);
+  }
+
+  /// Trae los catalogos maestro del tenant. Un fallo no bloquea el formulario:
+  /// se conservan las opciones ya presentes (semilla + producto en edicion).
+  Future<void> _cargarCatalogos() async {
+    final categorias = await CatalogosService.instance.categorias();
+    final marcas = await CatalogosService.instance.marcas();
+    final pasillos = await CatalogosService.instance.pasillos();
+    if (!mounted) return;
+
+    // El producto en edicion puede traer ids que el servidor ya no lista
+    // (categoria desactivada). Se conservan para no perderlos al guardar.
+    final p = widget.productoExistente;
+
+    setState(() {
+      _catalogoCategorias = _fusionar(_catalogoCategorias, categorias,
+          id: p?['categoria_id']?.toString(), nombre: p?['categoria']?.toString());
+      _catalogoMarcas = _fusionar(_catalogoMarcas, marcas,
+          id: p?['marca_id']?.toString(), nombre: p?['marca']?.toString());
+      _catalogoPasillos = _fusionar(_catalogoPasillos, pasillos,
+          id: p?['pasillo_id']?.toString(), nombre: p?['pasillo']?.toString());
+
+      if (_pasilloId == null) {
+        final id = p?['pasillo_id']?.toString();
+        if (id != null && id.isNotEmpty && id != 'null') {
+          _pasilloId = id;
+          _pasilloNombre = _nombreDe(_catalogoPasillos, id) ??
+              p?['pasillo']?.toString();
+        }
+      }
+    });
+  }
+
+  /// Une el catalogo entrante con el ya conocido y garantiza que la fila que se
+  /// esta editando siga disponible aunque venga desactivada.
+  List<OpcionCatalogo> _fusionar(
+    List<OpcionCatalogo> actual,
+    List<OpcionCatalogo> entrante, {
+    String? id,
+    String? nombre,
+  }) {
+    final out = <OpcionCatalogo>[...entrante];
+    final limpioId = (id == null || id.isEmpty || id == 'null') ? null : id;
+    if (limpioId != null && !out.any((o) => o.id == limpioId)) {
+      out.insert(0, OpcionCatalogo(id: limpioId, nombre: nombre?.trim().isNotEmpty == true ? nombre!.trim() : 'Sin catálogo'));
+    }
+    return out;
+  }
+
+  String? _nombreDe(List<OpcionCatalogo> opciones, String id) {
+    for (final o in opciones) {
+      if (o.id == id) return o.nombre;
+    }
+    return null;
+  }
+
+  /// "Sin pasillo" es una opcion valida: no todos los productos se exponen en
+  /// un pasillo (bodega, uso interno, consumos del club).
+  static const String _sinPasillo = 'Sin pasillo';
+
+  List<String> get _opcionesPasillo =>
+      [_sinPasillo, ..._catalogoPasillos.map((p) => p.nombre)];
+
+  String get _pasilloSeleccionado => _pasilloNombre ?? _sinPasillo;
+
+  void _seleccionarPasillo(String valor) {
+    setState(() {
+      if (valor == _sinPasillo) {
+        _pasilloId = null;
+        _pasilloNombre = null;
+        return;
+      }
+      for (final p in _catalogoPasillos) {
+        if (p.nombre == valor) {
+          _pasilloId = p.id;
+          _pasilloNombre = p.nombre;
+          return;
+        }
+      }
+    });
   }
 
   void _cargarProducto() {
@@ -1077,6 +1204,24 @@ Future<void> _identificarProductoConIA() async {
         ? _codigoController.text 
         : 'P${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
 
+    // Si la imagen quedó como base64 (p. ej. vino del flujo de IA), subirla a
+    // Supabase Storage para que `imagen_url` sea una URL pública real y no un
+    // data URL pesado grabado en la BD que infla cada respuesta del API.
+    final esImagenBase64 = _imagenUrl == null ||
+        !(_imagenUrl ?? '').toLowerCase().startsWith('http');
+    if (esImagenBase64 && (_imagenBase64 ?? '').isNotEmpty) {
+      try {
+        final url = await ImageService.instance.uploadImage(
+          base64OrPath: _imagenBase64!,
+          bucketName: 'productos',
+          folder: 'imagenes',
+        );
+        if (url != null && url.isNotEmpty) _imagenUrl = url;
+      } catch (e) {
+        debugPrint('[ProductoForm] No se pudo subir imagen al guardar: $e');
+      }
+    }
+
     final producto = {
       'id': id,
       'codigo': codigo,
@@ -1433,6 +1578,13 @@ _buildField('Código / SKU', _codigoController, hint: 'Se genera automáticament
               const SizedBox(width: 10),
               Expanded(child: _buildField('Presentación', _presentacionController, hint: 'Ej: Botella 500ml, Lata')),
             ],
+          ),
+          const SizedBox(height: 12),
+          _buildDropdown(
+            'Pasillo',
+            _pasilloSeleccionado,
+            _opcionesPasillo,
+            (v) => _seleccionarPasillo(v!),
           ),
           const SizedBox(height: 12),
           Container(

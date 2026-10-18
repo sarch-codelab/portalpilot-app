@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:portal_pilot_app/Modules/RRHH/empleados/empleado_form.dart';
-import 'package:portal_pilot_app/Shared/utils/json_guard.dart';
+import 'package:portal_pilot_app/Modules/RRHH/rrhh_datos.dart';
+import 'package:portal_pilot_app/Shared/services/modulos_avanzados_service.dart';
+import 'package:portal_pilot_app/Shared/widgets/pp_empty_state.dart';
 
 class EmpleadoList extends StatefulWidget {
   const EmpleadoList({super.key});
@@ -17,6 +17,9 @@ class _EmpleadoListState extends State<EmpleadoList> {
   List<Map<String, dynamic>> _filtrados = [];
   String _busqueda = '';
   String _filtroEstado = 'Todos';
+  bool _cargando = true;
+  String? _error;
+  bool _sinPermiso = false;
 
   @override
   void initState() {
@@ -25,10 +28,25 @@ class _EmpleadoListState extends State<EmpleadoList> {
   }
 
   Future<void> _cargarEmpleados() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('empleados') ?? '[]';
     setState(() {
-      _empleados = JsonGuard.safeListOfMaps(json, source: 'RRHH/empleados');
+      _cargando = true;
+      _error = null;
+      _sinPermiso = false;
+    });
+    // Sube los empleados que estaban solo en este dispositivo (no-op si ya
+    // se hizo). Si falla, se reintenta en la próxima apertura.
+    await MigracionRRHHLocal.importarSiPendiente();
+    final r = await ModulosAvanzadosService.instance.empleados();
+    if (!mounted) return;
+    setState(() {
+      _cargando = false;
+      if (r.ok) {
+        _empleados = r.datos ?? <Map<String, dynamic>>[];
+      } else {
+        _sinPermiso = r.planLimitado;
+        _error = r.error;
+        _empleados = <Map<String, dynamic>>[];
+      }
       _aplicarFiltros();
     });
   }
@@ -57,12 +75,27 @@ class _EmpleadoListState extends State<EmpleadoList> {
   }
 
   Future<void> _eliminarEmpleado(String id) async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('empleados') ?? '[]';
-    final List<dynamic> empleados = JsonGuard.safeListOfMaps(json, source: 'RRHH/empleados/eliminar');
-    empleados.removeWhere((e) => e['id'] == id);
-    await prefs.setString('empleados', jsonEncode(empleados));
-    _cargarEmpleados();
+    final r = await ModulosAvanzadosService.instance.eliminarEmpleado(id);
+    if (!mounted) return;
+    if (r.ok) {
+      _aviso('Empleado eliminado');
+      _cargarEmpleados();
+    } else {
+      _aviso(
+        r.planLimitado
+            ? 'Este módulo no está incluido en tu plan actual.'
+            : (r.error ?? 'No se pudo eliminar el empleado'),
+        esError: true,
+      );
+    }
+  }
+
+  void _aviso(String texto, {bool esError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(texto, style: GoogleFonts.dmSans()),
+      backgroundColor: esError ? const Color(0xFFC62828) : const Color(0xFF2E7D32),
+    ));
   }
 
   @override
@@ -82,7 +115,13 @@ class _EmpleadoListState extends State<EmpleadoList> {
         ),
         centerTitle: true,
       ),
-      body: Column(
+      body: _cargando
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFEC4899)),
+            )
+          : _error != null
+              ? _estadoError()
+              : Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
@@ -119,11 +158,15 @@ class _EmpleadoListState extends State<EmpleadoList> {
           const SizedBox(height: 8),
           Expanded(
             child: _filtrados.isEmpty
-                ? Center(
-                    child: Text(
-                      _busqueda.isNotEmpty ? 'Sin resultados' : 'No hay empleados',
-                      style: GoogleFonts.dmSans(color: const Color(0xFF525252)),
-                    ),
+                ? PPEmptyState(
+                    icon: Icons.people_outline_rounded,
+                    accentColor: const Color(0xFFEC4899),
+                    title: _busqueda.isNotEmpty || _filtroEstado != 'Todos'
+                        ? 'Sin resultados'
+                        : 'No hay empleados',
+                    message: _busqueda.isNotEmpty || _filtroEstado != 'Todos'
+                        ? 'Ajusta la búsqueda o los filtros para ver más.'
+                        : 'Registra tu primer empleado desde el botón de arriba.',
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -217,6 +260,27 @@ class _EmpleadoListState extends State<EmpleadoList> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _estadoError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: PPEmptyState(
+          icon: _sinPermiso
+              ? Icons.lock_outline_rounded
+              : Icons.cloud_off_rounded,
+          accentColor: const Color(0xFFEC4899),
+          title: _sinPermiso ? 'No disponible en tu plan' : 'No se pudieron cargar los empleados',
+          message: _error ?? 'Error desconocido',
+          action: FilledButton.icon(
+            onPressed: _cargarEmpleados,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Reintentar'),
+          ),
+        ),
       ),
     );
   }
