@@ -35,13 +35,8 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Configure iOS project (xcconfig + pods)
-        run: flutter build ios --release --config-only
-
-      - name: Pod install
-        run: |
-          cd ios
-          pod install
+      - name: Prepare Xcode project (config only, no codesign)
+        run: flutter build ios --release --config-only --no-codesign
 
       - name: Xcode archive (codesigning disabled)
         run: |
