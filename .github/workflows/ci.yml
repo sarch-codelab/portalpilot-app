@@ -17,7 +17,19 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
-      - name: flutter analyze (infos no bloquean)
-        run: flutter analyze --no-pub --no-fatal-infos
+      - name: flutter analyze (con anotaciones de diagnóstico)
+        run: |
+          set +e
+          flutter analyze --no-pub --no-fatal-infos --machine > analyze_report.txt 2>&1
+          code=$?
+          python3 tool/ci/analyze_annotations.py analyze_report.txt || true
+          exit $code
       - name: flutter test
-        run: flutter test --no-pub
+        run: |
+          set +e
+          flutter test --no-pub > test_report.txt 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            python3 tool/ci/test_annotations.py test_report.txt || true
+          fi
+          exit $code

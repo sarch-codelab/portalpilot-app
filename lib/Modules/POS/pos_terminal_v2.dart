@@ -1321,42 +1321,49 @@ class _PosTerminalV2State extends State<PosTerminalV2> with WidgetsBindingObserv
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      // isScrollControlled: en pantallas bajas el límite por defecto del
+      // sheet (9/16 del alto) se quedaba corto y el contenido desbordaba
+      // 59px (QA 364x616). Con el control completo + scroll interno nunca
+      // se corta ni desborda.
+      isScrollControlled: true,
       builder: (sheetCtx) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(color: const Color(0xFF404040), borderRadius: BorderRadius.circular(2)),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: const Color(0xFF404040), borderRadius: BorderRadius.circular(2)),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text('¿Cómo emitís la venta?', textAlign: TextAlign.center, style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-                const SizedBox(height: 4),
-                Text('Elegí el comprobante para esta venta', textAlign: TextAlign.center, style: GoogleFonts.dmSans(fontSize: 12.5, color: const Color(0xFFA1A1AA))),
-                const SizedBox(height: 18),
-                opcion(
-                  icon: Icons.receipt_long_rounded,
-                  titulo: 'Ticket simple',
-                  subtitulo: 'Comprobante interno, sin datos fiscales',
-                  valor: 'ticket',
-                  color: const Color(0xFF38BDF8),
-                ),
-                const SizedBox(height: 10),
-                opcion(
-                  icon: Icons.description_rounded,
-                  titulo: 'Factura legal (CAI)',
-                  subtitulo: 'Documento fiscal con RTN del cliente',
-                  valor: 'factura',
-                  color: const Color(0xFF10B981),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Text('¿Cómo emitís la venta?', textAlign: TextAlign.center, style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Text('Elegí el comprobante para esta venta', textAlign: TextAlign.center, style: GoogleFonts.dmSans(fontSize: 12.5, color: const Color(0xFFA1A1AA))),
+                  const SizedBox(height: 18),
+                  opcion(
+                    icon: Icons.receipt_long_rounded,
+                    titulo: 'Ticket simple',
+                    subtitulo: 'Comprobante interno, sin datos fiscales',
+                    valor: 'ticket',
+                    color: const Color(0xFF38BDF8),
+                  ),
+                  const SizedBox(height: 10),
+                  opcion(
+                    icon: Icons.description_rounded,
+                    titulo: 'Factura legal (CAI)',
+                    subtitulo: 'Documento fiscal con RTN del cliente',
+                    valor: 'factura',
+                    color: const Color(0xFF10B981),
+                  ),
+                ],
+              ),
             ),
           ),
         );

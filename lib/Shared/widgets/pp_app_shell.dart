@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
@@ -470,6 +470,11 @@ class _PPAppShellState extends State<PPAppShell> {
 
   // ─────────────────────────── Top bar ──────────────────────────────────────
   Widget _buildTopBar(ThemePalette palette, PPController controller, bool isMobile) {
+    // En móvil angosto (<420px) los extras fijos del top bar (tema, salud de
+    // red, inicio) no caben junto al breadcrumb y causaban overflows de 7-47px
+    // en pantallas angostas (320/360). Se ocultan ahí; la campana de
+    // notificaciones se conserva siempre.
+    final showTopBarExtras = !isMobile || MediaQuery.sizeOf(context).width >= 420;
     return Material(
       color: palette.appBarColor,
       child: Container(
@@ -528,14 +533,18 @@ class _PPAppShellState extends State<PPAppShell> {
               const SizedBox(width: 8),
               _buildNewButton(palette),
             ],
-            const SizedBox(width: 8),
-            _buildThemeToggle(palette),
-            const SizedBox(width: 6),
-            const _NetworkHealthIndicator(),
+            if (showTopBarExtras) ...[
+              const SizedBox(width: 8),
+              _buildThemeToggle(palette),
+              const SizedBox(width: 6),
+              const _NetworkHealthIndicator(),
+            ],
             const SizedBox(width: 6),
             _buildNotificationBell(palette),
-            const SizedBox(width: 4),
-            _buildHomeButton(palette),
+            if (showTopBarExtras) ...[
+              const SizedBox(width: 4),
+              _buildHomeButton(palette),
+            ],
           ],
         ),
       ),

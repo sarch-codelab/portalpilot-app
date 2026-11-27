@@ -1,7 +1,6 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:portal_pilot_app/Shared/services/notification_service.dart';
 import 'package:flutter/services.dart';
 import 'package:portal_pilot_app/Shared/theme/app_theme.dart';
 import 'package:window_manager/window_manager.dart';
