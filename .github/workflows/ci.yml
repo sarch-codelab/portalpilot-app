@@ -20,10 +20,9 @@ jobs:
       - name: flutter analyze (con anotaciones de diagnóstico)
         run: |
           set +e
-          { flutter --version; echo '--- stderr de flutter analyze ---'; } > analyze_err.txt 2>&1
-          flutter analyze --no-pub --no-fatal-infos --machine > analyze_report.json 2>> analyze_err.txt
+          flutter analyze --no-pub --no-fatal-infos --machine > analyze_report.txt 2>&1
           code=$?
-          python3 tool/ci/analyze_annotations.py analyze_report.json analyze_err.txt || true
+          python3 tool/ci/analyze_annotations.py analyze_report.txt || true
           exit $code
       - name: flutter test
         run: flutter test --no-pub
