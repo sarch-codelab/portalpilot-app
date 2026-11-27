@@ -84,9 +84,9 @@ def main(argv):
     if fallidos:
         _emit("error", "tests-fallidos", "%0A".join(fallidos[:40]))
 
-    # Bloques de excepción (máx 3 anotaciones).
+    # Bloques de excepción (máx 5 anotaciones).
     blocks = _find_blocks(raw_lines)
-    for n, block in enumerate(blocks[:3], 1):
+    for n, block in enumerate(blocks[:5], 1):
         _emit("error", f"fallo-{n}", "%0A".join(_chunk(block, BLOCK_MAX_LINES, BLOCK_MAX_CHARS)))
 
     # Expected/Actual de los expect() fallidos, por si los bloques no bastan.
