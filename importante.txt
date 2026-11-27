@@ -1,4 +1,4 @@
 ⚠️ IMPORTANTE — respalda esto (crítico):
 
 C:\...\pp-w\android\app\upload-keystore.jks
-Es la llave de firma. Sin ella no podrás actualizar la app en el futuro (ni yo ni nadie). Guárdala en un lugar seguro junto con la contraseña portalpil0t2026 (está también en android\key.properties).
+Es la llave de firma. Sin ella no podrás actualizar la app en el futuro (ni yo ni nadie). Guárdala en un lugar seguro junto con su contraseña (guárdala SOLO en un gestor de contraseñas o lugar seguro privado — NUNCA la subas al repositorio; este repo es público). La contraseña también está en android\key.properties, que NO está versionado.

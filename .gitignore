@@ -79,3 +79,17 @@ supabase/.temp/
 # Entorno local de desarrollo Windows (sandbox: TEMP y DB dentro del repo)
 /.tmp/
 /.localdata/
+
+# Logs y análisis locales (Windows)
+/analysis*.txt
+/analyze_*_output.txt
+/build_log*.txt
+*.tmp
+/nocodb_auth.html
+/notas.txt
+
+# Dependencias Node (Vercel las instala desde package.json)
+node_modules/
+
+# Artefactos de build de Android
+android/build/
