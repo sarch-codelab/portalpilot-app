@@ -63,7 +63,9 @@ void main() {
     final prevOnError = FlutterError.onError;
     FlutterError.onError = (details) {
       final msg = details.exception.toString();
-      captured.add(msg.split('\n').take(4).join(' | '));
+      // 14 líneas: alcanza para ver el "error-causing widget" y su archivo
+      // cuando un RenderFlex desborda (diagnóstico directo desde CI).
+      captured.add(msg.split('\n').take(14).join(' | '));
       prevOnError?.call(details);
     };
     addTearDown(() => FlutterError.onError = prevOnError);
@@ -144,7 +146,9 @@ void main() {
         // En ambos casos no debe romper nada del árbol.
         await tester.tap(find.text('COBRAR'), warnIfMissed: false);
         await pumpFake(tester, const Duration(milliseconds: 900));
-        expect(tester.takeException(), isNull);
+        expect(tester.takeException(), isNull,
+            reason: 'Excepción durante el cobro; errores capturados: '
+                '${captured.isEmpty ? "(ninguno)" : captured.take(6).join("\n════\n")}');
 
         // ── 6. Resize cruzando la diagonal móvil/escritorio ──
         tester.view.physicalSize = const Size(800, 500);
