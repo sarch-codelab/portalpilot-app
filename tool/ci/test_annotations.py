@@ -72,21 +72,34 @@ def main(argv):
         _emit("error", "flutter-test", "test_report.txt no existe")
         return 0
 
-    # Nombres de tests fallidos (líneas de progreso con contador negativo).
+    # Nombres de tests fallidos: razón del expect (contiene "desborda") y
+    # líneas de progreso con contador negativo.
     fallidos = []
     for line in raw_lines:
+        s = _flatten(line)
+        if "desborda" in s:
+            nombre = s[:160]
+            if nombre not in fallidos:
+                fallidos.append(nombre)
         if re.search(r"-\d+:", line):
             m = FAIL_NAME_RE.match(line.strip())
             nombre = _flatten(m.group(1))[:160] if m else _flatten(line)[:160]
             if nombre and nombre not in fallidos:
                 fallidos.append(nombre)
 
+    # "The test description was:" va seguido del nombre en la línea siguiente.
+    for i, line in enumerate(raw_lines):
+        if "The test description was:" in _flatten(line) and i + 1 < len(raw_lines):
+            nombre = _flatten(raw_lines[i + 1])[:160]
+            if nombre and nombre not in fallidos:
+                fallidos.append(nombre)
+
     if fallidos:
         _emit("error", "tests-fallidos", "%0A".join(fallidos[:40]))
 
-    # Bloques de excepción (máx 5 anotaciones).
+    # Bloques de excepción (máx 8 anotaciones).
     blocks = _find_blocks(raw_lines)
-    for n, block in enumerate(blocks[:5], 1):
+    for n, block in enumerate(blocks[:8], 1):
         _emit("error", f"fallo-{n}", "%0A".join(_chunk(block, BLOCK_MAX_LINES, BLOCK_MAX_CHARS)))
 
     # Expected/Actual de los expect() fallidos, por si los bloques no bastan.

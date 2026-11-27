@@ -470,11 +470,11 @@ class _PPAppShellState extends State<PPAppShell> {
 
   // ─────────────────────────── Top bar ──────────────────────────────────────
   Widget _buildTopBar(ThemePalette palette, PPController controller, bool isMobile) {
-    // En ancho compacto (<360px, p. ej. móvil chico 320) los extras fijos del
-    // top bar (tema, salud de red, inicio) no caben junto al breadcrumb y
-    // causaban overflows de 24-47px en pantallas angostas. Se ocultan ahí;
-    // la campana de notificaciones se conserva siempre.
-    final showTopBarExtras = !isMobile || !MobileUtils.isCompact(context);
+    // En móvil angosto (<420px) los extras fijos del top bar (tema, salud de
+    // red, inicio) no caben junto al breadcrumb y causaban overflows de 7-47px
+    // en pantallas angostas (320/360). Se ocultan ahí; la campana de
+    // notificaciones se conserva siempre.
+    final showTopBarExtras = !isMobile || MediaQuery.sizeOf(context).width >= 420;
     return Material(
       color: palette.appBarColor,
       child: Container(
