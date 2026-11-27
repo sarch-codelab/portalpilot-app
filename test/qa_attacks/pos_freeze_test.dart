@@ -62,10 +62,9 @@ void main() {
     final captured = <String>[];
     final prevOnError = FlutterError.onError;
     FlutterError.onError = (details) {
-      final msg = details.exception.toString();
-      // 14 líneas: alcanza para ver el "error-causing widget" y su archivo
-      // cuando un RenderFlex desborda (diagnóstico directo desde CI).
-      captured.add(msg.split('\n').take(14).join(' | '));
+      // details.toString() incluye biblioteca, contexto y la cadena de widgets
+      // (creator) — imprescindible para diagnosticar overflows desde CI.
+      captured.add(details.toString().split('\n').take(24).join(' | '));
       prevOnError?.call(details);
     };
     addTearDown(() => FlutterError.onError = prevOnError);
