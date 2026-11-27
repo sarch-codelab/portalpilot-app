@@ -5,18 +5,19 @@ Uso en CI (solo cuando flutter test falla):
     flutter test --no-pub > test_report.txt 2>&1
     python3 tool/ci/test_annotations.py test_report.txt
 
-Publica hasta 3 anotaciones:
-  1. Tests fallidos (nombres del reporter compact con contador negativo)
-  2. Causa raíz: "error-causing widget was" + overflow + Expected/Actual
-  3. Contexto crudo de [E] si lo anterior no bastó
+Estrategia: cada excepción del framework viene precedida por la línea de
+progreso del reporter compact (con el nombre del test) y seguida de un bloque
+delimitado por ═══ que incluye el stack con rutas de archivo. Publica hasta
+3 bloques de excepción completos como anotaciones.
 """
 import re
 import sys
 
-MAX_RAW_LINES = 60
-MAX_RAW_CHARS = 3500
+BLOCK_MAX_LINES = 34
+BLOCK_MAX_CHARS = 3800
 
-FAIL_LINE_RE = re.compile(r"^\d{2}:\d{2}\s+\+\d+(?:\s+-\d+)?:\s+(.*)$")
+HEADER = "EXCEPTION CAUGHT BY"
+FAIL_NAME_RE = re.compile(r"^\d{2}:\d{2}\s+\+\d+\s+-\d+:\s+(.*?)(?:\s*\[E\])?$")
 
 
 def _flatten(text: str) -> str:
@@ -38,6 +39,27 @@ def _chunk(lines, max_lines, max_chars):
     return out
 
 
+def _find_blocks(lines):
+    """Bloques [nombre-test?] + excepción completa."""
+    blocks = []
+    i = 0
+    while i < len(lines):
+        if HEADER in lines[i]:
+            start = max(0, i - 1)  # la línea previa suele traer el nombre del test
+            body = lines[start:i]
+            j = i
+            while j < len(lines) and j - i < BLOCK_MAX_LINES:
+                body.append(lines[j])
+                if set(lines[j].strip()) == {"═"} and j > i:
+                    break
+                j += 1
+            blocks.append(body)
+            i = j + 1
+        else:
+            i += 1
+    return blocks
+
+
 def main(argv):
     if len(argv) != 2:
         print("uso: test_annotations.py <test_report.txt>", file=sys.stderr)
@@ -50,44 +72,35 @@ def main(argv):
         _emit("error", "flutter-test", "test_report.txt no existe")
         return 0
 
-    # 1) Nombres de tests fallidos: líneas de progreso con contador negativo.
+    # Nombres de tests fallidos (líneas de progreso con contador negativo).
     fallidos = []
     for line in raw_lines:
-        if re.search(r"\s+-\d+:", line):
-            m = FAIL_LINE_RE.match(line)
-            if m:
-                nombre = _flatten(m.group(1))[:150]
-                if nombre and nombre not in fallidos:
-                    fallidos.append(nombre)
+        if re.search(r"-\d+:", line):
+            m = FAIL_NAME_RE.match(line.strip())
+            nombre = _flatten(m.group(1))[:160] if m else _flatten(line)[:160]
+            if nombre and nombre not in fallidos:
+                fallidos.append(nombre)
 
     if fallidos:
-        msg = "%0A".join(fallidos[:40])
-        _emit("error", "tests-fallidos", msg)
+        _emit("error", "tests-fallidos", "%0A".join(fallidos[:40]))
 
-    # 2) Causa raíz: widget culpable, overflow, expectativas.
-    causas = []
-    for i, line in enumerate(raw_lines):
-        s = _flatten(line)
-        if "error-causing widget was" in s:
-            causas.append(s[:200])
-            if i + 1 < len(raw_lines):
-                causas.append("→ " + _flatten(raw_lines[i + 1])[:250])
-        elif "overflowed by" in s:
-            causas.append(s[:250])
-        elif s.startswith("Expected:") or s.startswith("Actual:"):
-            causas.append(s[:200])
+    # Bloques de excepción (máx 3 anotaciones).
+    blocks = _find_blocks(raw_lines)
+    for n, block in enumerate(blocks[:3], 1):
+        _emit("error", f"fallo-{n}", "%0A".join(_chunk(block, BLOCK_MAX_LINES, BLOCK_MAX_CHARS)))
 
-    if causas:
-        _emit("error", "causa-raiz", "%0A".join(_chunk(causas, MAX_RAW_LINES, MAX_RAW_CHARS)))
+    # Expected/Actual de los expect() fallidos, por si los bloques no bastan.
+    expect = [l for l in raw_lines
+              if l.strip().startswith(("Expected:", "Actual:"))]
+    if len(expect) <= 20 and expect:
+        _emit("error", "expect-fallidos", "%0A".join(_chunk(expect, 30, 3500)))
 
-    # 3) Contexto [E] crudo por si falta algo.
-    e_lines = [l for l in raw_lines if "[E]" in l]
-    if e_lines and len(causas) < 6:
-        _emit("error", "flutter-test-contexto", "%0A".join(_chunk(e_lines, MAX_RAW_LINES, MAX_RAW_CHARS)))
+    if not blocks and not fallidos and not expect:
+        _emit("error", "flutter-test", "%0A".join(_chunk(raw_lines[-40:], 40, 3500)))
 
     print(
-        f"test_annotations: {len(fallidos)} tests fallidos, "
-        f"{len(causas)} líneas de causa raíz ({len(raw_lines)} totales)",
+        f"test_annotations: {len(fallidos)} tests fallidos, {len(blocks)} bloques "
+        f"de excepción ({len(raw_lines)} líneas totales)",
         flush=True,
     )
     return 0
